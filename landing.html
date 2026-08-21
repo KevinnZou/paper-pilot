@@ -176,6 +176,43 @@
   .bg-red { background: var(--cinnabar-soft); } .bg-blue { background: #E3ECF2; } .bg-green { background: var(--jade-soft); }
   .bg-amber { background: #F5EBDC; } .bg-gray { background: #ECEEF0; } .bg-violet { background: #ECE8F2; }
 
+  /* ---------- 产品工作流程 ---------- */
+  .flow { padding: 76px 0; border-bottom: 1px solid var(--line); }
+  .flow-chart { max-width: 760px; margin: 0 auto; position: relative; padding-left: 46px; }
+  .flow-chart::before {
+    content: ''; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px;
+    background: linear-gradient(var(--cinnabar), var(--line) 30%, var(--line) 70%, var(--jade));
+  }
+  .f-row { position: relative; margin-bottom: 18px; }
+  .f-num {
+    position: absolute; left: -46px; top: 16px; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--paper); border: 2px solid var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13.5px; font-weight: 700; color: var(--ink); font-family: var(--serif);
+  }
+  .f-row.f-start .f-num { border-color: var(--cinnabar); color: var(--cinnabar); background: var(--cinnabar-soft); }
+  .f-row.f-end .f-num { border-color: var(--jade); color: var(--jade); background: var(--jade-soft); }
+  .f-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; }
+  .f-card h3 { font-size: 15.5px; display: flex; align-items: center; gap: 8px; }
+  .f-card h3 .tag { font-size: 10.5px; font-weight: 600; border-radius: 999px; padding: 1px 9px; background: var(--jade-soft); color: var(--jade); }
+  .f-card h3 .tag.red { background: var(--cinnabar-soft); color: var(--cinnabar); }
+  .f-card p.desc { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+  .f-steps { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-top: 12px; }
+  .f-step { font-size: 12px; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+  .f-step.ai { border-color: var(--cinnabar); color: var(--cinnabar); background: var(--cinnabar-soft); font-weight: 600; }
+  .f-step.ok { border-color: var(--jade); color: var(--jade); background: var(--jade-soft); font-weight: 600; }
+  .f-arr { color: #A8A29A; font-size: 13px; }
+  .f-diamond {
+    width: 30px; height: 30px; background: #fff; border: 2px solid var(--cinnabar);
+    transform: rotate(45deg); border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .f-diamond span { transform: rotate(-45deg); font-size: 10px; color: var(--cinnabar); font-weight: 700; white-space: nowrap; }
+  .f-branch { font-size: 11.5px; color: var(--ink-soft); margin-top: 9px; padding-left: 4px; }
+  .f-branch b { color: var(--cinnabar); font-weight: 700; }
+  .f-branch.ok { color: var(--jade); }
+  .f-branch.ok b { color: var(--jade); }
+
   /* ---------- 特性带 ---------- */
   .trust { background: #fff; padding: 60px 0; border-bottom: 1px solid var(--line); }
   .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
@@ -303,6 +340,7 @@
     <nav class="nav-links">
       <a href="#why">为什么需要</a>
       <a href="#features">功能</a>
+      <a href="#flow">流程</a>
       <a href="#trust">安全</a>
       <a href="#register">登记</a>
       <a href="#how">三步开始</a>
@@ -457,6 +495,102 @@
           <li>一键导出 / 导入备份</li>
           <li>清除数据即完全抹除</li>
         </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 产品工作流程 ============ -->
+<section class="flow" id="flow">
+  <div class="wrap">
+    <h2>一条主流程，五种任务</h2>
+    <p class="lead">从填写密钥到定稿交付，每一步都有明确输入、AI 动作与完成标记（松烟绿 ✓）。</p>
+    <div class="flow-chart">
+      <div class="f-row f-start">
+        <span class="f-num">始</span>
+        <div class="f-card">
+          <h3>开始：填写 API Key <span class="tag red">密钥只存本机</span></h3>
+          <p class="desc">打开页面即进入论文主页，无需注册；Key 仅保存在浏览器本地，请求直连模型服务商。</p>
+        </div>
+      </div>
+      <div class="f-row">
+        <span class="f-num">一</span>
+        <div class="f-card">
+          <h3>选题与大纲</h3>
+          <p class="desc">输入研究方向，AI 给出候选选题与可行性分析。</p>
+          <div class="f-steps">
+            <span class="f-step">输入研究方向</span><span class="f-arr">→</span>
+            <span class="f-step ai">AI 生成候选选题</span><span class="f-arr">→</span>
+            <span class="f-diamond"><span>采用？</span></span><span class="f-arr">→</span>
+            <span class="f-step ok">是：设为论文题目 ✓</span><span class="f-arr">→</span>
+            <span class="f-step">生成研究框架</span><span class="f-arr">→</span>
+            <span class="f-step ok">采用大纲 ✓</span>
+          </div>
+          <div class="f-branch"><b>否</b> → 换一批重新生成，直到满意</div>
+        </div>
+      </div>
+      <div class="f-row">
+        <span class="f-num">二</span>
+        <div class="f-card">
+          <h3>写作工作台 <span class="tag">稿纸式编辑器</span></h3>
+          <p class="desc">一份完整论文文档的编辑现场：题目、摘要、各章、参考文献、致谢同处一页。</p>
+          <div class="f-steps">
+            <span class="f-step">选中文字</span><span class="f-arr">→</span>
+            <span class="f-step ai">润色 / 扩写 / 降重 / 续写</span><span class="f-arr">→</span>
+            <span class="f-step ok">AI 就地替换原文</span><span class="f-arr">→</span>
+            <span class="f-step">撤销 / 重做</span>
+          </div>
+          <div class="f-branch ok">生成初稿 · 摘要生成 · 素材一键插入 · 学位目标字数实时提示</div>
+        </div>
+      </div>
+      <div class="f-row">
+        <span class="f-num">三</span>
+        <div class="f-card">
+          <h3>学术文献 <span class="tag red">GB/T 7714</span></h3>
+          <p class="desc">真实学术数据库检索，AI 标注每条文献可印证论文哪个点。</p>
+          <div class="f-steps">
+            <span class="f-step">检索 CrossRef / OpenAlex</span><span class="f-arr">→</span>
+            <span class="f-step">AI 推荐理由</span><span class="f-arr">→</span>
+            <span class="f-step ok">一键入库 ✓</span><span class="f-arr">→</span>
+            <span class="f-step">正文插入 [n]</span><span class="f-arr">→</span>
+            <span class="f-step ok">文末自动生成参考文献 ✓</span>
+          </div>
+          <div class="f-branch ok">引用状态自查：每条文献标注已引用 / 未引用</div>
+        </div>
+      </div>
+      <div class="f-row">
+        <span class="f-num">四</span>
+        <div class="f-card">
+          <h3>计划与进度</h3>
+          <p class="desc">截止日期倒排写作计划，进度可视化不失控。</p>
+          <div class="f-steps">
+            <span class="f-step">设定截止日期</span><span class="f-arr">→</span>
+            <span class="f-step">甘特图倒排计划</span><span class="f-arr">→</span>
+            <span class="f-step">每日打卡</span><span class="f-arr">→</span>
+            <span class="f-step ok">热力图 / 章节进度 ✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="f-row">
+        <span class="f-num">五</span>
+        <div class="f-card">
+          <h3>交付与导出</h3>
+          <p class="desc">成品检查后一键交付，不污染最终文档。</p>
+          <div class="f-steps">
+            <span class="f-step">排版预览</span><span class="f-arr">→</span>
+            <span class="f-step">另存 PDF</span><span class="f-arr">→</span>
+            <span class="f-step">下载 Markdown</span><span class="f-arr">→</span>
+            <span class="f-step ok">定稿交付 ✓</span>
+          </div>
+          <div class="f-branch ok">缺号提示：正文引用了不存在的 [n] 会在导出前提示</div>
+        </div>
+      </div>
+      <div class="f-row f-end">
+        <span class="f-num">成</span>
+        <div class="f-card">
+          <h3>完成：备份导出 <span class="tag">数据全在本地</span></h3>
+          <p class="desc">一键导出备份 JSON（含全部论文、草稿、文献、计划），换设备导入即恢复。</p>
+        </div>
       </div>
     </div>
   </div>
