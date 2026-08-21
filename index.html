@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1E2B36">
+  <title>PaperPilot · 论文写作助手</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='2' width='20' height='20' rx='3' fill='%23C03B2D'/%3E%3Ctext x='12' y='16.8' font-size='13' text-anchor='middle' fill='%23fff' font-family='Songti SC,SimSun,serif' font-weight='700'%3E%E6%96%87%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-seal" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30"><rect x="2" y="2" width="20" height="20" rx="3" fill="#C03B2D"/><text x="12" y="16.8" font-size="13" text-anchor="middle" fill="#fff" font-family="Songti SC, STSong, SimSun, serif" font-weight="700">文</text></svg>
+        </span>
+        <div>
+          <div class="brand-name">PaperPilot</div>
+          <div class="brand-sub">论文写作助手</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-foot">
+        <button class="btn btn-side" id="nav-settings">设置</button>
+        <p class="side-note">数据仅存本机 · 无需登录</p>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="main-header">
+        <div>
+          <h1 id="module-title">论文主页</h1>
+          <p id="module-subtitle"></p>
+        </div>
+        <div class="pills">
+          <span class="status-pill" id="project-badge">未设置论文</span>
+          <span class="status-pill" id="api-status">未配置 API</span>
+        </div>
+      </header>
+      <div id="module-container" class="module-container"></div>
+      <footer class="page-foot">学术诚信声明：本工具仅提供写作辅助，不代写论文；AI 生成内容仅供参考，请自行核实并遵守所在学校的学术规范。</footer>
+    </main>
+  </div>
+  <div class="toast-wrap" id="toast-wrap" role="status" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

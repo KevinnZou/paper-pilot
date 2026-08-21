@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperPilot · 论文写作助手 —— 从选题到定稿的 AI 陪伴</title>
+<meta name="description" content="PaperPilot：覆盖选题、写作、文献、进度全流程的论文写作助手。AI 逐句润色、GB/T 7714 国标引用、进度可视化，数据全部留在本地。">
+<style>
+  :root {
+    --paper: #F6F5F1;
+    --paper-deep: #EFEDE6;
+    --ink: #26303B;
+    --ink-soft: #5A6472;
+    --ink-blue: #2F4F66;
+    --cinnabar: #C03B2D;
+    --cinnabar-soft: #F7E4E0;
+    --jade: #477A56;
+    --jade-soft: #E4EFE6;
+    --line: #E4E1D8;
+    --serif: "Songti SC", STSong, SimSun, "Noto Serif SC", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- 顶栏 ---------- */
+  header.site {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(246, 245, 241, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav { display: flex; align-items: center; gap: 28px; height: 60px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: 0.5px; }
+  .logo .seal {
+    width: 26px; height: 26px; border-radius: 7px; background: var(--cinnabar); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-size: 15px; font-weight: 700;
+  }
+  .nav-links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; color: var(--ink-soft); }
+  .nav-links a:hover { color: var(--cinnabar); }
+  .nav .cta { background: var(--ink); color: #fff; border-radius: 8px; padding: 7px 16px; font-size: 13.5px; font-weight: 600; }
+  .nav .cta:hover { background: var(--cinnabar); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(1100px 480px at 85% -10%, rgba(47, 79, 102, 0.35), transparent 60%),
+      radial-gradient(800px 400px at 5% 115%, rgba(192, 59, 45, 0.16), transparent 55%),
+      #1F2A36;
+    color: #F2F0E9;
+    padding: 84px 0 88px;
+    text-align: center;
+  }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: #D8C9B5; background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; padding: 5px 14px; margin-bottom: 24px;
+    letter-spacing: 1px;
+  }
+  .kicker b { color: #E8B49A; font-weight: 600; }
+  .hero h1 {
+    font-family: var(--serif); font-weight: 700;
+    font-size: clamp(34px, 4.6vw, 52px); line-height: 1.3; letter-spacing: 1px;
+    margin-bottom: 18px;
+  }
+  .hero h1 em { font-style: normal; color: #E0755F; }
+  .hero .sub {
+    font-size: 16.5px; color: #B9C2CC; max-width: 640px;
+    margin: 0 auto 30px;
+  }
+  .hero .sub b { color: #F2F0E9; font-weight: 600; }
+  .hero-ctas { display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 28px; }
+  .btn-main {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--cinnabar); color: #fff !important;
+    padding: 12px 26px; border-radius: 10px; font-size: 15px; font-weight: 700;
+    box-shadow: 0 8px 24px rgba(192, 59, 45, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-main:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(192, 59, 45, 0.45); }
+  .btn-ghost-light {
+    border: 1px solid rgba(255,255,255,0.3); color: #F2F0E9;
+    padding: 11px 22px; border-radius: 10px; font-size: 14px; transition: background 0.15s ease;
+  }
+  .btn-ghost-light:hover { background: rgba(255,255,255,0.08); }
+  .hero-chips { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 56px; }
+  .chip {
+    font-size: 12px; padding: 4px 14px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.2); color: #C9D2DB;
+  }
+  .chip.red { background: rgba(192,59,45,0.18); border-color: rgba(224,117,95,0.4); color: #E8B49A; }
+  .chip.green { background: rgba(71,122,86,0.25); border-color: rgba(120,180,140,0.4); color: #9FD0AE; }
+
+  /* 产品窗口 mock（全宽） */
+  .hero-win { text-align: left; }
+  .win {
+    background: var(--paper); color: var(--ink);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    font-size: 12px; line-height: 1.6;
+  }
+  .win-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #ECE9E1; border-bottom: 1px solid var(--line); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #E0705F; } .dot.y { background: #D9B25E; } .dot.g { background: #7FA98B; }
+  .win-bar .t { margin-left: 8px; font-size: 11px; color: var(--ink-soft); font-family: var(--mono); }
+  .win-body { display: grid; grid-template-columns: 156px 1fr 210px; height: 320px; }
+  .win-left { border-right: 1px solid var(--line); padding: 14px 12px; background: #FBF9F4; }
+  .win-left .li { padding: 7px 10px; border-radius: 6px; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 4px; }
+  .win-left .li.on { background: var(--cinnabar-soft); color: var(--cinnabar); font-weight: 600; }
+  .win-left .li b { color: var(--ink); font-weight: 600; }
+  .win-mid { padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .win-mid .toolbar { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tb { font-size: 10.5px; padding: 3px 10px; border-radius: 6px; background: #fff; border: 1px solid var(--line); color: var(--ink-soft); }
+  .tb.ai { background: var(--cinnabar); border-color: var(--cinnabar); color: #fff; font-weight: 600; }
+  .win-mid .para { font-family: var(--serif); font-size: 12.5px; color: var(--ink); }
+  .win-mid .para .hl { background: rgba(192,59,45,0.12); border-bottom: 2px solid var(--cinnabar); padding: 0 2px; }
+  .win-mid .para .ref { color: var(--cinnabar); font-family: var(--mono); font-size: 11px; font-weight: 600; }
+  .win-mid .ai-line {
+    border: 1px solid var(--cinnabar); background: var(--cinnabar-soft);
+    border-radius: 8px; padding: 8px 12px; font-family: var(--serif); font-size: 12px; color: #8F3328;
+  }
+  .win-mid .ai-line::before { content: '✎ AI 润色'; display: block; font-family: var(--sans); font-size: 10px; color: var(--cinnabar); font-weight: 700; margin-bottom: 3px; letter-spacing: 1px; }
+  .win-mid .status { font-size: 11.5px; color: var(--ink-soft); }
+  .win-mid .status b { color: var(--cinnabar); font-weight: 700; }
+  .win-right { border-left: 1px solid var(--line); padding: 14px 12px; background: #FBF9F4; }
+  .win-right .h { font-size: 10.5px; font-weight: 700; color: var(--ink); margin-bottom: 9px; display: flex; align-items: center; gap: 6px; }
+  .win-right .h::before { content: ''; width: 6px; height: 6px; background: var(--cinnabar); border-radius: 2px; }
+  .cit { display: flex; gap: 6px; align-items: center; font-size: 10.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  .cit .no { background: var(--ink); color: #fff; border-radius: 4px; padding: 1px 5px; font-family: var(--mono); font-size: 10px; }
+  .cit .st { color: var(--jade); font-size: 10px; border: 1px solid var(--jade); border-radius: 999px; padding: 0 6px; }
+  .win-right .sel { margin-top: 12px; border: 1px solid var(--line); border-radius: 7px; background: #fff; padding: 5px 9px; font-size: 10.5px; color: var(--ink-soft); }
+  .win-right .sel::after { content: '▾'; float: right; color: var(--ink-soft); }
+  .win-right .ins { margin-top: 8px; background: var(--ink); color: #fff; text-align: center; border-radius: 7px; padding: 5px 0; font-size: 10.5px; }
+
+  /* ---------- 痛点带 ---------- */
+  .pain { padding: 72px 0; border-bottom: 1px solid var(--line); }
+  .pain h2, .sec h2, .reg h2 { font-family: var(--serif); font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 10px; }
+  .pain .lead, .sec .lead, .reg .lead { text-align: center; color: var(--ink-soft); font-size: 15px; max-width: 620px; margin: 0 auto 44px; }
+  .pain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .pain-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 26px 24px; position: relative; }
+  .pain-card .no { font-family: var(--serif); font-size: 38px; color: var(--line); font-weight: 700; line-height: 1; }
+  .pain-card h3 { font-size: 16px; margin: 8px 0 8px; }
+  .pain-card p { font-size: 13.5px; color: var(--ink-soft); }
+  .pain-card .fix { margin-top: 14px; font-size: 12.5px; color: var(--jade); background: var(--jade-soft); border-radius: 8px; padding: 8px 12px; }
+  .pain-card .fix b { font-weight: 700; }
+
+  /* ---------- 功能网格 ---------- */
+  .sec { padding: 76px 0; border-bottom: 1px solid var(--line); }
+  .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .feat {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    padding: 28px 26px; transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .feat:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(38,48,59,0.08); }
+  .feat .icon {
+    width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 16px;
+  }
+  .feat h3 { font-size: 16.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .feat h3 .tag { font-size: 10.5px; font-weight: 600; border-radius: 999px; padding: 1px 9px; }
+  .feat p { font-size: 13.5px; color: var(--ink-soft); }
+  .feat ul { margin-top: 10px; list-style: none; }
+  .feat li { font-size: 12.5px; color: var(--ink); padding-left: 18px; position: relative; margin-bottom: 4px; }
+  .feat li::before { content: '✓'; position: absolute; left: 0; color: var(--jade); font-weight: 700; }
+  .bg-red { background: var(--cinnabar-soft); } .bg-blue { background: #E3ECF2; } .bg-green { background: var(--jade-soft); }
+  .bg-amber { background: #F5EBDC; } .bg-gray { background: #ECEEF0; } .bg-violet { background: #ECE8F2; }
+
+  /* ---------- 特性带 ---------- */
+  .trust { background: #fff; padding: 60px 0; border-bottom: 1px solid var(--line); }
+  .trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  .trust-item { text-align: center; padding: 10px 8px; }
+  .trust-item .n { font-family: var(--serif); font-size: 28px; font-weight: 700; color: var(--ink-blue); line-height: 1.3; }
+  .trust-item .n.red { color: var(--cinnabar); }
+  .trust-item .n.green { color: var(--jade); }
+  .trust-item .l { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+
+  /* ---------- 三步使用 ---------- */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: step; }
+  .step { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 26px 24px 24px; }
+  .step::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; top: -16px; left: 24px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--ink); color: #fff; font-weight: 700; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif);
+  }
+  .step h3 { font-size: 16px; margin-bottom: 8px; }
+  .step p { font-size: 13.5px; color: var(--ink-soft); }
+
+  /* ---------- 登记板块 ---------- */
+  .reg { padding: 76px 0; border-bottom: 1px solid var(--line); background: #fff; }
+  .reg-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 48px; align-items: start; }
+  .reg-why h3 { font-size: 17px; margin-bottom: 14px; }
+  .reg-why ul { list-style: none; }
+  .reg-why li { font-size: 14px; color: var(--ink-soft); padding-left: 22px; position: relative; margin-bottom: 12px; }
+  .reg-why li::before { content: '✓'; position: absolute; left: 0; color: var(--jade); font-weight: 700; }
+  .reg-why .note {
+    margin-top: 20px; font-size: 12px; color: #8A93A0;
+    background: var(--paper); border: 1px dashed var(--line); border-radius: 10px; padding: 10px 14px;
+  }
+  .form-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 28px 26px; }
+  .form-card h3 { font-size: 17px; margin-bottom: 4px; }
+  .form-card .sub { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 20px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 6px; }
+  .field label .req { color: var(--cinnabar); }
+  .field input, .field select {
+    width: 100%; padding: 9px 12px; font-size: 14px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; background: #fff;
+    font-family: var(--sans); outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--cinnabar); box-shadow: 0 0 0 3px rgba(192,59,45,0.12); }
+  .opt-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt {
+    font-size: 12.5px; padding: 5px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink-soft);
+    cursor: pointer; user-select: none; transition: all 0.12s ease;
+  }
+  .opt input { display: none; }
+  .opt.on { background: var(--cinnabar-soft); border-color: var(--cinnabar); color: var(--cinnabar); font-weight: 600; }
+  .form-btn {
+    width: 100%; margin-top: 6px;
+    background: var(--cinnabar); color: #fff; border: none;
+    padding: 12px 0; border-radius: 10px; font-size: 15px; font-weight: 700;
+    font-family: var(--sans); cursor: pointer;
+    box-shadow: 0 6px 18px rgba(192, 59, 45, 0.3);
+    transition: transform 0.12s ease;
+  }
+  .form-btn:hover { transform: translateY(-1px); }
+  .reg-success { text-align: center; padding: 30px 10px 10px; }
+  .reg-success .seal {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--jade-soft); color: var(--jade);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 14px;
+    border: 2px solid var(--jade);
+  }
+  .reg-success h4 { font-size: 18px; margin-bottom: 6px; }
+  .reg-success p { font-size: 13px; color: var(--ink-soft); margin-bottom: 18px; }
+  .reg-card {
+    text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; font-size: 13px; margin-bottom: 18px;
+  }
+  .reg-card .row { display: flex; gap: 10px; margin-bottom: 6px; }
+  .reg-card .k { color: var(--ink-soft); width: 84px; flex-shrink: 0; }
+  .reg-card .v { color: var(--ink); font-weight: 600; }
+  .reg-success .again {
+    background: none; border: 1px solid var(--line); color: var(--ink-soft);
+    padding: 8px 18px; border-radius: 9px; font-size: 13px; cursor: pointer;
+    font-family: var(--sans);
+  }
+  .reg-success .again:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* ---------- 底部 CTA ---------- */
+  .final {
+    padding: 84px 0; text-align: center;
+    background:
+      radial-gradient(900px 400px at 50% 120%, rgba(192,59,45,0.16), transparent 60%),
+      #F6F5F1;
+  }
+  .final h2 { font-family: var(--serif); font-size: 32px; margin-bottom: 14px; }
+  .final p { color: var(--ink-soft); font-size: 15px; max-width: 520px; margin: 0 auto 30px; }
+  .final .small { font-size: 12px; color: #8A93A0; margin-top: 16px; }
+  .final .small code { font-family: var(--mono); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; }
+
+  footer.site { padding: 26px 0; border-top: 1px solid var(--line); font-size: 12.5px; color: #8A93A0; text-align: center; }
+  footer.site b { color: var(--ink-soft); }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 900px) {
+    .pain-grid, .feat-grid, .steps, .trust-grid { grid-template-columns: 1fr 1fr; }
+    .reg-grid { grid-template-columns: 1fr; gap: 32px; }
+    .nav-links { display: none; }
+    .win-body { grid-template-columns: 120px 1fr; height: 320px; }
+    .win-right { display: none; }
+  }
+  @media (max-width: 560px) {
+    .pain-grid, .feat-grid, .steps, .trust-grid { grid-template-columns: 1fr; }
+    .win-body { grid-template-columns: 1fr; height: auto; }
+    .win-left { display: none; }
+    .hero { padding-top: 56px; }
+    .hero-chips { margin-bottom: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap nav">
+    <div class="logo"><span class="seal">论</span>PaperPilot <span style="color:var(--ink-soft);font-weight:400;font-size:13px">论文写作助手</span></div>
+    <nav class="nav-links">
+      <a href="#why">为什么需要</a>
+      <a href="#features">功能</a>
+      <a href="#trust">安全</a>
+      <a href="#register">登记</a>
+      <a href="#how">三步开始</a>
+    </nav>
+    <a class="cta" href="index.html">立即使用 →</a>
+  </div>
+</header>
+
+<!-- ============ Hero ============ -->
+<section class="hero">
+  <div class="wrap">
+    <span class="kicker">清华 MEM 课程项目 · 纯静态 AI 应用 <b>✦ 全新体验版</b></span>
+    <h1>论文写作，从手忙脚乱<br>到 <em>从容交付</em></h1>
+    <p class="sub">面向在校学生的论文写作助手：<b>选题、大纲、写作、文献、进度</b>全流程 AI 陪伴。逐句润色就地替换、国标引用自动生成、字数进度实时掌控——你的 <b>API Key 与全部数据只留在本机</b>。</p>
+    <div class="hero-ctas">
+      <a class="btn-main" href="index.html">免费开始使用 →</a>
+      <a class="btn-ghost-light" href="#features">了解功能</a>
+    </div>
+    <div class="hero-chips">
+      <span class="chip red">AI 逐句润色 · 可撤销</span>
+      <span class="chip green">GB/T 7714 国标引用</span>
+      <span class="chip">CrossRef / OpenAlex 真实文献</span>
+      <span class="chip">无后端 · 免注册</span>
+    </div>
+
+    <div class="hero-win">
+      <div class="win">
+        <div class="win-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="t">写作工作台 · 第一章 绪论</span>
+        </div>
+        <div class="win-body">
+          <div class="win-left">
+            <div class="li on"><b>第一章</b> 绪论</div>
+            <div class="li"><b>第二章</b> 方法设计</div>
+            <div class="li"><b>第三章</b> 实验</div>
+            <div class="li"><b>第四章</b> 结论</div>
+          </div>
+          <div class="win-mid">
+            <div class="toolbar">
+              <span class="tb ai">生成初稿</span><span class="tb ai">润色</span><span class="tb ai">扩写</span><span class="tb ai">降重</span>
+              <span class="tb">↶ 撤销</span><span class="tb">下载全文</span>
+            </div>
+            <div class="para">医学图像分割是计算机辅助诊断的基础任务<span class="ref">[1]</span>，近年深度学习方法已取得显著进展<span class="ref">[2]</span>。本<span class="hl">研究聚焦注意力机制</span>在分割网络中的应用……</div>
+            <div class="ai-line">本文提出一种融合通道注意力与空间注意力的双分支编解码网络，并在三组公开数据集上验证其有效性。</div>
+            <div class="status">全文字数 <b>17,400</b> · 距下限还差 <b>12,600 字</b>　·　草稿自动保存在本地</div>
+          </div>
+          <div class="win-right">
+            <div class="h">插入引用（序号）</div>
+            <div class="cit"><span class="no">[1]</span> 医学图像分割综述 <span class="st">已引用</span></div>
+            <div class="cit"><span class="no">[2]</span> 注意力机制研究 <span class="st">已引用</span></div>
+            <div class="cit"><span class="no">[3]</span> U-Net 变体网络 <span class="st" style="color:var(--cinnabar);border-color:var(--cinnabar)">未引用</span></div>
+            <div class="sel">[3] U-Net 变体网络 · 未引用</div>
+            <div class="ins">在光标处插入 [序号]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 痛点带 ============ -->
+<section class="pain" id="why">
+  <div class="wrap">
+    <h2>写论文的苦，我们都替你吃过</h2>
+    <p class="lead">三个真实痛点，对应三个产品承诺——不画饼，每一条都有对应功能。</p>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="no">壹</div>
+        <h3>逐句打磨太费时间</h3>
+        <p>「这句话写得不像学术表达」「这段要扩展开来」「导师说重复率太高」——改稿两小时，改完还怕改坏。</p>
+        <div class="fix"><b>解决方案：</b>选中文字即可润色 / 扩写 / 降重，AI 就地替换原文，Ctrl+Z 或点按撤销随时反悔。</div>
+      </div>
+      <div class="pain-card">
+        <div class="no">贰</div>
+        <h3>参考文献格式总被扣分</h3>
+        <p>GB/T 7714 的标点、顺序、[J][D][M][C] 类型标识——手改 30 条引用的深夜，谁改谁知道。</p>
+        <div class="fix"><b>解决方案：</b>文献检索入库自动生成标准格式；正文只插 [n] 序号，文末参考文献自动汇编，缺号、未引用项一目了然。</div>
+      </div>
+      <div class="pain-card">
+        <div class="no">叁</div>
+        <h3>进度失控，DDL 前才发现来不及</h3>
+        <p>「还有两个月」→「还有两周」——论文像黑盒，不到交稿日不知道差多少。</p>
+        <div class="fix"><b>解决方案：</b>截止日期倒排甘特图、每日打卡热力图、学位目标字数实时提示，还差多少字永远清楚。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 功能网格 ============ -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <h2>六大模块，一条完整写作链路</h2>
+    <p class="lead">从「不知道写什么」到「放心去交稿」，每一步都有工具接住。</p>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="icon bg-red">🎯</div>
+        <h3>选题与大纲 <span class="tag" style="background:var(--cinnabar-soft);color:var(--cinnabar)">AI 生成</span></h3>
+        <p>输入研究方向，AI 给出候选选题与可行性分析；生成研究框架，一键采用为章节大纲。</p>
+        <ul>
+          <li>候选选题带创新点与可行性</li>
+          <li>大纲随题目自动回填</li>
+          <li>采用后印章确认，衔接写作</li>
+        </ul>
+      </div>
+      <div class="feat">
+        <div class="icon bg-blue">✍️</div>
+        <h3>稿纸式写作工作台</h3>
+        <p>一份完整论文文档的编辑现场：题目、摘要、关键词、各章、参考文献、致谢同处一页。</p>
+        <ul>
+          <li>润色 / 扩写 / 降重 / 续写就地替换</li>
+          <li>学位目标字数实时提示</li>
+          <li>触屏撤销 / 重做，键盘 Ctrl+Z 等效</li>
+        </ul>
+      </div>
+      <div class="feat">
+        <div class="icon bg-green">📚</div>
+        <h3>学术文献中心 <span class="tag" style="background:var(--jade-soft);color:var(--jade)">真实数据库</span></h3>
+        <p>CrossRef / OpenAlex 真实学术数据库检索，中英双语通道，AI 标注每条文献「可印证论文哪个点」。</p>
+        <ul>
+          <li>GB/T 7714 规则引擎自动格式化</li>
+          <li>库内实时搜索 + 引用状态自查</li>
+          <li>「加载更多」分页浏览更多候选</li>
+        </ul>
+      </div>
+      <div class="feat">
+        <div class="icon bg-amber">📅</div>
+        <h3>计划与进度</h3>
+        <p>截止日期倒排写作计划，阶段甘特图、章节进度、每日打卡热力图一张页看全。</p>
+        <ul>
+          <li>当前阶段朱砂描边</li>
+          <li>完成阶段松烟绿 ✓</li>
+          <li>主页旅程进度徽章</li>
+        </ul>
+      </div>
+      <div class="feat">
+        <div class="icon bg-gray">📤</div>
+        <h3>交付与导出</h3>
+        <p>排版预览一键生成打印级页面（可另存 PDF）；全文下载为 Markdown，随时转 Word。</p>
+        <ul>
+          <li>文末参考文献自动汇编</li>
+          <li>缺号提示不污染成品</li>
+          <li>素材库一键插入正文</li>
+        </ul>
+      </div>
+      <div class="feat">
+        <div class="icon bg-violet">🔒</div>
+        <h3>数据安全 <span class="tag" style="background:#ECE8F2;color:#6B5B8E">BYOK</span></h3>
+        <p>无后端、无账号、无云存储。你的 API Key 与全部数据只存在浏览器本地。</p>
+        <ul>
+          <li>密钥不经过任何服务器</li>
+          <li>一键导出 / 导入备份</li>
+          <li>清除数据即完全抹除</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 特性带 ============ -->
+<section class="trust" id="trust">
+  <div class="wrap">
+    <div class="trust-grid">
+      <div class="trust-item"><div class="n">5 条</div><div class="l">任务链，覆盖写作全流程</div></div>
+      <div class="trust-item"><div class="n red">10 分钟</div><div class="l">完成首次闭环体验</div></div>
+      <div class="trust-item"><div class="n green">GB/T 7714</div><div class="l">国标引用自动生成与自查</div></div>
+      <div class="trust-item"><div class="n">0 后端</div><div class="l">免注册 · 数据全部留在本地</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 登记板块（演示用） ============ -->
+<section class="reg" id="register">
+  <div class="wrap">
+    <h2>预约体验，抢先一步</h2>
+    <p class="lead">留下你的信息，我们会在后续开放内测与版本更新时与你联系。</p>
+    <div class="reg-grid">
+      <div class="reg-why">
+        <h3>登记之后，你能得到什么</h3>
+        <ul>
+          <li>内测资格优先开放，第一时间使用新功能</li>
+          <li>你的选题 / 写作 / 文献使用反馈直达开发团队</li>
+          <li>版本更新与功能介绍，不再错过关键迭代</li>
+        </ul>
+        <div class="note">* 当前为演示版登记表单：提交的信息仅在本机展示，不会发送到任何服务器。正式上线后将接入真实收集渠道。</div>
+      </div>
+      <div class="form-card" id="reg-form-wrap">
+        <h3>填写登记信息</h3>
+        <p class="sub">大约 30 秒，不填邮箱也不打扰</p>
+        <form id="reg-form" novalidate>
+          <div class="field">
+            <label for="f-name">称呼 <span class="req">*</span></label>
+            <input type="text" id="f-name" placeholder="怎么称呼你？" maxlength="20" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="f-school">学校 / 专业</label>
+            <input type="text" id="f-school" placeholder="如：清华大学 MEM" maxlength="40">
+          </div>
+          <div class="field">
+            <label for="f-stage">论文阶段</label>
+            <select id="f-stage">
+              <option value="还未开始">还未开始</option>
+              <option value="正在选题">正在选题</option>
+              <option value="大纲阶段">大纲阶段</option>
+              <option value="正文写作中" selected>正文写作中</option>
+              <option value="文献整理中">文献整理中</option>
+              <option value="临近答辩">临近答辩</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>关注的功能（可多选）</label>
+            <div class="opt-row" id="f-interests">
+              <label class="opt"><input type="checkbox" value="AI 润色写作"><span>AI 润色写作</span></label>
+              <label class="opt"><input type="checkbox" value="文献引用"><span>文献引用</span></label>
+              <label class="opt"><input type="checkbox" value="大纲生成"><span>大纲生成</span></label>
+              <label class="opt"><input type="checkbox" value="进度管理"><span>进度管理</span></label>
+              <label class="opt"><input type="checkbox" value="数据安全"><span>数据安全</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-contact">联系方式 <span class="req">*</span></label>
+            <input type="text" id="f-contact" placeholder="微信号或邮箱，任选其一" maxlength="40">
+          </div>
+          <button type="submit" class="form-btn">提交登记</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 三步使用 ============ -->
+<section class="sec" id="how">
+  <div class="wrap">
+    <h2>三步开始你的论文</h2>
+    <p class="lead">纯静态应用，无需安装、无需注册，浏览器打开即用。</p>
+    <div class="steps">
+      <div class="step">
+        <h3>打开页面，填入你的 Key</h3>
+        <p>在「设置」填入任意 OpenAI 协议兼容的大模型 API Key（默认 DeepSeek，性价比高）。密钥只存本机。</p>
+      </div>
+      <div class="step">
+        <h3>设定截止，生成大纲</h3>
+        <p>输入研究方向与截止日期：AI 出选题建议、生成研究框架；计划甘特图即刻倒排。</p>
+      </div>
+      <div class="step">
+        <h3>逐章写作，引用文献</h3>
+        <p>选中即润色；检索文献一键入库、按序号插入；写完全文复制 / 下载 / 排版预览，参考文献自动生成。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 底部 CTA ============ -->
+<section class="final">
+  <div class="wrap">
+    <h2>论文有期限，写作不慌张</h2>
+    <p>PaperPilot 是清华大学 MEM 课程「项目管理」的 AI 辅助开发项目——开放、透明、学术诚信导向，AI 生成内容仅供参考，观点与数据由你负责。</p>
+    <a class="btn-main" href="index.html">免费开始使用 →</a>
+    <p class="small">本地体验：<code>sh tools/serve.sh</code> 后访问 <code>http://localhost:8000/index.html</code>　·　支持部署到 GitHub Pages / Netlify</p>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap">PaperPilot · 论文写作助手 — <b>纸墨朱砂</b> 设计语言 · 朱砂是 AI 的朱批，松烟绿是完成印章　·　© 2026</div>
+</footer>
+
+<script>
+// —— 登记表单（演示用：仅本机交互，不发送数据）——
+(function () {
+  const form = document.getElementById('reg-form');
+  const wrap = document.getElementById('reg-form-wrap');
+  if (!form) return;
+
+  // 关注功能 chips 选中态：监听 input 的 change（label 包裹 input 时点击会被转发成第二次 click，监听 click 会双触发抵消）
+  document.querySelectorAll('#f-interests input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      cb.closest('.opt').classList.toggle('on', cb.checked);
+    });
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('f-name').value.trim();
+    const school = document.getElementById('f-school').value.trim();
+    const stage = document.getElementById('f-stage').value;
+    const interests = Array.from(document.querySelectorAll('#f-interests input:checked')).map((i) => i.value);
+    const contact = document.getElementById('f-contact').value.trim();
+
+    if (!name || !contact) {
+      const el = document.getElementById(!name ? 'f-name' : 'f-contact');
+      el.focus();
+      el.style.borderColor = 'var(--cinnabar)';
+      return;
+    }
+
+    // 渲染成功态：松烟绿印章 + 登记信息卡（演示用，不发送数据）
+    wrap.innerHTML = `
+      <div class="reg-success">
+        <div class="seal">✓</div>
+        <h4>已登记，感谢关注！</h4>
+        <p>演示表单 · 信息未发送到任何服务器</p>
+        <div class="reg-card">
+          <div class="row"><span class="k">称呼</span><span class="v">${escapeHtml(name)}</span></div>
+          <div class="row"><span class="k">学校 / 专业</span><span class="v">${escapeHtml(school || '未填写')}</span></div>
+          <div class="row"><span class="k">论文阶段</span><span class="v">${escapeHtml(stage)}</span></div>
+          <div class="row"><span class="k">关注功能</span><span class="v">${escapeHtml(interests.join('、') || '未选择')}</span></div>
+          <div class="row"><span class="k">联系方式</span><span class="v">${escapeHtml(contact)}</span></div>
+        </div>
+        <button class="again" id="reg-again">再填一份</button>
+      </div>`;
+    wrap.querySelector('#reg-again').addEventListener('click', () => location.reload());
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+})();
+</script>
+
+</body>
+</html>
