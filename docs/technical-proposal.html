@@ -151,19 +151,19 @@
 
   <!-- ================= 封面 ================= -->
   <div class="cover">
-    <div class="kicker">TECHNICAL PROPOSAL · 技术方案（送评审稿）</div>
+    <div class="kicker">TECHNICAL PROPOSAL · 技术方案</div>
     <h1>PaperPilot 论文写作助手</h1>
     <div class="sub">纯前端 + BYOK 架构的 AI 辅助写作产品 · 技术选型 / 架构 / 压测 / 容灾 / 部署方案</div>
-    <div class="seal"><span>待<br>评<br>审</span></div>
+    <div class="seal"><span>定<br>稿<br>版</span></div>
     <div class="meta">
       <div><span class="k">文档编号</span>PP-TECH-2026-001</div>
-      <div><span class="k">版本</span>V1.0（送评审）</div>
+      <div><span class="k">版本</span>V1.0（定稿）</div>
       <div><span class="k">编制日期</span>2026-08-21</div>
       <div><span class="k">适用范围</span>研发 / 测试 / 运维 / 产品</div>
       <div><span class="k">关联文档</span>GOAL.md · 产品工作流程图 v2 · 验收清单</div>
       <div><span class="k">合规红线</span>BYOK 密钥本地化 · 不代写 · 不接入 AIGC 检测</div>
     </div>
-    <div class="status">● 送技术评审 — 评审结论：________ 日期：________</div>
+    <div class="status">● 技术方案（评审展示稿）</div>
   </div>
 
   <!-- ================= 修订记录 ================= -->
@@ -171,8 +171,8 @@
     <h2 class="sec"><span class="no">00</span>修订记录</h2>
     <table>
       <tr><th class="center">版本</th><th class="center">日期</th><th class="center">作者</th><th>修订说明</th><th class="center">状态</th></tr>
-      <tr><td class="center">0.9</td><td class="center">2026-08-21</td><td class="center">研发组</td><td>初稿：基于现有代码基线的完整技术方案</td><td class="center"><span class="tag warn">待评审</span></td></tr>
-      <tr><td class="center">1.0</td><td class="center">—</td><td class="center">—</td><td>按评审意见修订</td><td class="center">—</td></tr>
+      <tr><td class="center">0.9</td><td class="center">2026-08-21</td><td class="center">研发组</td><td>初稿：基于现有代码基线的完整技术方案</td><td class="center"><span class="tag now">已定稿</span></td></tr>
+      <tr><td class="center">1.0</td><td class="center">2026-08-21</td><td class="center">研发组</td><td>定稿：决策点改为定稿口吻，新增完全体演进架构（3.3）</td><td class="center"><span class="tag now">已定稿</span></td></tr>
     </table>
   </div>
 
@@ -194,7 +194,7 @@
       <li><a href="#s12">监控与运维</a></li>
       <li><a href="#s13">风险与对策</a></li>
       <li><a href="#s14">里程碑与资源</a></li>
-      <li><a href="#s15">评审决策点</a></li>
+      <li><a href="#s15">关键设计决策</a></li>
       <li><a href="#s16">附录</a></li>
     </ol>
   </div>
@@ -409,12 +409,19 @@
       API Key 仅存在于浏览器 localStorage，绝不出现在代码库或上传（BYOK）；不写完整论文（定位逐段辅助）；不集成 AIGC 检测。所有技术方案（含监控、容灾、压测）不得突破上述三条。
     </div>
 
-    <h3><span class="no">3.3</span>演进架构（评审预留）</h3>
-    <p>保持主干线不动的前提下，预留两条演进路径（见 4.4 决策点 D1/D2）：</p>
-    <ul>
-      <li><strong>存储演进</strong>：localStorage → IndexedDB（Dexie 封装），适配 >5 MB 长文档；</li>
-      <li><strong>可选代理层（不推荐）</strong>：若未来需要统计分析/多端同步，可引入无状态代理，但 BYOK 合规要求 Key 仍留浏览器，代理仅转发流式文本（需重新评审合规与成本）。</li>
-    </ul>
+    <h3><span class="no">3.3</span>演进架构：从单机到完全体</h3>
+    <p>当前「零后端单机」形态是<strong>基于初期减小投入的刻意选择</strong>，不是能力边界。完全体架构（演进目标）如下，与当前形态的差异仅为投入节奏，三条合规红线（BYOK / 不代写 / 不接入 AIGC 检测）在两种形态下均不变：</p>
+    <table>
+      <tr><th style="width:14%">维度</th><th>当前形态（本方案 M1–M3）</th><th>完全体（演进目标）</th></tr>
+      <tr><td><strong>前端</strong></td><td>原生 ES Modules 静态 SPA，桌面浏览器优先</td><td><strong>React + Vite 工程化</strong>，或跨端框架（Taro / Flutter Web）——响应式支持移动端，可选 PWA 离线</td></tr>
+      <tr><td><strong>后端</strong></td><td>无中间服务器，浏览器 HTTPS 直连服务商 API</td><td><strong>中间服务器</strong>：BFF / API 网关（鉴权、限流、审计日志）+ 用户体系 + 云同步（文档 / 文献 / 进度多端一致）</td></tr>
+      <tr><td><strong>数据</strong></td><td>localStorage 单机存储（5MB 内，容量预案见 §10.5）</td><td>服务端存储 + 本地缓存双写，多端同步与冲突检测（存储底座 IndexedDB）</td></tr>
+      <tr><td><strong>AI 链路</strong></td><td>BYOK，浏览器直连，非流式</td><td>服务端托管 Key（企业版）或 BYOK 代理转发（Key 仍留浏览器，仅转发流式文本），SSE 流式输出</td></tr>
+      <tr><td><strong>监控运维</strong></td><td>本地日志 + 可选 Sentry（脱敏）</td><td>集中可观测性（指标 / 日志 / 链路三件套）、告警、灰度发布</td></tr>
+      <tr><td><strong>成本</strong></td><td>近零（静态托管）</td><td>服务器 + 域名 + CDN（年度预算单独立项，见 D5）</td></tr>
+      <tr><td><strong>适用阶段</strong></td><td>演示 / 评审 / 单机重度用户、数据自主用户</td><td>多端同步与团队协作成为硬需求之后</td></tr>
+    </table>
+    <p>演进触发条件：① 前端：模块数 &gt; 10 或页面状态共享复杂度上升 → Vite + React 起步迁移；② 后端：多端同步 / 统计分析成为硬需求 → 引入中间服务器（单独立项并重评合规，见 D2）。两条路径均不改变「当前形态先行交付」的节奏——M1–M3 全部按当前形态落地，演进路径在架构与数据模型上预留（数据按章节 / 文档结构化，天然可映射到服务端模型）。</p>
   </div>
 
   <!-- ================= 4 技术选型 ================= -->
@@ -428,13 +435,13 @@
         <td>前端框架</td>
         <td>React 19 / Vue 3 / Svelte 5 / 原生 ES Modules</td>
         <td class="center"><span class="tag now">原生 ES Modules</span></td>
-        <td>6 个模块页均为中小型表单/列表交互，无复杂状态共享；零依赖带来零供应链风险、零构建、零升级成本，页面首屏无需框架引导。框架引入时机见 D1。</td>
+        <td>6 个模块页均为中小型表单/列表交互，无复杂状态共享；零依赖带来零供应链风险、零构建、零升级成本，页面首屏无需框架引导。框架引入时机见 §15 关键设计决策 D1。</td>
       </tr>
       <tr>
         <td>构建工具</td>
         <td>无构建 / Vite / esbuild</td>
         <td class="center"><span class="tag now">无构建</span></td>
-        <td>源码即产物，浏览器直接运行 ES Module；便于技术评审逐行审计（合规场景的重要资产）。演进时以 Vite 起步（零配置、快），见 D1。</td>
+        <td>源码即产物，浏览器直接运行 ES Module；便于技术评审逐行审计（合规场景的重要资产）。演进时以 Vite 起步（零配置、快），见 §15 D1。</td>
       </tr>
       <tr>
         <td>本地存储</td>
@@ -446,7 +453,7 @@
         <td>图表渲染</td>
         <td>自研 SVG / ECharts / Canvas</td>
         <td class="center"><span class="tag now">自研 SVG</span></td>
-        <td>甘特图与打卡热力图形态固定、交互简单，自研 SVG 代码量小、风格与设计语言一致；ECharts 作为能力演进选项（热力图/走势图扩展时），见 D1 附注。</td>
+        <td>甘特图与打卡热力图形态固定、交互简单，自研 SVG 代码量小、风格与设计语言一致；ECharts 作为能力演进选项（热力图/走势图扩展时），见 §15 D1 附注。</td>
       </tr>
       <tr>
         <td>AI 接入</td>
@@ -482,7 +489,7 @@
         <td>监控</td>
         <td>自研轻量上报 / Sentry 前端版 / 不监控</td>
         <td class="center"><span class="tag next">自研+可选 Sentry</span></td>
-        <td>无后端形态下监控必须满足「不上送任何用户数据与 Key」（脱敏后仅错误类型/URL/堆栈哈希）。默认自研 localStorage 日志 + 可选接入 Sentry（评审 D4）。</td>
+        <td>无后端形态下监控必须满足「不上送任何用户数据与 Key」（脱敏后仅错误类型/URL/堆栈哈希）。默认自研 localStorage 日志 + 可选接入 Sentry（见 §15 D4）。</td>
       </tr>
     </table>
 
@@ -509,7 +516,7 @@
       <tr><td>modules/*</td><td>六个业务页</td><td>render(el) 契约；本地数据读写全部走 storage.js</td></tr>
     </table>
 
-    <h3><span class="no">5.2</span>关键设计决策</h3>
+    <h3><span class="no">5.2</span>模块设计决策</h3>
     <h4>5.2.1 切页中断（已实现）</h4>
     <p>所有长耗时操作（AI 生成、检索、标注）挂载于 <code>tm:navigate</code> 事件驱动的 AbortController；导航离开即 abort，避免结果写回已卸载页面、避免请求悬挂与按钮卡死。此模式是压测与容灾设计的基础。</p>
     <h4>5.2.2 错误即文案（已实现）</h4>
@@ -562,7 +569,7 @@
     <table>
       <tr><th style="width:220px">风险面</th><th>控制措施</th></tr>
       <tr><td>Key 上传服务器</td><td>架构上无后端；请求由浏览器直发服务商；发布物与仓库做敏感扫描（已纳入 CI，见 11.3）</td></tr>
-      <tr><td>Key 出现在日志/监控</td><td>监控采集脱敏：请求/响应体不采集，仅错误类型 + 状态码 + 堆栈哈希；Sentry 接入时配置 scrubbing（见 D4）</td></tr>
+      <tr><td>Key 出现在日志/监控</td><td>监控采集脱敏：请求/响应体不采集，仅错误类型 + 状态码 + 堆栈哈希；Sentry 接入时配置 scrubbing（见 §15 D4）</td></tr>
       <tr><td>备份文件泄露</td><td>导出文件名含日期；界面文案「备份文件包含你的 API Key，请妥善保管、勿外传」</td></tr>
       <tr><td>同源 XSS 窃取</td><td>7.2 全量转义 + CSP；Key 以 password 输入框展示，可一键显示/隐藏</td></tr>
       <tr><td>Key 进入 git 历史</td><td>.gitignore 与 CI 敏感扫描（防误提交）；真机验收中 Key 由用户自填，开发环境不落盘</td></tr>
@@ -571,7 +578,7 @@
     <h3><span class="no">7.2</span>Web 安全</h3>
     <ul>
       <li><strong>XSS</strong>：用户数据渲染一律经 <code>escapeHtml</code>（唯一出口），外部数据（文献标题/作者/摘要）同样转义；外链 <code>rel="noopener"</code>、target=_blank 受控；</li>
-      <li><strong>CSP 建议</strong>（上线时启用）：<code>default-src 'self'; script-src 'self'; connect-src 'self' https://api.deepseek.com https://api.openai.com https://api.moonshot.cn https://api.crossref.org https://api.openalex.org https:; img-src 'self' data:; style-src 'self' 'unsafe-inline'</code>——connect-src 与服务商白名单联动（用户自定义 Base URL 时需在设置中确认并动态放宽到该域名，见 D1 附注）；</li>
+      <li><strong>CSP 建议</strong>（上线时启用）：<code>default-src 'self'; script-src 'self'; connect-src 'self' https://api.deepseek.com https://api.openai.com https://api.moonshot.cn https://api.crossref.org https://api.openalex.org https:; img-src 'self' data:; style-src 'self' 'unsafe-inline'</code>——connect-src 与服务商白名单联动（用户自定义 Base URL 时需在设置中确认并动态放宽到该域名，见 §15 D1 附注）；</li>
       <li><strong>隐私</strong>：无账号、无埋点、无 Cookie 追踪；本地数据默认不外送；检索词仅发往学术数据库（用途即接口语义）。</li>
     </ul>
 
@@ -697,7 +704,7 @@
     </table>
 
     <h3><span class="no">10.2</span>跨标签页一致性（已知限制）</h3>
-    <div class="callout amber"><b>限制声明（评审已知项）</b>localStorage 在多标签页间不同步：两个标签页同时写作时后写覆盖先写。缓解：文档中声明「建议单标签页使用」；M2 可选实现 <code>storage</code> 事件监听 + 冲突提示（改动面小，列为 D3 附注）。</div>
+    <div class="callout amber"><b>限制声明（评审已知项）</b>localStorage 在多标签页间不同步：两个标签页同时写作时后写覆盖先写。缓解：文档中声明「建议单标签页使用」；M2 可选实现 <code>storage</code> 事件监听 + 冲突提示（改动面小，列为 §15 D3 附注）。</div>
 
     <h3><span class="no">10.3</span>服务容灾（外部 API 依赖降级）</h3>
     <ul>
@@ -749,7 +756,7 @@
     <h3><span class="no">11.4</span>域名与证书（阶段 2）</h3>
     <ul>
       <li>自有域名 + CDN 免费证书自动续期；强制 HTTPS + HSTS 头；</li>
-      <li>Google Analytics 不接入（隐私定位）；如需访问统计使用自托管/隐私友好方案（D4 评审）。</li>
+      <li>Google Analytics 不接入（隐私定位）；如需访问统计使用自托管/隐私友好方案（见 §15 D4）。</li>
     </ul>
   </div>
 
@@ -760,7 +767,7 @@
     <h3><span class="no">12.1</span>前端错误监控（合规约束：不采集数据与 Key）</h3>
     <table>
       <tr><th>事件</th><th>采集内容（脱敏）</th><th>去向</th></tr>
-      <tr><td>JS 异常 / unhandledrejection</td><td>错误类型、消息前 80 字符、堆栈哈希、URL、UA、时间</td><td>localStorage 本地日志（默认）→ 可选 Sentry 前端（D4）</td></tr>
+      <tr><td>JS 异常 / unhandledrejection</td><td>错误类型、消息前 80 字符、堆栈哈希、URL、UA、时间</td><td>localStorage 本地日志（默认）→ 可选 Sentry 前端（见 §15 D4）</td></tr>
       <tr><td>API 失败</td><td>ApiError.code、HTTP 状态、耗时、服务商域名（不含 URL 参数、不含 Key）</td><td>同上</td></tr>
       <tr><td>本地容量触顶</td><td>事件类型 + 时间</td><td>toast（面向用户）+ 本地日志</td></tr>
     </table>
@@ -801,48 +808,49 @@
       <tr><th class="center" style="width:90px">里程碑</th><th>内容</th><th class="center" style="width:110px">周期</th><th class="center" style="width:100px">交付物</th></tr>
       <tr><td class="center">M1 基线</td><td>git 托管、Playwright 回归脚本（P6）、CI 静态检查与敏感扫描、GitHub Pages 演示环境</td><td class="center">1 周</td><td class="center">可评审环境</td></tr>
       <tr><td class="center">M2 加固</td><td>退避重试、导出提醒、压测 P1–P5 全量 + 报告、容灾演练</td><td class="center">2 周</td><td class="center">压测报告</td></tr>
-      <tr><td class="center">M3 演进</td><td>（评审通过后）IndexedDB 迁移 / 构建工具引入（按 D1/D3 结论）</td><td class="center">3 周</td><td class="center">演进版本</td></tr>
+      <tr><td class="center">M3 演进</td><td>（演进阶段）IndexedDB 迁移 / 构建工具引入（按 §15 D1/D3 决策）</td><td class="center">3 周</td><td class="center">演进版本</td></tr>
       <tr><td class="center">M4 上线</td><td>OSS+CDN、自有域名 HTTPS、CSP、监控上线、回滚演练</td><td class="center">1 周</td><td class="center">正式环境</td></tr>
     </table>
     <p>资源估算：前端 1 人（当前），测试 0.5 人，运维 0.2 人；M1–M4 合计约 <strong>7 周</strong>（含评审等待）。</p>
   </div>
 
-  <!-- ================= 15 评审决策点 ================= -->
+  <!-- ================= 15 关键设计决策 ================= -->
   <div class="doc">
-    <h2 class="sec" id="s15"><span class="no">15</span>技术评审决策点（请评审组确认）</h2>
+    <h2 class="sec" id="s15"><span class="no">15</span>关键设计决策</h2>
+    <p>以下决策在本方案中均已定稿，逐条给出决策与理由，不再作为开放问题提交确认：</p>
 
-    <details class="decision"><summary>D1 · 是否引入前端框架与构建工具（原生路线 vs Vite+React）</summary>
+    <details class="decision"><summary>D1 · 前端形态：原生 ES Modules（当前）→ Vite + React（演进）</summary>
       <div class="body">
-        <p>本方案推荐：<strong>继续原生 ES Modules 路线</strong>（评审期内），理由：规模小、零依赖可审计（合规资产）、无构建成本；演进触发条件：模块数 &gt; 10、页面状态共享复杂度上升、或需要流式输出与虚拟列表等能力时，以 Vite 起步迁移（评估 2 周）。</p>
+        <p>决策：<strong>当前维持原生 ES Modules 路线</strong>，理由：规模小、零依赖可审计（合规资产）、无构建成本；演进触发条件：模块数 &gt; 10、页面状态共享复杂度上升、或需要流式输出与虚拟列表等能力时，以 Vite 起步迁移（评估 2 周）。</p>
       </div>
     </details>
-    <details class="decision"><summary>D2 · 是否建设后端代理（多端同步 / 统计分析）</summary>
+    <details class="decision"><summary>D2 · 后端：当前不建设 → 完全体引入中间服务器（见 3.3）</summary>
       <div class="body">
-        <p>本方案推荐：<strong>不建设</strong>。任何后端代理都与 BYOK 红线冲突（Key 若留在浏览器则代理仅转发文本，收益低、成本高）。若评审要求同步能力，须单独立项并重评合规。</p>
+        <p>决策：<strong>当前不建设任何后端代理</strong>——与 BYOK 红线冲突（Key 若留在浏览器则代理仅转发文本，收益低、成本高）；多端同步 / 统计分析诉求并入「完全体架构」统一评估（3.3），触发后单独立项并重评合规。</p>
       </div>
     </details>
-    <details class="decision"><summary>D3 · IndexedDB 迁移时机</summary>
+    <details class="decision"><summary>D3 · 存储：localStorage（当前）→ IndexedDB / 服务端（演进）</summary>
       <div class="body">
-        <p>推荐：<strong>当前不迁</strong>（容量测算余量 58%），触发条件（任一）：① 实际数据量 &gt; 4 MB；② 多标签页一致性成为硬需求。触发后按 10.5 预案执行（3 人日）。</p>
+        <p>决策：<strong>当前不迁移</strong>（容量测算余量 58%），触发条件（任一）：① 实际数据量 &gt; 4 MB；② 多标签页一致性成为硬需求。触发后按 §10.5 预案执行（3 人日）。</p>
       </div>
     </details>
-    <details class="decision"><summary>D4 · 前端监控方案（自研本地日志 vs Sentry）</summary>
+    <details class="decision"><summary>D4 · 前端监控：自研本地日志（默认）+ Sentry 可选接入</summary>
       <div class="body">
-        <p>推荐：<strong>先自研本地日志（默认）+ Sentry 前端版可选接入</strong>。接入前提：配置字段脱敏 scrub（Key、正文、检索词一律不采集）、错误上下文仅含错误码/状态/哈希。不接入也不影响 M1–M2 交付。</p>
+        <p>决策：<strong>先自研本地日志（默认）+ Sentry 前端版可选接入</strong>。接入前提：配置字段脱敏 scrub（Key、正文、检索词一律不采集）、错误上下文仅含错误码/状态/哈希。不接入也不影响 M1–M2 交付。</p>
       </div>
     </details>
-    <details class="decision"><summary>D5 · 正式域名与 CDN 预算确认</summary>
+    <details class="decision"><summary>D5 · 域名与 CDN：演示期 GitHub Pages 默认域名，正式域名属完全体预算项</summary>
       <div class="body">
-        <p>阶段 2 需要评审确认：域名持有方、CDN 服务商（国内合规要求）、HTTPS 证书策略、年度预算（估算：域名 ~100 元/年，CDN/OSS 按流量，演示期 &lt; 500 元/年）。</p>
+        <p>决策：<strong>演示 / 评审期采用 GitHub Pages 默认 <code>*.github.io</code> 域名（HTTPS 自动）</strong>；正式域名持有方、CDN 服务商（国内合规要求）与年度预算（域名 ~100 元/年，CDN/OSS 按流量，演示期 &lt; 500 元/年）为完全体阶段的单独立项项。</p>
       </div>
     </details>
-    <details class="decision"><summary>D6 · 移动端与流式输出范围</summary>
+    <details class="decision"><summary>D6 · 移动端「可读可用」+ 流式输出列 M3 演进</summary>
       <div class="body">
-        <p>推荐：移动端保持「可读可用」级别（当前已在适配），不做完整桌面体验；流式输出（SSE）列为 M3 演进项——收益：长文生成首字更快；成本：接口改造 + 中断语义复杂化，评审确认优先级。</p>
+        <p>决策：移动端保持「可读可用」级别（当前已在适配），不做完整桌面体验；流式输出（SSE）列为 M3 演进项——收益：长文生成首字更快；成本：接口改造 + 中断语义复杂化。</p>
       </div>
     </details>
 
-    <div class="callout accent"><b>评审输出物</b>① 评审结论与 D1–D6 决策；② 压测报告（M2 末）；③ 安全评审确认（BYOK 链路 + CSP）；④ 部署方案确认（域名/CDN）。</div>
+    <div class="callout accent"><b>评审交付物</b>① 压测报告（M2 末）；② 安全说明（BYOK 链路 + CSP 白名单）；③ 部署说明（GitHub Pages 托管 + 域名方案）。</div>
   </div>
 
   <!-- ================= 16 附录 ================= -->
