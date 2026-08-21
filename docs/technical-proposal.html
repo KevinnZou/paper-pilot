@@ -377,29 +377,12 @@
         <text x="676" y="514" font-size="10.5" text-anchor="middle" fill="#6B7A8A">Google Scholar 兜底链接</text>
         <text x="676" y="536" font-size="10.5" text-anchor="middle" fill="#6B7A8A">新标签页 rel="noopener"</text>
 
-        <!-- ===== 连线 ===== -->
-        <g stroke="#8A93A0" stroke-width="1.5" fill="none">
-          <!-- 展示层 → 核心服务层 -->
-          <path d="M104 116 V 194"/><path d="M238 116 V 194"/><path d="M554 116 V 156"/>
-          <!-- 核心服务层 ↔ 本地数据层（总线） -->
-          <path d="M104 256 V 297"/><path d="M236 256 V 297"/><path d="M368 256 V 297"/><path d="M500 256 V 297"/><path d="M632 256 V 297"/><path d="M752 256 V 297"/>
-          <path d="M104 297 H 752"/>
-          <path d="M112 297 V 338"/><path d="M260 297 V 338"/><path d="M408 297 V 338"/><path d="M556 297 V 338"/><path d="M718 297 V 338"/>
-          <!-- 本地数据层 → 外部服务（语义直连） -->
-          <path d="M135 378 V 456"/><path d="M410 378 V 456"/>
+        <!-- ===== 层间流向（纯文本箭头，不连线） ===== -->
+        <g fill="#8A93A0" font-size="15" font-weight="600" text-anchor="middle">
+          <text x="420" y="150">↓</text>
+          <text x="420" y="294">↓</text>
+          <text x="420" y="410">↓</text>
         </g>
-        <!-- 总线节点 -->
-        <g fill="#8A93A0">
-          <circle cx="104" cy="297" r="2"/><circle cx="236" cy="297" r="2"/><circle cx="368" cy="297" r="2"/><circle cx="500" cy="297" r="2"/><circle cx="632" cy="297" r="2"/><circle cx="752" cy="297" r="2"/>
-          <circle cx="112" cy="297" r="2"/><circle cx="260" cy="297" r="2"/><circle cx="408" cy="297" r="2"/><circle cx="556" cy="297" r="2"/><circle cx="718" cy="297" r="2"/>
-        </g>
-        <!-- 数据流标注 -->
-        <g fill="#8A93A0" font-size="10">
-          <text x="147" y="440">Bearer Key · 仅本机（BYOK）</text>
-          <text x="424" y="440">检索请求 / 结果（免 Key）</text>
-        </g>
-        <!-- 层标题底色（遮住穿过标题的竖线） -->
-        <rect x="40" y="312" width="352" height="20" rx="6" fill="#E9F1EB"/>
       </svg>
     </div>
     <p class="diagram-cap">图 1 · PaperPilot 总体架构（浏览器单机 + 外部 API 直连）</p>
