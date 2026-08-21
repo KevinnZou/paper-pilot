@@ -3,6 +3,7 @@ import { getConfig, saveConfig, testConnection } from '../api.js';
 import { toast, setLoading, escapeHtml } from '../ui.js';
 import { get } from '../storage.js';
 import { getProject, updateBasics } from '../project.js';
+import { versionCount } from '../versions.js';
 import { loadDemoData, hasExistingData } from '../demo-data.js';
 
 const PROVIDERS = [
@@ -102,7 +103,7 @@ export default {
 
       <div class="card">
         <h2><span class="mark"></span>数据备份</h2>
-        <p class="desc">当前本地：文献 <b>${get('citations', []).length}</b> 条 · 打卡 <b>${get('checkins', []).length}</b> 天 · 草稿 <b>${Object.keys(get('drafts', {})).length}</b> 章。所有数据存在浏览器本地——导出成文件，换电脑、清缓存都不丢论文。</p>
+        <p class="desc">当前本地：文献 <b>${get('citations', []).length}</b> 条 · 打卡 <b>${get('checkins', []).length}</b> 天 · 草稿 <b>${Object.keys(get('drafts', {})).length}</b> 章 · 版本 <b>${versionCount()}</b> 份。所有数据存在浏览器本地——导出成文件，换电脑、清缓存都不丢论文。</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn" id="cfg-export">导出备份文件</button>
           <button class="btn btn-ghost" id="cfg-import-btn">导入并恢复</button>

@@ -5,6 +5,7 @@ import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js
 import { chat } from '../api.js';
 import { get, set } from '../storage.js';
 import { getProject, setCurrentChapter, setChapterProgress, saveProject, addMaterial, removeMaterial } from '../project.js';
+import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions, getVersion, versionsSize, versionCount, orphanChapters } from '../versions.js';
 
 const SYSTEM = '你是一位资深论文写作导师，帮助中国高校学生完成论文写作。遵守学术诚信：不代替用户完成整篇论文（整篇代写）；基于用户提供的大纲、要点撰写章节初稿草稿属于允许的辅助，但需提醒用户亲自审阅、补充个人观点与数据。改写需保留原意并提醒用户自行核实。回答直接给出结果，不要客套话和多余解释。';
 
@@ -88,6 +89,62 @@ const AI_ACTIONS = [
 function wordCount(s) {
   return String(s || '').replace(/\s/g, '').length;
 }
+
+// ---------- 版本管理：自动快照判定 ----------
+
+/** 自动快照判定（防抖落盘后调用）：距上档 ≥10 分钟且有变化，或变化 ≥500 字立即留档 */
+function maybeSnapshot(chapter, content) {
+  if (!chapter) return;
+  const list = getChapterVersions(chapter);
+  const latest = list[0];
+  if (latest && latest.text === content) return;
+  if (latest && Date.now() - latest.at < 10 * 60 * 1000) {
+    if (Math.abs(wordCount(content) - wordCount(latest.text)) < 500) return;
+  }
+  snapshotChapter(chapter, content, 'auto', '');
+}
+
+/** 版本时间展示：MM/DD HH:mm */
+function fmtVersionTime(at) {
+  const d = new Date(at);
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// 版本历史抽屉样式（一次性注入）
+(function injectVersionStyles() {
+  if (document.getElementById('tm-vd-style')) return;
+  const st = document.createElement('style');
+  st.id = 'tm-vd-style';
+  st.textContent = `
+    .vd-mask { position: fixed; inset: 0; background: rgba(24,34,44,.42); z-index: 9998; }
+    .vd-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 430px; max-width: 92vw; background: #fff;
+      z-index: 9999; display: flex; flex-direction: column; box-shadow: -8px 0 28px rgba(24,34,44,.18);
+      font-size: 13px; color: #1F2937; }
+    .vd-head { padding: 14px 16px; background: #26303B; color: #fff; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+    .vd-close { background: none; border: none; color: #9AA8B5; font-size: 16px; cursor: pointer; }
+    .vd-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border-bottom: 1px solid #E8ECEF; }
+    .vd-tab { border: 1px solid #D9DEE3; background: #fff; border-radius: 14px; padding: 2px 11px; font-size: 12px; cursor: pointer; color: #3E4C5A; }
+    .vd-tab.on { background: #E8F3F7; border-color: #0E6E8C; color: #0E6E8C; font-weight: 600; }
+    .vd-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .vd-card { margin: 6px 12px; border: 1px solid #E8ECEF; border-radius: 8px; padding: 9px 12px; }
+    .vd-card .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .vd-time { font-weight: 700; }
+    .vd-badge { font-size: 11px; border-radius: 3px; padding: 0 6px; }
+    .vd-badge.auto { background: #E9F1EB; color: #477A56; border: 1px solid #C5D9CB; }
+    .vd-badge.manual { background: #E8F3F7; color: #0E6E8C; border: 1px solid #BBD8E4; }
+    .vd-badge.milestone { background: #FBF4E6; color: #B7791F; border: 1px solid #E8D5A8; }
+    .vd-words { color: #6B7A8A; font-size: 12px; margin-left: auto; }
+    .vd-label { color: #6B7A8A; font-size: 12px; }
+    .vd-ops { display: flex; gap: 6px; margin-top: 8px; }
+    .vd-ops button { border: 1px solid #D9DEE3; background: #fff; border-radius: 4px; padding: 2px 10px; font-size: 12px; cursor: pointer; color: #1F2937; }
+    .vd-ops button.primary { border-color: #0E6E8C; color: #0E6E8C; }
+    .vd-preview { margin-top: 8px; max-height: 220px; overflow-y: auto; background: #FAFBFD; border: 1px solid #E8ECEF; border-radius: 5px; padding: 8px 10px; font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; color: #3E4C5A; }
+    .vd-empty { padding: 28px 20px; text-align: center; color: #9AA3AB; }
+    .vd-foot { border-top: 1px solid #E8ECEF; padding: 9px 14px; color: #6B7A8A; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .vd-foot.warn { color: #C03B2D; font-weight: 600; }`;
+  document.head.appendChild(st);
+})();
 
 /** 以「用户编辑」方式替换区间文本：进入浏览器原生撤销栈，Ctrl+Z 可撤销 AI 改动 */
 function applyEdit(ta, text, start, end) {
@@ -333,6 +390,9 @@ function render(el) {
             <button class="btn btn-ghost btn-sm" id="wb-undo" title="撤销上一步（触屏设备无需快捷键；键盘可用 Ctrl+Z）">↶ 撤销</button>
             <button class="btn btn-ghost btn-sm" id="wb-redo" title="重做（触屏设备无需快捷键；键盘可用 Ctrl+Y）">↷ 重做</button>
             <span class="wb-sep"></span>
+            <button class="btn btn-ghost btn-sm" id="wb-version" title="查看各章节历史版本：可预览、恢复到任意一档（跨会话持久）">⏱ 历史版本</button>
+            <button class="btn btn-ghost btn-sm" id="wb-version-save" title="把当前章节存为一个版本（可写备注，重要节点主动留档）">＋ 存为版本</button>
+            <span class="wb-sep"></span>
             <button class="btn btn-ghost btn-sm" id="wb-copy-all" title="复制全文（含自动生成的参考文献列表）">复制全文</button>
             <button class="btn btn-ghost btn-sm" id="wb-download" title="下载全文为 Markdown 文件（含自动生成的参考文献列表）">下载全文</button>
             <button class="btn btn-ghost btn-sm" id="wb-preview" title="生成排版后的论文页面，可打印/另存 PDF">排版预览</button>
@@ -382,7 +442,16 @@ function render(el) {
   // —— 目录：点击定位（不重建编辑器，光标不丢） ——
   el.querySelectorAll('[data-ch]').forEach(b =>
     b.addEventListener('click', () => {
+      const prevCur = getProject().currentChapter || current;
       persistDocument(ta.value, getProject());
+      // 切换章节：离开前若距上档 ≥1 分钟且有变化，补一个里程碑档（防长写作无档）
+      const prevContent = get(DRAFT_KEY, {})[prevCur]?.content || '';
+      const prevList = getChapterVersions(prevCur);
+      if (prevCur !== b.dataset.ch && prevContent
+        && prevList[0] && prevList[0].text !== prevContent
+        && Date.now() - prevList[0].at >= 60 * 1000) {
+        snapshotChapter(prevCur, prevContent, 'milestone', '');
+      }
       setCurrentChapter(b.dataset.ch);
       el.querySelectorAll('.chapter-item').forEach(x =>
         x.classList.toggle('active', x.dataset.ch === b.dataset.ch));
@@ -404,6 +473,12 @@ function render(el) {
     doneBtn.addEventListener('click', () => {
       const cur = getProject().currentChapter || current;
       persistDocument(ta.value, getProject());
+      // 里程碑快照：本章留档 + 整文档留档（章节完成 = 全文自然检查点）
+      const contentDone = get(DRAFT_KEY, {})[cur]?.content || '';
+      if (contentDone) {
+        snapshotChapter(cur, contentDone, 'milestone', '本章完成');
+        snapshotDoc(ta.value, `「${cur}」完成`);
+      }
       setChapterProgress(cur, '已完成');
       toast(`「${cur}」已标记完成，去写下一章吧`, 'ok');
       render(el);
@@ -430,6 +505,8 @@ function render(el) {
     clearTimeout(timer);
     timer = setTimeout(() => {
       persistDocument(ta.value, getProject());
+      const prjSnap = getProject();
+      maybeSnapshot(prjSnap.currentChapter || current, get(DRAFT_KEY, {})[prjSnap.currentChapter || current]?.content || '');
       const saved = el.querySelector('#wb-saved'); // 模块可能已被卸载，需判空
       if (saved) saved.textContent = `已保存 ${new Date().toLocaleTimeString('zh-CN')}`;
       const prj = getProject();
@@ -459,6 +536,10 @@ function render(el) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
       persistDocument(ta.value, getProject());
+      const prjC = getProject();
+      const curC = prjC.currentChapter || current;
+      const contentC = get(DRAFT_KEY, {})[curC]?.content || '';
+      if (contentC) snapshotChapter(curC, contentC, 'milestone', ''); // Ctrl+S 即用户主动留档时刻
       const saved = el.querySelector('#wb-saved');
       if (saved) saved.textContent = `已保存 ${new Date().toLocaleTimeString('zh-CN')}（Ctrl+S）`;
       toast('已保存', 'ok', 1200);
@@ -593,6 +674,138 @@ function render(el) {
     document.execCommand('redo');
     ed.dispatchEvent(new Event('input'));
     toast('已重做', 'ok', 1500);
+  });
+
+  // —— 版本管理：存为版本 / 历史抽屉（恢复前自动存档，恢复走原生撤销栈可反悔） ——
+  const doRestoreChapter = (chapter, id) => {
+    const v = getVersion(chapter, id);
+    if (!v) { toast('该版本已被容量淘汰，无法恢复', 'err'); return false; }
+    const range = findChapterRange(ta.value, chapter);
+    if (range.start < 0) { toast('文档中未找到该章节', 'err'); return false; }
+    const body = chapterBodyRange(ta.value, range);
+    const curContent = ta.value.slice(body.start, body.end);
+    if (curContent === v.text) { toast('该版本与当前内容一致，无需恢复', 'err'); return false; }
+    if (!confirm(`将用 ${fmtVersionTime(v.at)} 的版本覆盖本章当前内容。\n当前内容会先自动存档，恢复后仍可 Ctrl+Z 退回。继续吗？`)) return false;
+    snapshotChapter(chapter, curContent, 'manual', '恢复前自动存档');
+    applyEdit(ta, v.text.trimEnd() + '\n', body.start, body.end); // 补章尾换行：防与下一区块标题粘连丢章
+    toast(`已恢复 ${fmtVersionTime(v.at)} 的版本（Ctrl+Z 可退回）`, 'ok');
+    return true;
+  };
+  const doRestoreDoc = id => {
+    const v = getDocVersions().find(x => x.id === id);
+    if (!v) { toast('该版本已被容量淘汰，无法恢复', 'err'); return false; }
+    if (ta.value === v.text) { toast('该版本与当前内容一致，无需恢复', 'err'); return false; }
+    if (!confirm(`将用 ${fmtVersionTime(v.at)} 的整文档版本覆盖当前全文。\n当前内容会先存档（各章 + 全文里程碑），恢复后仍可 Ctrl+Z 退回。继续吗？`)) return false;
+    const prjD = getProject();
+    const draftsD = get(DRAFT_KEY, {});
+    (prjD.outline || []).forEach(c => {
+      const c2 = draftsD[c.chapter]?.content;
+      if (c2) snapshotChapter(c.chapter, c2, 'manual', '恢复前自动存档');
+    });
+    snapshotDoc(ta.value, '恢复前自动存档');
+    applyEdit(ta, v.text, 0, ta.value.length);
+    toast(`已恢复 ${fmtVersionTime(v.at)} 的整文档版本（Ctrl+Z 可退回）`, 'ok');
+    return true;
+  };
+  const doRestoreOrphan = (chapter, id) => {
+    const v = getVersion(chapter, id);
+    if (!v) { toast('该版本已被容量淘汰', 'err'); return false; }
+    addMaterial({ type: '📄 版本存档', title: `${chapter}（${fmtVersionTime(v.at)}）`, content: v.text });
+    toast('已转存到素材库（右栏可插入）', 'ok');
+    return true;
+  };
+  const V_BADGE = { auto: ['自动', 'auto'], manual: ['手动', 'manual'], milestone: ['里程碑', 'milestone'] };
+  const cardHtml = (type, name, v, openPre) => {
+    const [badgeTxt, badgeCls] = V_BADGE[v.src] || [v.src, 'auto'];
+    const opLabel = type === 'orphan' ? '转存素材库' : '恢复';
+    return `<div class="vd-card">
+      <div class="row1">
+        <span class="vd-time">${fmtVersionTime(v.at)}</span>
+        <span class="vd-badge ${badgeCls}">${badgeTxt}</span>
+        ${v.label ? `<span class="vd-label">${escapeHtml(v.label)}</span>` : ''}
+        <span class="vd-words">${wordCount(v.text).toLocaleString('zh-CN')} 字</span>
+      </div>
+      <div class="vd-ops">
+        <button type="button" data-act="preview" data-id="${v.id}">${openPre ? '收起' : '预览'}</button>
+        <button type="button" class="primary" data-act="restore" data-id="${v.id}" data-type="${type}" data-name="${escapeHtml(name)}">${opLabel}</button>
+      </div>
+      ${openPre ? `<div class="vd-preview">${escapeHtml(v.text || '（空）')}</div>` : ''}
+    </div>`;
+  };
+  el.querySelector('#wb-version').addEventListener('click', () => {
+    if (document.querySelector('.vd-mask')) return; // 已打开
+    const outline = (getProject().outline || []).map(c => c.chapter);
+    const orphans = orphanChapters(outline);
+    const tabs = [
+      ...outline.filter(n => getChapterVersions(n).length).map(n => ({ type: 'chapter', name: n, label: n })),
+      ...(getDocVersions().length ? [{ type: 'doc', name: '', label: '全文里程碑' }] : []),
+      ...(orphans.length ? [{ type: 'orphan', name: '', label: `其他存档 ${orphans.length}` }] : []),
+    ];
+    const state = { tab: tabs[0] || null, openPre: null };
+    const mask = document.createElement('div');
+    mask.className = 'vd-mask';
+    const panel = document.createElement('div');
+    panel.className = 'vd-panel';
+    mask.appendChild(panel);
+    document.body.appendChild(mask);
+    const paint = () => {
+      if (!tabs.length) {
+        panel.innerHTML = `<div class="vd-head"><span>版本历史</span><button type="button" class="vd-close" data-act="close">✕</button></div>
+          <div class="vd-list"><div class="vd-empty">还没有版本记录<br>写作时自动留档，也可点工具栏「＋ 存为版本」手动保存</div></div>
+          <div class="vd-foot"><span>版本占用 0 KB / 上限 1.2 MB</span></div>`;
+        return;
+      }
+      const t = state.tab;
+      // 孤儿章节跨章聚合：list 元素为 { chapter, v }，卡片需带上来源章节名（转存素材库按章标注）
+      const list = t.type === 'doc' ? getDocVersions()
+        : t.type === 'orphan' ? orphans.flatMap(n => getChapterVersions(n).map(v => ({ chapter: n, v })))
+        : getChapterVersions(t.name);
+      const size = versionsSize();
+      const kb = Math.round(size / 1024);
+      const warn = size > 900 * 1024;
+      panel.innerHTML = `<div class="vd-head"><span>版本历史</span><button type="button" class="vd-close" data-act="close">✕</button></div>
+        <div class="vd-tabs">${tabs.map(x => `<button type="button" class="vd-tab ${x === t ? 'on' : ''}" data-tab="${x.type}::${escapeHtml(x.name)}">${escapeHtml(x.label)}</button>`).join('')}</div>
+        <div class="vd-list">${list.length
+          ? (t.type === 'orphan'
+              ? list.map(x => cardHtml('orphan', x.chapter, x.v, state.openPre === x.v.id)).join('')
+              : list.map(v => cardHtml(t.type, t.name, v, state.openPre === v.id)).join(''))
+          : '<div class="vd-empty">该分组暂无版本</div>'}</div>
+        <div class="vd-foot ${warn ? 'warn' : ''}"><span>版本占用 ${kb} KB / 上限 1.2 MB${warn ? ' · 建议到「设置」导出备份' : ''}</span><span>${versionCount()} 份</span></div>`;
+    };
+    panel.addEventListener('click', e => {
+      const tabBtn = e.target.closest('[data-tab]');
+      if (tabBtn) {
+        const [type, name] = tabBtn.dataset.tab.split('::');
+        state.tab = tabs.find(x => x.type === type && x.name === name) || state.tab;
+        state.openPre = null;
+        paint();
+        return;
+      }
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      if (btn.dataset.act === 'close') { mask.remove(); return; }
+      const id = btn.dataset.id;
+      if (btn.dataset.act === 'preview') { state.openPre = state.openPre === id ? null : id; paint(); return; }
+      const ok = btn.dataset.type === 'doc'
+        ? doRestoreDoc(id)
+        : btn.dataset.type === 'orphan'
+          ? doRestoreOrphan(btn.dataset.name, id)
+          : doRestoreChapter(btn.dataset.name, id);
+      if (ok) mask.remove();
+      else paint(); // 失败保持抽屉并刷新（版本可能已被容量淘汰）
+    });
+    paint();
+  });
+  el.querySelector('#wb-version-save').addEventListener('click', () => {
+    const prjS = getProject();
+    const curS = prjS.currentChapter || current;
+    const contentS = get(DRAFT_KEY, {})[curS]?.content || '';
+    if (!curS || !contentS) { toast('先在左栏选择有内容的章节再存档', 'err'); return; }
+    const label = prompt('给这个版本写个备注（可留空）', '');
+    if (label === null) return;
+    const v = snapshotChapter(curS, contentS, 'manual', label.trim() || '手动留档');
+    if (v) toast(`已存为版本（${fmtVersionTime(v.at)}）`, 'ok');
+    else toast('该章节内容与最新版本一致，无需重复存档', 'err');
   });
   el.querySelector('#wb-copy-all').addEventListener('click', () => {
     persistDocument(ta.value, getProject());
