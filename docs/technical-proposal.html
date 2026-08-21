@@ -308,21 +308,21 @@
         <text x="104" y="106" font-size="10" text-anchor="middle" fill="#6B7A8A">营销落地页</text>
         <rect x="180" y="72" width="120" height="44" rx="6" fill="#fff" stroke="#0E6E8C"/>
         <text x="240" y="90" font-size="12" text-anchor="middle" fill="#1F2937">index.html 壳</text>
-        <text x="240" y="106" font-size="10" text-anchor="middle" fill="#6B7A8A">导航 + tm:navigate 路由</text>
+        <text x="240" y="106" font-size="10" text-anchor="middle" fill="#6B7A8A">导航路由 tm:navigate</text>
         <rect x="316" y="72" width="476" height="44" rx="6" fill="#fff" stroke="#0E6E8C"/>
-        <text x="554" y="90" font-size="12" text-anchor="middle" fill="#1F2937">业务模块：主页 dashboard · 选题 topic · 写作 writing · 文献 citation · 计划 planner · 设置 settings</text>
-        <text x="554" y="106" font-size="10" text-anchor="middle" fill="#6B7A8A">css/style.css · 设计语言「纸墨朱砂」</text>
+        <text x="554" y="90" font-size="12" text-anchor="middle" fill="#1F2937">业务模块：主页 · 选题 · 写作 · 文献 · 计划 · 设置</text>
+        <text x="554" y="106" font-size="10" text-anchor="middle" fill="#6B7A8A">css/style.css · dashboard · topic · writing · citation · planner · settings</text>
 
         <!-- ===== 核心服务层 ===== -->
         <rect x="28" y="156" width="784" height="120" rx="8" fill="#F3F6F8" stroke="#D9DEE3"/>
         <text x="44" y="182" font-size="14" font-weight="700" fill="#3E4C5A">核心服务层（js/ · 零依赖 ES Modules）</text>
         <rect x="44" y="194" width="120" height="62" rx="6" fill="#fff" stroke="#8A93A0"/>
         <text x="104" y="216" font-size="12" text-anchor="middle" fill="#1F2937">api.js</text>
-        <text x="104" y="232" font-size="10" text-anchor="middle" fill="#6B7A8A">AI 客户端 · 超时 ·</text>
+        <text x="104" y="232" font-size="10" text-anchor="middle" fill="#6B7A8A">AI 客户端 · 超时</text>
         <text x="104" y="246" font-size="10" text-anchor="middle" fill="#6B7A8A">结构化错误 12 类</text>
         <rect x="176" y="194" width="120" height="62" rx="6" fill="#fff" stroke="#8A93A0"/>
         <text x="236" y="216" font-size="12" text-anchor="middle" fill="#1F2937">litsearch.js</text>
-        <text x="236" y="232" font-size="10" text-anchor="middle" fill="#6B7A8A">CrossRef/OpenAlex</text>
+        <text x="236" y="232" font-size="10" text-anchor="middle" fill="#6B7A8A">CrossRef · OpenAlex</text>
         <text x="236" y="246" font-size="10" text-anchor="middle" fill="#6B7A8A">双源降级 · AI 标注</text>
         <rect x="308" y="194" width="120" height="62" rx="6" fill="#fff" stroke="#8A93A0"/>
         <text x="368" y="216" font-size="12" text-anchor="middle" fill="#1F2937">storage.js</text>
@@ -340,7 +340,6 @@
         <text x="752" y="216" font-size="12" text-anchor="middle" fill="#1F2937">ui.js</text>
         <text x="752" y="232" font-size="10" text-anchor="middle" fill="#6B7A8A">toast / 转义</text>
         <text x="752" y="246" font-size="10" text-anchor="middle" fill="#6B7A8A">加载态</text>
-        <text x="44" y="206" font-size="0">.</text>
 
         <!-- ===== 本地存储 ===== -->
         <rect x="28" y="300" width="784" height="92" rx="8" fill="#E9F1EB" stroke="#C5D9CB"/>
@@ -358,7 +357,7 @@
 
         <!-- ===== 外部服务 ===== -->
         <rect x="28" y="416" width="784" height="190" rx="8" fill="#FBF4E6" stroke="#E8D5A8"/>
-        <text x="44" y="442" font-size="14" font-weight="700" fill="#8A5C14">外部服务（浏览器 HTTPS 直连，无中间服务器）</text>
+        <text x="44" y="598" font-size="14" font-weight="700" fill="#8A5C14">外部服务（浏览器 HTTPS 直连，无中间服务器）</text>
         <rect x="44" y="456" width="230" height="130" rx="6" fill="#fff" stroke="#B7791F"/>
         <text x="159" y="478" font-size="12" font-weight="700" text-anchor="middle" fill="#1F2937">大模型服务商（多选一）</text>
         <text x="159" y="498" font-size="10.5" text-anchor="middle" fill="#6B7A8A">DeepSeek · OpenAI · Moonshot</text>
@@ -380,14 +379,27 @@
 
         <!-- ===== 连线 ===== -->
         <g stroke="#8A93A0" stroke-width="1.5" fill="none">
-          <path d="M104 116 V 194"/><path d="M240 116 V 194"/><path d="M554 116 V 194"/>
-          <path d="M104 256 V 338"/><path d="M260 256 V 338"/><path d="M408 256 V 338"/><path d="M556 256 V 338"/><path d="M718 256 V 338"/>
-          <path d="M260 378 V 456"/><path d="M408 378 V 456"/><path d="M752 378 V 456"/>
+          <!-- 展示层 → 核心服务层 -->
+          <path d="M104 116 V 194"/><path d="M238 116 V 194"/><path d="M554 116 V 156"/>
+          <!-- 核心服务层 ↔ 本地数据层（总线） -->
+          <path d="M104 256 V 297"/><path d="M236 256 V 297"/><path d="M368 256 V 297"/><path d="M500 256 V 297"/><path d="M632 256 V 297"/><path d="M752 256 V 297"/>
+          <path d="M104 297 H 752"/>
+          <path d="M112 297 V 338"/><path d="M260 297 V 338"/><path d="M408 297 V 338"/><path d="M556 297 V 338"/><path d="M718 297 V 338"/>
+          <!-- 本地数据层 → 外部服务（语义直连） -->
+          <path d="M135 378 V 456"/><path d="M410 378 V 456"/>
         </g>
+        <!-- 总线节点 -->
+        <g fill="#8A93A0">
+          <circle cx="104" cy="297" r="2"/><circle cx="236" cy="297" r="2"/><circle cx="368" cy="297" r="2"/><circle cx="500" cy="297" r="2"/><circle cx="632" cy="297" r="2"/><circle cx="752" cy="297" r="2"/>
+          <circle cx="112" cy="297" r="2"/><circle cx="260" cy="297" r="2"/><circle cx="408" cy="297" r="2"/><circle cx="556" cy="297" r="2"/><circle cx="718" cy="297" r="2"/>
+        </g>
+        <!-- 数据流标注 -->
         <g fill="#8A93A0" font-size="10">
-          <text x="260" y="424" text-anchor="middle">HTTPS · JSON · Bearer Key</text>
-          <text x="408" y="424" text-anchor="middle">HTTPS · 公共 API（免 Key）</text>
+          <text x="147" y="440">Bearer Key · 仅本机（BYOK）</text>
+          <text x="424" y="440">检索请求 / 结果（免 Key）</text>
         </g>
+        <!-- 层标题底色（遮住穿过标题的竖线） -->
+        <rect x="40" y="312" width="352" height="20" rx="6" fill="#E9F1EB"/>
       </svg>
     </div>
     <p class="diagram-cap">图 1 · PaperPilot 总体架构（浏览器单机 + 外部 API 直连）</p>

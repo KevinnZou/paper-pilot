@@ -1,3 +1,6 @@
 .DS_Store
 __pycache__/
 *.log
+
+# Playwright CLI 本地状态
+.playwright-cli/
