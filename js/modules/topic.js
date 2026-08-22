@@ -192,12 +192,14 @@ function renderQuestionCards(design) {
         ${design.selectedQuestionId === item.id ? '<span class="chip done">已选</span>' : ''}
       </div>
       <h3>${escapeHtml(item.question)}</h3>
-      ${item.object ? `<p><b>对象</b>${escapeHtml(item.object)}</p>` : ''}
-      ${item.variable ? `<p><b>变量</b>${escapeHtml(item.variable)}</p>` : ''}
-      ${item.method ? `<p><b>方法</b>${escapeHtml(item.method)}</p>` : ''}
-      ${item.dataNeed ? `<p><b>数据</b>${escapeHtml(item.dataNeed)}</p>` : ''}
+      <div class="topic-meta-pills">
+        ${item.object ? `<span class="topic-meta-pill">${escapeHtml(item.object)}</span>` : ''}
+        ${item.variable ? `<span class="topic-meta-pill">${escapeHtml(item.variable)}</span>` : ''}
+        ${item.method ? `<span class="topic-meta-pill">${escapeHtml(item.method)}</span>` : ''}
+        ${item.dataNeed ? `<span class="topic-meta-pill">${escapeHtml(item.dataNeed)}</span>` : ''}
+      </div>
       <div class="result-actions">
-        <button class="btn btn-ghost" data-select-question="${escapeHtml(item.id)}">${design.selectedQuestionId === item.id ? '已选中' : '选择这个问题'}</button>
+        <button class="btn btn-ghost btn-sm" data-select-question="${escapeHtml(item.id)}">${design.selectedQuestionId === item.id ? '已选中' : '选为主问题'}</button>
       </div>
     </article>`).join('')}</div>`;
 }

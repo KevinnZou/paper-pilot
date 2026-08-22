@@ -411,13 +411,13 @@ body {
   box-shadow: var(--shadow);
 }
 .topic-choice-card.compact {
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 .topic-choice-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .topic-choice-card h3 {
   margin: 0 0 8px;
@@ -425,13 +425,32 @@ body {
   line-height: 1.55;
 }
 .topic-choice-card.compact h3 {
-  font-size: 15px;
+  font-size: 14px;
+  margin-bottom: 8px;
 }
 .topic-choice-card p {
   margin: 6px 0 0;
   color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.7;
+}
+.topic-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.topic-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.4;
 }
 .topic-choice-card p b {
   display: inline-block;
