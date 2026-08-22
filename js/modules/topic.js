@@ -85,6 +85,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     titleCandidates: normalizeTitleCandidates(design.titleCandidates),
     selectedTitleId: design.selectedTitleId || '',
     planGenerated: !!design.planGenerated,
+    planCursor: Number.isFinite(Number(design.planCursor)) ? Number(design.planCursor) : 0,
     researchQuestions: Array.isArray(design.researchQuestions) ? design.researchQuestions : [],
     questionCandidates: normalizeQuestionCandidates(design.questionCandidates),
     selectedQuestionId: design.selectedQuestionId || '',
@@ -266,37 +267,39 @@ function planPrompts(design) {
       key: 'method',
       title: '你打算怎么研究这个问题？',
       desc: '优先选你最容易真的做出来的方法。',
-      answered: !!selectedMethod(design),
-      summary: selectedMethod(design),
+      answered: !!design.selectedMethod,
+      summary: design.selectedMethod,
     },
     {
       key: 'data',
       title: '你最有把握拿到哪类数据？',
       desc: '数据可获得性比“看起来高级”更重要。',
-      answered: !!selectedDataSource(design),
-      summary: selectedDataSource(design),
+      answered: !!design.selectedDataSource,
+      summary: design.selectedDataSource,
     },
     ...(design.objectiveOptions.length ? [{
       key: 'objective',
       title: '你更希望这篇论文最终强调什么？',
       desc: '这一步是在确定写作侧重点，不是在补充新任务。',
-      answered: !!selectedObjectiveFocus(design),
-      summary: selectedObjectiveFocus(design),
+      answered: !!design.selectedObjectiveFocus,
+      summary: design.selectedObjectiveFocus,
     }] : []),
     ...(design.feasibility.suggestions.length ? [{
       key: 'strategy',
       title: '如果要收敛范围，你更接受哪种方式？',
       desc: '选一个更顺手的收敛策略，后面出大纲会按这个方向走。',
-      answered: !!selectedRiskStrategy(design),
-      summary: selectedRiskStrategy(design),
+      answered: !!design.selectedRiskStrategy,
+      summary: design.selectedRiskStrategy,
     }] : []),
   ];
 }
 
 function currentPlanPrompt(design) {
   const prompts = planPrompts(design);
-  const index = prompts.findIndex(item => !item.answered);
-  return { prompts, index: index === -1 ? prompts.length - 1 : index, current: prompts[index === -1 ? prompts.length - 1 : index] || null };
+  const fallback = prompts.findIndex(item => !item.answered);
+  const preferred = Number.isFinite(Number(design.planCursor)) ? Number(design.planCursor) : (fallback === -1 ? prompts.length - 1 : fallback);
+  const index = Math.max(0, Math.min(preferred, Math.max(prompts.length - 1, 0)));
+  return { prompts, index, current: prompts[index] || null };
 }
 
 function renderPromptProgress(design) {
@@ -335,8 +338,10 @@ function renderTextOptions(options, selected, attr) {
 }
 
 function renderPlanQuestionnaire(design) {
-  const { current } = currentPlanPrompt(design);
+  const { current, prompts, index } = currentPlanPrompt(design);
   if (!current) return '';
+  const isLast = index === prompts.length - 1;
+  const canConfirm = prompts.every(item => item.answered);
   let optionsHtml = '';
   if (current.key === 'question') optionsHtml = renderQuestionOptions(design);
   else if (current.key === 'method') optionsHtml = renderTextOptions(design.methodOptions, selectedMethod(design), 'select-method');
@@ -352,6 +357,10 @@ function renderPlanQuestionnaire(design) {
         <p class="desc">${escapeHtml(current.desc)}</p>
       </div>
       ${optionsHtml}
+      <div class="topic-prompt-actions">
+        ${index > 0 ? '<button class="btn btn-ghost btn-sm" id="rd-plan-prev">上一题</button>' : '<span></span>'}
+        ${isLast ? `<button class="btn btn-sm" id="rd-plan-finish" ${canConfirm ? '' : 'disabled'}>确认进入大纲</button>` : ''}
+      </div>
     </section>`;
 }
 
@@ -709,6 +718,7 @@ function render(el) {
           title: selected.title,
           selectedTitleId: selected.id,
           planGenerated: false,
+          planCursor: 0,
           researchQuestions: [],
           questionCandidates: [],
           selectedQuestionId: '',
@@ -739,10 +749,19 @@ function render(el) {
   if (step === 2) {
     function maybeAdvancePlanFlow(nextDesign) {
       const current = normalizeResearchDesign(nextDesign, getProject());
+      const { prompts, index } = currentPlanPrompt(current);
+      if (index < prompts.length - 1) {
+        saveDesignPatch({ planCursor: index + 1, currentStep: 2 });
+      }
+      render(el);
+    }
+
+    function finishPlanFlow() {
+      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const { prompts } = currentPlanPrompt(current);
       const done = prompts.every(item => item.answered);
       if (!done) {
-        render(el);
+        toast('还有问题没选完，先把这一轮答完', 'err');
         return;
       }
       const question = selectedQuestion(current);
@@ -841,13 +860,14 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         saveDesignPatch({
           planGenerated: true,
           questionCandidates: questions,
-          selectedQuestionId: questions[0]?.id || '',
+          planCursor: 0,
+          selectedQuestionId: '',
           methodOptions,
-          selectedMethod: methodOptions[0] || '',
+          selectedMethod: '',
           dataOptions,
-          selectedDataSource: dataOptions[0] || '',
+          selectedDataSource: '',
           objectiveOptions: Array.isArray(parsed.objectives) ? parsed.objectives.filter(Boolean) : [],
-          selectedObjectiveFocus: Array.isArray(parsed.objectives) ? (parsed.objectives.filter(Boolean)[0] || '') : '',
+          selectedObjectiveFocus: '',
           researchGap: parsed.researchGap || current.researchGap,
           hypotheses: Array.isArray(parsed.hypotheses) ? parsed.hypotheses.filter(Boolean) : current.hypotheses,
           feasibility: {
@@ -855,7 +875,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
             risks: Array.isArray(parsed.feasibility?.risks) ? parsed.feasibility.risks : [],
             suggestions: Array.isArray(parsed.feasibility?.suggestions) ? parsed.feasibility.suggestions : [],
           },
-          selectedRiskStrategy: Array.isArray(parsed.feasibility?.suggestions) ? (parsed.feasibility.suggestions[0] || '') : '',
+          selectedRiskStrategy: '',
           currentStep: 2,
         });
         toast('研究方案候选已生成，选一个最合适的组合即可', 'ok');
@@ -899,6 +919,12 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       btn.addEventListener('click', () => {
         maybeAdvancePlanFlow(saveDesignPatch({ selectedRiskStrategy: btn.dataset.selectStrategy, currentStep: 2 }));
       }));
+    el.querySelector('#rd-plan-prev')?.addEventListener('click', () => {
+      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
+      saveDesignPatch({ planCursor: Math.max((current.planCursor || 0) - 1, 0), currentStep: 2 });
+      render(el);
+    });
+    el.querySelector('#rd-plan-finish')?.addEventListener('click', () => finishPlanFlow());
   }
 
   if (step === 3) {
