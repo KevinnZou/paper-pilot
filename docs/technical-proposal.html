@@ -173,6 +173,7 @@
       <tr><th class="center">版本</th><th class="center">日期</th><th class="center">作者</th><th>修订说明</th><th class="center">状态</th></tr>
       <tr><td class="center">0.9</td><td class="center">2026-08-21</td><td class="center">研发组</td><td>初稿：基于现有代码基线的完整技术方案</td><td class="center"><span class="tag now">已定稿</span></td></tr>
       <tr><td class="center">1.0</td><td class="center">2026-08-21</td><td class="center">研发组</td><td>定稿：决策点改为定稿口吻，新增完全体演进架构（3.3）</td><td class="center"><span class="tag now">已定稿</span></td></tr>
+      <tr><td class="center">1.1</td><td class="center">2026-08-22</td><td class="center">研发组</td><td>新增第 16 章「技术债务清单」（应做未做工作盘点）；原附录顺延为第 17 章</td><td class="center"><span class="tag now">已定稿</span></td></tr>
     </table>
   </div>
 
@@ -195,7 +196,8 @@
       <li><a href="#s13">风险与对策</a></li>
       <li><a href="#s14">里程碑与资源</a></li>
       <li><a href="#s15">关键设计决策</a></li>
-      <li><a href="#s16">附录</a></li>
+      <li><a href="#s16">技术债务清单</a></li>
+      <li><a href="#s17">附录</a></li>
     </ol>
   </div>
 
@@ -845,18 +847,38 @@
     <div class="callout accent"><b>评审交付物</b>① 压测报告（M2 末）；② 安全说明（BYOK 链路 + CSP 白名单）；③ 部署说明（GitHub Pages 托管 + 域名方案）。</div>
   </div>
 
-  <!-- ================= 16 附录 ================= -->
+  <!-- ================= 16 技术债务清单 ================= -->
   <div class="doc">
-    <h2 class="sec" id="s16"><span class="no">16</span>附录</h2>
+    <h2 class="sec" id="s16"><span class="no">16</span>技术债务清单</h2>
+    <p>技术债务 = 当前形态可正常运转、但从长期质量与维护成本看已明确应改而未改的工程缺口。本清单只收录「应做但本期来不及做」的工作，与 §13 风险的区别：风险应对的是对外不确定性，债务是内部已知、方向明确的改造项。每项给出触发时机——出现该信号时债务必须偿还，偿还原则：不纳入 M1–M4 既有排期，随评审滚动更新，新功能不得新增债务（引入依赖需按 §15 D1 口径论证）。</p>
+    <table>
+      <tr><th class="center" style="width:40px">#</th><th style="width:18%">债务项</th><th>现状与影响</th><th>应做方案 · 触发时机</th></tr>
+      <tr><td class="center">D1</td><td>回归测试未版本化、未入 CI</td><td>Playwright 验收脚本散落于开发机临时目录，未纳入仓库；部分断言与产品现状脱节（仍断言旧产品名与旧存储前缀），每次全量回归需人工打补丁方可运行</td><td>测试资产迁入仓库 <code>tests/</code>，随发布流程（§11.2 ④）自动执行，与敏感扫描同一门禁；<b>触发</b>：首次正式发布（M4）前必须完成</td></tr>
+      <tr><td class="center">D2</td><td>多标签页写冲突（§10.2 已知限制）</td><td>两个标签页同时编辑时后写覆盖先写且无提示，用户无感知丢失修改</td><td><code>storage</code> 事件监听 + 冲突检测与合并提示（改动面小，已列为 §15 D3 附注）；<b>触发</b>：出现双标签页使用反馈或功能扩展涉及跨页共享</td></tr>
+      <tr><td class="center">D3</td><td>双存储层并存：项目已迁 IndexedDB，草稿/版本仍在 localStorage</td><td>项目数据已迁 <code>paperpilot-v4</code>（IndexedDB），但草稿、版本快照、文献、打卡仍留在 localStorage（5 MB 上限，靠版本淘汰 1.2 MB 水位缓解）——容量瓶颈仍在，且备份/恢复、容量概览需同时处理两套存储，异步读写引入竞态窗口</td><td>草稿与版本快照迁入 IndexedDB（业务层无感的适配层已有雏形），容量口径按 IDB 重算，备份格式升级为两存储合一快照；<b>触发</b>：版本淘汰出现可感知档位损失，或备份/恢复流程与双存储不兼容</td></tr>
+      <tr><td class="center">D4</td><td>历史版本缺差异对比</td><td>版本抽屉只能整体恢复，无法查看两版之间改了什么，恢复决策依赖记忆；误恢复靠「恢复前自动存档」兜底</td><td>逐章行级 diff 视图（纯文本算法，无新依赖）；<b>触发</b>：M2 用户体验迭代轮</td></tr>
+      <tr><td class="center">D5</td><td>撤销依赖浏览器原生 execCommand 栈</td><td>自定义操作（版本恢复、批量替换）与原生撤销栈的交互不受控，极端操作序列下 undo 语义可能偏离预期</td><td>自管操作栈（快照 + 指针）取代 <code>execCommand('undo')</code>；<b>触发</b>：收到 undo 行为异常反馈，或编辑器功能扩展引入更多自定义操作</td></tr>
+      <tr><td class="center">D6</td><td>长文生成非流式（§15 M3 演进项）</td><td>单次生成需等待完整响应，长文场景首字等待明显、超时风险随文本长度上升</td><td>DeepSeek 流式接口（SSE）改造 + 中断/续写语义（方案已在 §15 列示）；<b>触发</b>：M3 演进阶段或用户明确反馈生成等待过长</td></tr>
+      <tr><td class="center">D7</td><td>CSP 头未实际启用</td><td>策略已写入文档（§7.2 建议），但静态托管未配置响应头，当前实际不生效，外部服务域名仅靠代码白名单约束</td><td>托管层配置响应头（如 Netlify <code>_headers</code>）启用 connect-src 白名单，与设置页自定义 Base URL 联动；<b>触发</b>：正式上线（§11.4 阶段 2）时必须启用</td></tr>
+      <tr><td class="center">D8</td><td>导出仅 Markdown / 文本</td><td>论文交付场景实际需要 Word 排版与 PDF；浏览器打印可应急，但分页、页眉页脚与论文模板要求有差距</td><td>纯前端 .docx 导出（无服务端）+ 打印分页样式专项；<b>触发</b>：真机验收反馈导出诉求，或进入论文提交阶段</td></tr>
+      <tr><td class="center">D9</td><td>移动端为「可读可用」级别（已声明）</td><td>三栏工作台在窄屏纵向堆叠，长文编辑体验一般；当前仅保证零横向溢出、关键操作可达</td><td>移动端专属编辑模式（全屏编辑器 + 快捷工具栏）；<b>触发</b>：移动端使用量上升或反馈集中</td></tr>
+      <tr><td class="center">D10</td><td>跨浏览器回归缺口</td><td>自动化验证主要基于 Chromium；Safari/Firefox 的字体回退、<code>-webkit-line-clamp</code>、打印预览等未做全量回归</td><td>发布前 WebKit/Gecko 冒烟（Playwright 多内核，与 D1 合并执行）；<b>触发</b>：每次正式发布前</td></tr>
+    </table>
+    <div class="callout accent"><b>偿还原则</b>① 清单随每次评审滚动更新，条目状态（未排期/已排期/已偿还）在下一版修订记录中体现；② 偿还不计入 M1–M4 既有排期，按触发时机插入里程碑；③ 新功能不得新增债务——涉及新依赖、新存储结构、新外部接口的改动必须先在 §15 D1 口径下论证。</div>
+  </div>
 
-    <h3><span class="no">16.1</span>关联文档与产物</h3>
+  <!-- ================= 17 附录 ================= -->
+  <div class="doc">
+    <h2 class="sec" id="s17"><span class="no">17</span>附录</h2>
+
+    <h3><span class="no">17.1</span>关联文档与产物</h3>
     <ul>
       <li>《产品工作流程图 v2》<code>docs/flowchart/paperpilot-flow-v2.svg/png</code>——主流程 + 5 异常分支（自动校验：连线全正交、零交叉、零文本溢出）；</li>
       <li>《验收清单》<code>docs/acceptance.md</code>——真机验收（用户自测，含 BYOK 密钥流程）；</li>
       <li>GOAL.md——产品目标与 KR。</li>
     </ul>
 
-    <h3><span class="no">16.2</span>关键代码位置索引</h3>
+    <h3><span class="no">17.2</span>关键代码位置索引</h3>
     <table>
       <tr><th>能力</th><th>文件</th></tr>
       <tr><td>AI 客户端（BYOK/超时/错误分类）</td><td><code>js/api.js</code></td></tr>
@@ -867,7 +889,7 @@
       <tr><td>写作工作台</td><td><code>js/modules/writing.js</code></td></tr>
     </table>
 
-    <h3><span class="no">16.3</span>术语补充</h3>
+    <h3><span class="no">17.3</span>术语补充</h3>
     <ul>
       <li><strong>礼貌池（Polite Pool）</strong>：CrossRef 对标识来源的请求提供更高速率配额（≤50 req/s）的机制；</li>
       <li><strong>QuotaExceededError</strong>：浏览器本地存储容量触顶异常，产品已做显式处理。</li>
