@@ -484,13 +484,20 @@ export function projectStats(projectId = getActiveProjectId()) {
 }
 
 export function adoptOutline(text, projectId = getActiveProjectId()) {
+  const project = getProject(projectId);
   const chapters = parseOutline(text);
   const progress = {};
   chapters.forEach(c => { progress[c.chapter] = '未开始'; });
+  const nextDrafts = {};
+  chapters.forEach(chapter => {
+    if (project.drafts?.[chapter.chapter]) nextDrafts[chapter.chapter] = project.drafts[chapter.chapter];
+  });
   saveProject({
     outline: chapters,
     chapterProgress: progress,
     currentChapter: chapters[0]?.chapter || '',
+    drafts: nextDrafts,
+    documentV2: null,
   }, projectId);
   return chapters;
 }
