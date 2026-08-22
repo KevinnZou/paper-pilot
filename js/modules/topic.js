@@ -190,6 +190,17 @@ function renderOptionPills(options, selected, attr, emptyText) {
   `).join('')}</div>`;
 }
 
+function feedbackBlock(id, placeholder, buttonLabel) {
+  return `
+    <div class="topic-feedback-block">
+      <label class="field-label">如果这一批都不满意</label>
+      <textarea id="${id}" class="topic-feedback-box" placeholder="${escapeHtml(placeholder)}"></textarea>
+      <div class="result-actions">
+        <button class="btn btn-ghost" id="${id}-submit">${escapeHtml(buttonLabel)}</button>
+      </div>
+    </div>`;
+}
+
 function renderFeasibility(design) {
   if (!design.feasibility.score && !design.feasibility.risks.length && !design.feasibility.suggestions.length) {
     return '<div class="topic-empty">生成方案建议后，这里会同步给出一轮可行性判断。</div>';
@@ -325,12 +336,15 @@ function render(el) {
               <button class="btn btn-ghost" id="rd-save-idea">保存当前输入</button>
             </div>
           </div>
-          <aside class="topic-secondary-panel">
+        </div>
+        <section class="topic-candidate-section">
+          <div class="topic-candidate-head">
             <h3>题目候选</h3>
             <p class="desc">每个候选都可以直接设为主线，不需要额外复制粘贴。</p>
-            <div id="rd-title-out">${renderTitleCards(design)}</div>
-          </aside>
-        </div>
+          </div>
+          <div id="rd-title-out">${renderTitleCards(design)}</div>
+          ${feedbackBlock('rd-title-feedback', '例如：题目太泛、想更偏实证、希望突出采购优化或规范化成效', '根据这些意见再生成一批')}
+        </section>
         ${integrityNote()}
       </section>`;
   } else if (step === 2) {
@@ -354,12 +368,16 @@ function render(el) {
           <button class="btn btn-ai-solid" id="rd-plan-gen">生成研究方案建议</button>
           <button class="btn" id="rd-plan-save">确认这些选择，进入下一步</button>
         </div>
-        <div class="topic-step2-grid">
-          <div class="topic-secondary-panel">
+        <section class="topic-candidate-section">
+          <div class="topic-candidate-head">
             <h3>研究问题候选</h3>
-            <div id="rd-question-out">${renderQuestionCards(design)}</div>
+            <p class="desc">先在问题候选里选一个最顺手的切入点，再决定方法和数据来源。</p>
           </div>
-          <div class="topic-secondary-panel">
+          <div id="rd-question-out">${renderQuestionCards(design)}</div>
+          ${feedbackBlock('rd-plan-feedback', '例如：问题太宏观，想更偏管理效能；方法不要实验法，想偏案例或访谈', '结合这些意见重生成方案')}
+        </section>
+        <div class="topic-step2-grid">
+          <div class="topic-secondary-panel full">
             <h3>方法建议</h3>
             ${renderOptionPills(design.methodOptions, selectedMethod(design), 'select-method', '生成后在这里选择一种更适合的研究方法。')}
             <h3 style="margin-top:18px">数据来源建议</h3>
@@ -429,7 +447,7 @@ function render(el) {
       render(el);
     }));
 
-  if (step === 1) {
+    if (step === 1) {
     el.querySelector('#rd-save-idea').addEventListener('click', () => {
       saveDesignPatch({
         initialIdea: el.querySelector('#rd-idea').value.trim(),
@@ -441,7 +459,7 @@ function render(el) {
       toast('研究想法已保存', 'ok');
     });
 
-    el.querySelector('#rd-title-gen').addEventListener('click', async () => {
+    async function generateTitles(feedback = '') {
       const idea = el.querySelector('#rd-idea').value.trim();
       const keywords = el.querySelector('#rd-keywords').value.trim();
       const constraints = el.querySelector('#rd-constraints').value.trim();
@@ -457,7 +475,7 @@ function render(el) {
       try {
         const reply = await chat([
           { role: 'system', content: `${SYSTEM} 只输出严格 JSON 数组。` },
-          { role: 'user', content: `请围绕下面的研究设想生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。\n研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}` },
+          { role: 'user', content: `请围绕下面的研究设想生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。\n研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}\n请根据反馈明显调整方向，不要只是换几个近义词。` : ''}` },
         ], { temperature: 0.6, signal: topicSignal() });
         const parsed = normalizeTitleCandidates(parseJson(reply));
         if (!parsed.length) throw new Error('AI 未返回有效题目候选');
@@ -478,6 +496,16 @@ function render(el) {
       } finally {
         setLoading(btn, false);
       }
+    }
+
+    el.querySelector('#rd-title-gen').addEventListener('click', () => generateTitles());
+    el.querySelector('#rd-title-feedback-submit')?.addEventListener('click', () => {
+      const feedback = el.querySelector('#rd-title-feedback')?.value.trim();
+      if (!feedback) {
+        toast('先写一下你不满意的点，我再按这个方向重生', 'err');
+        return;
+      }
+      generateTitles(feedback);
     });
 
     el.querySelectorAll('[data-select-title]').forEach(btn =>
@@ -500,7 +528,7 @@ function render(el) {
   }
 
   if (step === 2) {
-    el.querySelector('#rd-plan-gen').addEventListener('click', async () => {
+    async function generatePlan(feedback = '') {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const btn = el.querySelector('#rd-plan-gen');
       setLoading(btn, true, '生成中…');
@@ -522,7 +550,8 @@ feasibility: {score, risks[], suggestions[]}
 关键词：${current.keywords || '未提供'}
 约束：${current.constraints || '无'}
 研究对象：${current.population || '未提供'}
-学位类型：${getProject().degreeType || '硕士论文'}` },
+学位类型：${getProject().degreeType || '硕士论文'}
+${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。` : ''}` },
         ], { temperature: 0.35, signal: topicSignal() });
         const parsed = parseJson(reply);
         const questions = normalizeQuestionCandidates(parsed.questions || []);
@@ -554,6 +583,16 @@ feasibility: {score, risks[], suggestions[]}
       } finally {
         setLoading(btn, false);
       }
+    }
+
+    el.querySelector('#rd-plan-gen').addEventListener('click', () => generatePlan());
+    el.querySelector('#rd-plan-feedback-submit')?.addEventListener('click', () => {
+      const feedback = el.querySelector('#rd-plan-feedback')?.value.trim();
+      if (!feedback) {
+        toast('先告诉我哪里不满意，比如太泛、太虚、方法不合适', 'err');
+        return;
+      }
+      generatePlan(feedback);
     });
 
     el.querySelectorAll('[data-select-question]').forEach(btn =>
