@@ -1054,6 +1054,24 @@ kbd {
 /* ---------- 写作工作台 ---------- */
 .workbench { display: grid; grid-template-columns: 208px minmax(0, 1fr) 244px; }
 .workbench.outline-collapsed { grid-template-columns: 0 minmax(0, 1fr) 244px; }
+.wb-outline-peek {
+  position: absolute;
+  left: 12px;
+  top: 18px;
+  z-index: 4;
+  display: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.wb-outline-peek.visible { display: inline-flex; align-items: center; justify-content: center; }
 .wb-left, .wb-right { padding: 20px 16px; background: var(--surface-2); }
 .wb-left { border-right: 1px solid var(--line); }
 .wb-right { border-left: 1px solid var(--line); }
@@ -1080,12 +1098,27 @@ kbd {
   padding: 0;
   flex-shrink: 0;
 }
+.wb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.wb-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .wb-current {
   display: flex; align-items: baseline; gap: 8px;
   font-family: var(--font-serif); font-size: 14.5px; letter-spacing: .4px;
-  padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1px solid var(--line);
 }
-.wb-current .cur-note { font-family: var(--font-sans); font-size: 11.5px; color: var(--ink-soft); margin-left: auto; }
+.wb-current .cur-note { font-family: var(--font-sans); font-size: 11.5px; color: var(--ink-soft); margin-left: 8px; }
 
 /* 章节目录 */
 .chapter-list { display: flex; flex-direction: column; gap: 3px; }
@@ -1108,13 +1141,15 @@ kbd {
 @keyframes flash-bg { 0% { background: var(--brand); color: #fff; } 100% { background: transparent; } }
 
 /* 工具栏：分组（AI 动作组 / 文档组） */
-.wb-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
-.wb-toolbar-main { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.wb-toolbar-secondary { justify-content: space-between; }
-.wb-toolbar-secondary .hint-plain { font-size: 12px; color: var(--ink-soft); }
+.wb-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.wb-toolbar-primary {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
 .wb-sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; align-self: center; }
 .wb-toolbar-more {
-  margin-left: auto;
   position: relative;
 }
 .wb-toolbar-more summary {
@@ -1128,7 +1163,7 @@ kbd {
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--ink);
   font-size: 12.5px;
   font-weight: 600;
@@ -1217,6 +1252,20 @@ kbd {
 }
 .wb-meta { display: flex; gap: 14px; align-items: center; margin-top: 10px; font-size: 12px; color: var(--ink-soft); flex-wrap: wrap; font-family: var(--font-mono); }
 .wb-meta .hint-plain { margin-left: auto; font-family: var(--font-sans); }
+
+.wb-center .btn-ai-solid {
+  background: #C84533;
+  border-color: #C84533;
+}
+.wb-center .btn-ai {
+  background: #FFF8F5;
+  border-color: #E9C2B7;
+  color: #A43A2C;
+}
+.wb-center .btn-ghost {
+  background: var(--surface);
+  border-color: var(--line);
+}
 
 /* ---------- 文献 ---------- */
 .citation-workspace {
@@ -1423,11 +1472,12 @@ kbd {
   .wb-center select { max-width: 100%; }
   /* 页眉长文本允许换行收缩，不撑宽轨道 */
   .wb-current .cur-note { min-width: 0; }
+  .wb-header { flex-direction: column; align-items: flex-start; }
   /* 移动端：章节目录横排滑动，避免竖排占屏 */
   .chapter-list { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
   .chapter-item { flex-shrink: 0; width: auto; }
-  .wb-toolbar-more { margin-left: 0; }
   .wb-toolbar-more-panel { position: static; min-width: 0; }
+  .wb-outline-peek { top: 14px; left: 14px; }
 }
 @media (max-width: 760px) {
   .layout { flex-direction: column; }

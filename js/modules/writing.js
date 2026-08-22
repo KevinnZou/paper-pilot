@@ -223,11 +223,12 @@ export default {
     el.innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
         <div class="workbench">
+          <button class="wb-outline-peek" id="wb-outline-peek" title="展开目录" aria-label="展开目录">目录</button>
           <aside class="wb-left">
             <div class="wb-side-head">
               <div>
                 <h3><span class="mark"></span>论文目录</h3>
-                <p class="desc" id="wb-outline-desc">结构化章节会从编辑器实时同步到这里</p>
+                <p class="desc" id="wb-outline-desc">按章节快速跳转与切换</p>
               </div>
               <button class="btn btn-ghost btn-sm icon-only" id="wb-toggle-outline" title="折叠目录" aria-label="折叠目录">⇤</button>
             </div>
@@ -235,38 +236,35 @@ export default {
           </aside>
 
           <section class="wb-center">
-            <div class="wb-current">
-              <span class="cur-title" id="wb-cur-title">正在写：<b>${escapeHtml(viewState.currentChapter || '未选择章节')}</b></span>
-              <span class="cur-note">ProseMirror 结构化文档 · 自动保存</span>
-            </div>
-            <div class="wb-toolbar">
-              <div class="wb-toolbar-main">
-                ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="btn ${item.id === 'academic' ? 'btn-ai-solid' : 'btn-ai'} btn-sm" data-ai="${item.id}">${item.label}</button>`).join('')}
+            <div class="wb-header">
+              <div class="wb-current">
+                <span class="cur-title" id="wb-cur-title">正在写：<b>${escapeHtml(viewState.currentChapter || '未选择章节')}</b></span>
+                <span class="cur-note" id="wb-cur-note">自动保存</span>
               </div>
-              <div class="wb-toolbar-main">
-                <button class="btn btn-ghost btn-sm" id="wb-done">标记本章完成</button>
+              <div class="wb-header-actions">
+                <button class="btn btn-ghost btn-sm" id="wb-done">标记完成</button>
                 <button class="btn btn-ghost btn-sm" id="wb-copy">复制全文</button>
+                <details class="wb-toolbar-more">
+                  <summary>工具</summary>
+                  <div class="wb-toolbar-more-panel">
+                    <button class="btn btn-ai btn-sm" data-ai="logic">逻辑检查</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-undo">↶ 撤销</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-redo">↷ 重做</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-preview">排版预览</button>
+                  </div>
+                </details>
               </div>
-              <details class="wb-toolbar-more">
-                <summary>更多工具</summary>
-                <div class="wb-toolbar-more-panel">
-                  <button class="btn btn-ai btn-sm" data-ai="logic">本章逻辑检查</button>
-                  <button class="btn btn-ghost btn-sm" id="wb-undo">↶ 撤销</button>
-                  <button class="btn btn-ghost btn-sm" id="wb-redo">↷ 重做</button>
-                  <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
-                  <button class="btn btn-ghost btn-sm" id="wb-preview">排版预览</button>
-                </div>
-              </details>
             </div>
-            <div class="wb-toolbar wb-toolbar-secondary">
+            <div class="wb-toolbar wb-toolbar-primary">
+              ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="btn ${item.id === 'academic' ? 'btn-ai-solid' : 'btn-ai'} btn-sm" data-ai="${item.id}">${item.label}</button>`).join('')}
               <button class="btn btn-ghost btn-sm" id="wb-draft">生成本章草稿</button>
-              <span class="hint-plain">常用动作放在上面，其余工具收进“更多工具”里。</span>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
             <div class="wb-meta">
               <span id="wb-count">全文字数 0</span>
               <span id="wb-saved">已载入</span>
-              <span class="hint-plain">AI 改写先进入 Suggestion Mode，只有接受后才写回正文</span>
+              <span class="hint-plain">建议先校对后再写回正文</span>
             </div>
             ${integrityNote()}
           </section>
@@ -290,10 +288,12 @@ export default {
     const countEl = el.querySelector('#wb-count');
     const workbench = el.querySelector('.workbench');
     const outlineToggle = el.querySelector('#wb-toggle-outline');
+    const outlinePeek = el.querySelector('#wb-outline-peek');
     let saveTimer = null;
 
     function syncOutlineCollapse() {
       workbench.classList.toggle('outline-collapsed', panelState.outlineCollapsed);
+      outlinePeek?.classList.toggle('visible', panelState.outlineCollapsed);
       if (outlineToggle) {
         outlineToggle.textContent = panelState.outlineCollapsed ? '⇥' : '⇤';
         outlineToggle.title = panelState.outlineCollapsed ? '展开目录' : '折叠目录';
@@ -446,6 +446,10 @@ export default {
 
     outlineToggle?.addEventListener('click', () => {
       panelState.outlineCollapsed = !panelState.outlineCollapsed;
+      syncOutlineCollapse();
+    });
+    outlinePeek?.addEventListener('click', () => {
+      panelState.outlineCollapsed = false;
       syncOutlineCollapse();
     });
 
