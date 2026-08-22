@@ -2,6 +2,7 @@ import { EditorState, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { history, undo, redo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
+import { Fragment } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText } from '../ui.js';
 import { chat } from '../api.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
@@ -59,17 +60,19 @@ function sectionMetaFromProject(project) {
 
 function topLevelSections(doc) {
   const sections = [];
-  doc.forEach((node, offset) => {
+  doc.forEach((node, offset, index) => {
     if (node.type.name === 'heading' && node.attrs.role === 'section') {
       sections.push({
         chapter: node.textContent.trim(),
         sectionId: node.attrs.sectionId,
+        startIndex: index,
         headingFrom: offset + 1,
         bodyFrom: offset + node.nodeSize,
       });
     }
   });
   sections.forEach((item, idx) => {
+    item.endIndex = idx + 1 < sections.length ? sections[idx + 1].startIndex - 1 : doc.childCount - 1;
     item.bodyTo = idx + 1 < sections.length ? sections[idx + 1].headingFrom - 1 : doc.content.size;
   });
   return sections;
@@ -972,6 +975,52 @@ export default {
       toast('已在当前章节后插入新章节', 'ok');
     }
 
+    function moveCurrentSection(direction) {
+      const doc = viewState.view.state.doc;
+      const sections = topLevelSections(doc);
+      const section = sectionForPos(doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先进入一个章节', 'err');
+        return;
+      }
+      const index = sections.findIndex(item => item.sectionId === section.sectionId);
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= sections.length) {
+        toast(direction === 'up' ? '已经是第一章了' : '已经是最后一章了', 'err');
+        return;
+      }
+
+      const nodes = [];
+      doc.forEach(node => nodes.push(node));
+      const currentNodes = nodes.slice(section.startIndex, section.endIndex + 1);
+      const target = sections[targetIndex];
+      const targetNodes = nodes.slice(target.startIndex, target.endIndex + 1);
+
+      let nextNodes;
+      if (direction === 'up') {
+        nextNodes = [
+          ...nodes.slice(0, target.startIndex),
+          ...currentNodes,
+          ...targetNodes,
+          ...nodes.slice(section.endIndex + 1),
+        ];
+      } else {
+        nextNodes = [
+          ...nodes.slice(0, section.startIndex),
+          ...targetNodes,
+          ...currentNodes,
+          ...nodes.slice(target.endIndex + 1),
+        ];
+      }
+
+      const nextDoc = paperSchema.nodes.doc.create(null, Fragment.fromArray(nextNodes));
+      let tr = viewState.view.state.tr.replaceWith(0, doc.content.size, nextDoc.content);
+      const moved = topLevelSections(tr.doc).find(item => item.sectionId === section.sectionId);
+      if (moved) tr = tr.setSelection(TextSelection.create(tr.doc, moved.headingFrom));
+      viewState.view.dispatch(tr.scrollIntoView());
+      toast(direction === 'up' ? '已上移当前章节' : '已下移当前章节', 'ok');
+    }
+
     function renderChapterCard() {
       const sections = topLevelSections(viewState.view.state.doc);
       const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from) || sections[0];
@@ -1011,6 +1060,8 @@ export default {
           <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${next?.sectionId || ''}" ${next ? '' : 'disabled'}>下一章</button>
         </div>
         <div class="wb-side-actions">
+          <button class="btn btn-ghost btn-sm" type="button" data-section-action="up" ${prev ? '' : 'disabled'}>上移</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-section-action="down" ${next ? '' : 'disabled'}>下移</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="rename">改标题</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="before">前插一章</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="after">后加一章</button>
@@ -1023,6 +1074,8 @@ export default {
       });
       chapterCard.querySelectorAll('[data-section-action]').forEach(btn => {
         btn.addEventListener('click', () => {
+          if (btn.dataset.sectionAction === 'up') moveCurrentSection('up');
+          if (btn.dataset.sectionAction === 'down') moveCurrentSection('down');
           if (btn.dataset.sectionAction === 'rename') renameCurrentSection();
           if (btn.dataset.sectionAction === 'before') addSectionBeforeCurrent();
           if (btn.dataset.sectionAction === 'after') addSectionAfterCurrent();
