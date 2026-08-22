@@ -1,7 +1,6 @@
 import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js';
 import { chat, shouldUseLiveAI } from '../api.js';
 import { getProject, adoptOutline, updateBasics, saveProject } from '../project.js';
-import { renderLitSearch } from '../litsearch.js';
 
 const SYSTEM = '你是一位资深论文研究设计导师，熟悉中国高校论文选题、研究问题设计、方法论、开题与写作规范。回答直接给出内容，不要客套话和多余解释。';
 
@@ -213,22 +212,6 @@ function feedbackBlock(id, placeholder, buttonLabel) {
     </div>`;
 }
 
-function renderFeasibility(design) {
-  if (!design.feasibility.score && !design.feasibility.risks.length && !design.feasibility.suggestions.length) {
-    return '<div class="topic-empty">生成方案建议后，这里会同步给出一轮可行性判断。</div>';
-  }
-  return `
-    <div class="topic-score">可行性评分：<b>${escapeHtml(String(design.feasibility.score || '待评估'))}</b></div>
-    <div class="topic-mini-block">
-      <h4>主要风险</h4>
-      <ul>${design.feasibility.risks.map(item => `<li>${escapeHtml(item)}</li>`).join('') || '<li>暂无明显风险</li>'}</ul>
-    </div>
-    <div class="topic-mini-block">
-      <h4>调整建议</h4>
-      <ul>${design.feasibility.suggestions.map(item => `<li>${escapeHtml(item)}</li>`).join('') || '<li>暂无</li>'}</ul>
-    </div>`;
-}
-
 function renderPlanSummary(design) {
   const question = selectedQuestion(design);
   const method = selectedMethod(design);
@@ -255,6 +238,46 @@ function renderPlanSummary(design) {
     ${design.objectives.length ? `<div class="topic-mini-block"><h4>研究目标</h4><ul>${design.objectives.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
     ${design.researchGap ? `<div class="topic-mini-block"><h4>研究空白</h4><p>${escapeHtml(design.researchGap)}</p></div>` : ''}
     ${design.hypotheses.length ? `<div class="topic-mini-block"><h4>待验证判断</h4><ul>${design.hypotheses.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}`;
+}
+
+function renderPlanSelection(design) {
+  return `
+    <div class="topic-selection-stack">
+      <div class="topic-selection-row">
+        <div class="topic-selection-head">
+          <h3>研究方法</h3>
+          <p class="desc">从建议里挑一个你最容易落地的做法。</p>
+        </div>
+        ${renderOptionPills(design.methodOptions, selectedMethod(design), 'select-method', '生成后在这里选择一种更适合的研究方法。')}
+      </div>
+      <div class="topic-selection-row">
+        <div class="topic-selection-head">
+          <h3>数据来源</h3>
+          <p class="desc">优先选你真实拿得到的数据来源，这样后面写作会顺很多。</p>
+        </div>
+        ${renderOptionPills(design.dataOptions, selectedDataSource(design), 'select-data', '生成后在这里选择一种最可行的数据来源。')}
+      </div>
+      ${design.objectiveOptions.length ? `
+        <div class="topic-selection-row subtle">
+          <div class="topic-selection-head">
+            <h3>这一组方案最终会导向的研究目标</h3>
+          </div>
+          <ul class="topic-plain-list">${design.objectiveOptions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+        </div>` : ''}
+      ${(design.researchGap || design.feasibility.score || design.feasibility.risks.length || design.feasibility.suggestions.length) ? `
+        <div class="topic-selection-row subtle">
+          <div class="topic-selection-head">
+            <h3>辅助判断</h3>
+            <p class="desc">这里只保留会影响你做决定的提醒，不再展开一整页分析。</p>
+          </div>
+          <div class="topic-compact-grid">
+            ${design.researchGap ? `<div class="topic-compact-card"><span>研究空白</span><p>${escapeHtml(design.researchGap)}</p></div>` : ''}
+            ${design.feasibility.score ? `<div class="topic-compact-card"><span>可行性评分</span><p><b>${escapeHtml(String(design.feasibility.score))}</b></p></div>` : ''}
+            ${design.feasibility.risks.length ? `<div class="topic-compact-card"><span>主要风险</span><ul class="topic-plain-list">${design.feasibility.risks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
+            ${design.feasibility.suggestions.length ? `<div class="topic-compact-card"><span>收敛建议</span><ul class="topic-plain-list">${design.feasibility.suggestions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
+          </div>
+        </div>` : ''}
+    </div>`;
 }
 
 function renderOutlinePreview(text) {
@@ -474,19 +497,13 @@ function render(el) {
           <div id="rd-question-out">${renderQuestionCards(design)}</div>
           ${feedbackBlock('rd-plan-feedback', '例如：问题太宏观，想更偏管理效能；方法不要实验法，想偏案例或访谈', '结合这些意见重生成方案')}
         </section>
-        <div class="topic-step2-grid">
-          <div class="topic-secondary-panel full">
-            <h3>方法建议</h3>
-            ${renderOptionPills(design.methodOptions, selectedMethod(design), 'select-method', '生成后在这里选择一种更适合的研究方法。')}
-            <h3 style="margin-top:18px">数据来源建议</h3>
-            ${renderOptionPills(design.dataOptions, selectedDataSource(design), 'select-data', '生成后在这里选择一种最可行的数据来源。')}
-            ${design.objectiveOptions.length ? `<div class="topic-mini-block"><h4>AI 推荐的研究目标</h4><ul>${design.objectiveOptions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
+        <section class="topic-candidate-section">
+          <div class="topic-candidate-head">
+            <h3>把方案收拢成一组</h3>
+            <p class="desc">这里就做选择，不再继续堆模块。选完这一组组合后，直接进入出大纲。</p>
           </div>
-        </div>
-        <div class="topic-feasibility-panel">
-          <h3>可行性检查</h3>
-          ${renderFeasibility(design)}
-        </div>
+          ${renderPlanSelection(design)}
+        </section>
         ` : '<div class="topic-empty">先点击上方「生成研究方案建议」，系统再展示研究问题、方法、数据来源和可行性判断。</div>'}
       </section>`;
   } else {
@@ -502,23 +519,27 @@ function render(el) {
             <span class="chip ${project.outline.length ? 'done' : 'doing'}">${project.outline.length ? '大纲已采用' : '当前阶段'}</span>
           </div>
         </div>
-        <div class="topic-wizard-grid">
-          <div class="topic-primary-panel">
-            <h3>方案摘要</h3>
-            ${renderPlanSummary(design)}
-            <div class="result-actions" style="margin-top:18px">
-              <button class="btn btn-ai-solid" id="outline-gen">生成论文大纲</button>
-              <button class="btn btn-ghost btn-sm" id="outline-copy" ${project.outline.length ? '' : 'disabled'}>复制结果</button>
-              <button class="btn" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>${project.outline.length ? '重新采用大纲' : '采用此大纲'}</button>
-            </div>
-            <div id="outline-out">${renderOutlinePreview('')}</div>
-          </div>
-          <aside class="topic-secondary-panel">
-            <h3>快速文献扫描</h3>
-            <p class="desc">这一步才需要回到真实文献核对研究空白和章节结构，不再从一开始就打扰主流程。</p>
-            <div id="topic-lit"></div>
-          </aside>
+        <div class="topic-primary-panel">
+          <h3>方案摘要</h3>
+          ${renderPlanSummary(design)}
         </div>
+        <section class="topic-candidate-section">
+          <div class="topic-candidate-head">
+            <h3>生成并微调大纲</h3>
+            <p class="desc">先生成一版，再直接改文字，或者给一句修改意见让系统重生成。这里处理完就可以去正式写作。</p>
+          </div>
+          <div class="result-actions" style="margin:0 0 16px">
+            <button class="btn btn-ai-solid" id="outline-gen">生成论文大纲</button>
+            <button class="btn btn-ghost btn-sm" id="outline-copy" ${project.outline.length ? '' : 'disabled'}>复制文本</button>
+            <button class="btn" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>${project.outline.length ? '采用当前编辑稿' : '采用此大纲'}</button>
+          </div>
+          <div id="outline-out">${renderOutlinePreview('')}</div>
+          <div class="topic-outline-editor">
+            <label class="field-label" for="outline-editor">可直接编辑的大纲文本</label>
+            <textarea id="outline-editor" class="topic-outline-textarea" placeholder="先生成大纲，然后你可以直接调整章节名、增删二级标题。"></textarea>
+          </div>
+          ${feedbackBlock('outline-feedback', '例如：理论部分太重，想更偏案例分析；第三章想拆成现状与问题两节', '按这些意见重生成大纲')}
+        </section>
         ${integrityNote()}
       </section>`;
   }
@@ -782,18 +803,31 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
   }
 
   if (step === 3) {
+    const outlineEditor = el.querySelector('#outline-editor');
+
+    function syncOutlineUI(text) {
+      const value = String(text || '').trim();
+      if (outlineOut) {
+        outlineOut.innerHTML = renderOutlinePreview(value);
+        outlineOut.dataset.outlineText = value;
+      }
+      if (outlineEditor && outlineEditor.value !== value) {
+        outlineEditor.value = value;
+      }
+      const copyBtn = el.querySelector('#outline-copy');
+      const adoptBtn = el.querySelector('#outline-adopt');
+      if (copyBtn) copyBtn.disabled = !value;
+      if (adoptBtn) adoptBtn.disabled = !value;
+    }
+
     if (outlineOut) {
       const existingOutlineText = (getProject().outline || []).length
         ? getProject().outline.map(item => `${item.chapter}${(item.sections || []).length ? `\n${item.sections.map(sec => `  ${sec}`).join('\n')}` : ''}`).join('\n')
         : '';
-      outlineOut.innerHTML = renderOutlinePreview(existingOutlineText);
-      const copyBtn = el.querySelector('#outline-copy');
-      const adoptBtn = el.querySelector('#outline-adopt');
-      if (copyBtn) copyBtn.disabled = !existingOutlineText;
-      if (adoptBtn) adoptBtn.disabled = !existingOutlineText;
+      syncOutlineUI(existingOutlineText);
     }
 
-    el.querySelector('#outline-gen').addEventListener('click', async () => {
+    async function generateOutline(feedback = '') {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const btn = el.querySelector('#outline-gen');
       setLoading(btn, true, '生成中…');
@@ -802,13 +836,10 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         const reply = shouldUseLiveAI()
           ? await chat([
               { role: 'system', content: SYSTEM },
-              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法和数据来源一致。\n论文题目：${current.title || getProject().title}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
+              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法和数据来源一致。\n论文题目：${current.title || getProject().title}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `\n用户对上一版大纲的修改意见：${feedback}\n请根据这个意见重组章节，不要只改个别字。` : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
             ], { temperature: 0.4, signal: topicSignal() })
           : mockOutline(current);
-        outlineOut.innerHTML = renderOutlinePreview(reply);
-        outlineOut.dataset.outlineText = reply;
-        el.querySelector('#outline-copy').disabled = false;
-        el.querySelector('#outline-adopt').disabled = false;
+        syncOutlineUI(reply);
       } catch (e) {
         if (isAbort(e)) return;
         outlineOut.innerHTML = `<div class="topic-empty">❌ ${escapeHtml(e.message)}</div>`;
@@ -816,10 +847,33 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       } finally {
         setLoading(btn, false);
       }
+    }
+
+    el.querySelector('#outline-gen').addEventListener('click', () => generateOutline());
+
+    outlineEditor?.addEventListener('input', () => {
+      const value = outlineEditor.value;
+      if (outlineOut) {
+        outlineOut.innerHTML = renderOutlinePreview(value);
+        outlineOut.dataset.outlineText = value.trim();
+      }
+      const copyBtn = el.querySelector('#outline-copy');
+      const adoptBtn = el.querySelector('#outline-adopt');
+      if (copyBtn) copyBtn.disabled = !value.trim();
+      if (adoptBtn) adoptBtn.disabled = !value.trim();
+    });
+
+    el.querySelector('#outline-feedback-submit')?.addEventListener('click', () => {
+      const feedback = el.querySelector('#outline-feedback')?.value.trim();
+      if (!feedback) {
+        toast('写一句你想怎么改，我按这个方向重生成', 'err');
+        return;
+      }
+      generateOutline(feedback);
     });
 
     el.querySelector('#outline-copy').addEventListener('click', () => {
-      const text = outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
+      const text = outlineEditor?.value || outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
       if (!text.trim()) {
         toast('请先生成大纲', 'err');
         return;
@@ -828,7 +882,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
     });
 
     el.querySelector('#outline-adopt').addEventListener('click', () => {
-      const text = outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
+      const text = outlineEditor?.value || outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
       if (!text.trim()) {
         toast('请先生成大纲', 'err');
         return;
@@ -849,11 +903,6 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       updateBasics({ title: current.title || getProject().title, degreeType: getProject().degreeType });
       toast(`已采用大纲（${chapters.length} 章），可以开始正式写作`, 'ok');
       render(el);
-    });
-
-    renderLitSearch(el.querySelector('#topic-lit'), {
-      defaultQuery: design.title || project.title,
-      batchFrom: { title: design.title || project.title, chapters: project.outline.map(c => c.chapter) },
     });
   }
 }
