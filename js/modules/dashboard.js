@@ -22,6 +22,88 @@ function wordCount(s) {
   return String(s || '').replace(/\s/g, '').length;
 }
 
+function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapter, drafts, daysLeft }) {
+  const totalWords = Object.values(drafts).reduce((sum, d) => sum + wordCount(d?.content), 0);
+  const chapterWords = nextChapter ? wordCount(drafts[nextChapter]?.content || '') : 0;
+  const chapterStatus = nextChapter ? (project.chapterProgress[nextChapter] || '未开始') : '';
+  if (!cfg?.apiKey) {
+    return {
+      title: '今天先打通 AI 能力',
+      goal: '完成 API 配置，解锁研究设计、文献检索和写作辅助。',
+      bullets: ['填写 API Key', '测试连接', '返回项目主页继续主线'],
+      eta: '5 分钟',
+      nav: 'settings',
+      cta: '去配置',
+    };
+  }
+  if (!project.title) {
+    return {
+      title: '今天先定下论文题目',
+      goal: '把研究想法落成明确题目，后续研究问题和大纲才能稳定生成。',
+      bullets: ['写下研究想法', '生成题目候选', '选一个题目设为主线'],
+      eta: '20 分钟',
+      nav: 'topic',
+      cta: '去研究设计',
+    };
+  }
+  if (researchReadyCount < 4) {
+    return {
+      title: '今天补齐研究设计',
+      goal: '至少把研究问题、方法、数据来源和可行性检查补全，让后续写作有抓手。',
+      bullets: ['生成 3-5 个研究问题', '确认方法与数据来源', '做一轮可行性检查'],
+      eta: '35 分钟',
+      nav: 'topic',
+      cta: '继续研究设计',
+    };
+  }
+  if (!chapters.length) {
+    return {
+      title: '今天产出论文大纲',
+      goal: '用研究设计生成五章结构，并采用到项目主线。',
+      bullets: ['检查研究空白是否清楚', '生成论文大纲', '采用到写作工作台'],
+      eta: '25 分钟',
+      nav: 'topic',
+      cta: '去生成大纲',
+    };
+  }
+  if (!project.dueDate) {
+    return {
+      title: '今天设定截止日期',
+      goal: '把整篇论文挂到时间轴上，后续任务和风险判断才会准确。',
+      bullets: ['确认提交日期', '生成倒排计划', '看系统给出的写作节奏'],
+      eta: '10 分钟',
+      nav: 'planner',
+      cta: '去设截止日期',
+    };
+  }
+  if (nextChapter) {
+    const wordGoal = chapterWords >= 800 ? 1200 : 800;
+    const diff = Math.max(wordGoal - chapterWords, 0);
+    return {
+      title: `今天建议完成 ${nextChapter}`,
+      goal: chapterStatus === '未开始'
+        ? '先把这一章写出能工作的初稿，再回头补证据和细化表达。'
+        : '继续把当前章节推进到成型版本，减少中断成本。',
+      bullets: [
+        diff > 0 ? `补足约 ${diff} 字，达到 ${wordGoal} 字初稿` : `继续精修本章，已超过 ${wordGoal} 字基础线`,
+        '检查本章至少有 2 处文献支撑',
+        daysLeft != null && daysLeft <= 14 ? '同步留意截止风险，避免只写不排期' : '完成后更新章节状态',
+      ],
+      eta: chapterStatus === '未开始' ? '45 分钟' : '35 分钟',
+      nav: 'writing',
+      cta: `去写「${shortName(nextChapter, 8)}」`,
+    };
+  }
+  return {
+    title: '今天做一次总检查',
+    goal: `当前已累计 ${totalWords} 字，适合回看结构、引用和计划是否一致。`,
+    bullets: ['检查章节是否失衡', '回看文献引用是否充足', '安排下一轮修改重点'],
+    eta: '30 分钟',
+    nav: 'writing',
+    cta: '回到全文',
+  };
+}
+
 export default {
   id: 'dashboard',
   icon: '🏠',
@@ -77,6 +159,15 @@ export default {
       : ((chapters.find(c => prog[c.chapter] === '进行中')
           || chapters.find(c => prog[c.chapter] === '未开始')
           || chapters[0]) || {}).chapter || '';
+    const nextAction = nextActionCard({
+      cfg,
+      project: p,
+      researchReadyCount,
+      chapters,
+      nextChapter,
+      drafts,
+      daysLeft,
+    });
 
     // 主行动按钮 = 下一步
     let heroAction = '';
@@ -121,6 +212,25 @@ export default {
             <div class="stat"><span class="stat-num">${totalWords || 0}</span><span class="stat-label">已写字数</span></div>
             <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续打卡</span></div>
           </div>` : ''}
+      </div>`;
+
+    const nextActionHtml = `
+      <div class="card">
+        <h2><span class="mark"></span>今天该做什么</h2>
+        <div class="item" style="padding:0;border:none;background:transparent">
+          <div class="item-main">
+            <div class="item-title">${escapeHtml(nextAction.title)}</div>
+            <div class="item-meta">${escapeHtml(nextAction.goal)}</div>
+            <div class="item-meta" style="margin-top:8px">预计 ${escapeHtml(nextAction.eta)}</div>
+            <ul style="margin:10px 0 0 18px;padding:0">
+              ${nextAction.bullets.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+        <div class="hero-action-row" style="margin-top:14px">
+          <button class="btn btn-lg" data-nav="${nextAction.nav}" ${nextAction.nav === 'writing' && nextChapter ? `data-write="${escapeHtml(nextChapter)}"` : ''}>${escapeHtml(nextAction.cta)}</button>
+          ${p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : ''}
+        </div>
       </div>`;
 
     const journeyHtml = `
@@ -191,8 +301,8 @@ export default {
 
     // 版面顺序按阶段：入门中（未定题/未用大纲）旅程在上引导上手；已进入写作后旅程沉底
     el.innerHTML = writingPhase
-      ? `${heroHtml}${entranceHtml}${progressHtml}${journeyHtml}`
-      : `${heroHtml}${journeyHtml}${entranceHtml}${progressHtml}`;
+      ? `${heroHtml}${nextActionHtml}${entranceHtml}${progressHtml}${journeyHtml}`
+      : `${heroHtml}${nextActionHtml}${journeyHtml}${entranceHtml}${progressHtml}`;
 
     // 章节直写
     el.querySelectorAll('[data-write]').forEach(b =>
