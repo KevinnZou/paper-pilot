@@ -84,8 +84,7 @@ export default {
     }
 
     function promptCreate() {
-      const title = prompt('论文题目（可先留空，后续到项目设置补充）', '');
-      const project = createProject({ title: (title || '').trim() });
+      const project = createProject({ title: '' });
       toast('论文项目已创建，下一步先补充项目设置', 'ok');
       openProject(project.id, 'project-settings');
     }
