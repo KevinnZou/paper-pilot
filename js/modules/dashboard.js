@@ -75,7 +75,10 @@ export default {
     else if (!p.dueDate) heroAction = '<button class="btn btn-lg" data-nav="planner">设定截止日期</button>';
     else heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '开始写作'}</button>`;
 
-    el.innerHTML = `
+    // 四块版面：hero / 写作之旅 / 章节进度+打卡 / 功能入口
+    const writingPhase = !!p.title && chapters.length > 0;
+
+    const heroHtml = `
       <div class="card hero project-hero">
         <div class="hero-top">
           <h2><span class="mark"></span>${p.title ? escapeHtml(p.title) : '开始你的论文之旅'}</h2>
@@ -105,9 +108,10 @@ export default {
             <div class="stat"><span class="stat-num">${totalWords || 0}</span><span class="stat-label">已写字数</span></div>
             <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续打卡</span></div>
           </div>` : ''}
-      </div>
+      </div>`;
 
-      <div class="card">
+    const journeyHtml = `
+      <div class="card journey-card">
         <h2><span class="mark"></span>写作之旅　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
         <p class="desc">按顺序完成以下步骤，每步完成后自动打勾；点击任意一步可直接前往</p>
         <div class="journey">
@@ -118,8 +122,9 @@ export default {
               ${i === currentIdx && !s.done ? '<span class="js-tag">下一步</span>' : ''}
             </button>`).join('')}
         </div>
-      </div>
+      </div>`;
 
+    const progressHtml = `
       <div class="grid dash-cols">
         <div class="card">
           <h2><span class="mark"></span>章节进度</h2>
@@ -157,15 +162,24 @@ export default {
             : '<p class="desc">还没有打卡记录，开始第一次打卡吧</p>'}
           <button class="btn btn-ghost" data-nav="planner">去打卡</button>
         </div>
-      </div>
+      </div>`;
 
+    const entranceHtml = `
       <div class="dash-grid">
         ${CARDS.map(c => `
           <button class="dash-card" data-nav="${c.id}" title="${escapeHtml(c.desc)}">
             <span class="icon">${ICONS[c.id] || ''}</span>
-            <h3>${c.title}</h3>
+            <span class="d-card-txt">
+              <span class="d-title">${c.title}</span>
+              <span class="d-desc">${escapeHtml(c.desc)}</span>
+            </span>
           </button>`).join('')}
       </div>`;
+
+    // 版面顺序按阶段：入门中（未定题/未用大纲）旅程在上引导上手；已进入写作后旅程沉底
+    el.innerHTML = writingPhase
+      ? `${heroHtml}${entranceHtml}${progressHtml}${journeyHtml}`
+      : `${heroHtml}${journeyHtml}${entranceHtml}${progressHtml}`;
 
     // 章节直写
     el.querySelectorAll('[data-write]').forEach(b =>

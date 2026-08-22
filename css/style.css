@@ -318,24 +318,34 @@ kbd {
   border-radius: var(--radius); padding: 7px 10px; margin: 9px -10px;
 }
 
-/* 快捷入口：一行 4 个（icon + 名称），不再是大卡片 */
+/* 功能入口：一行 4 卡（icon + 名称 + 描述），主页主导航 */
 .dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 @media (max-width: 980px) { .dash-grid { grid-template-columns: repeat(2, 1fr); } }
 .dash-card {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: flex-start; gap: 12px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 12px 14px; cursor: pointer; text-align: left; font-family: inherit;
+  box-shadow: var(--shadow); padding: 14px 16px; cursor: pointer; text-align: left; font-family: inherit;
   transition: transform .15s, box-shadow .15s, border-color .15s;
   width: 100%;
 }
 .dash-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); border-color: var(--line-strong); }
 .dash-card .icon {
-  width: 32px; height: 32px; border-radius: var(--radius); background: #F1EFE8;
+  width: 40px; height: 40px; border-radius: var(--radius); background: #F1EFE8;
   display: inline-flex; align-items: center; justify-content: center;
-  color: var(--ink); font-size: 16px; flex-shrink: 0;
+  color: var(--ink); font-size: 18px; flex-shrink: 0;
 }
-.dash-card .icon svg { width: 16px; height: 16px; }
-.dash-card h3 { margin: 0; font-size: 13.5px; font-family: var(--font-serif); }
+.dash-card .icon svg { width: 18px; height: 18px; }
+.dash-card .d-card-txt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.dash-card .d-title { font-size: 14px; font-family: var(--font-serif); font-weight: 700; color: var(--ink); }
+.dash-card .d-desc {
+  font-size: 11.5px; color: var(--ink-soft); line-height: 1.5;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+@media (max-width: 560px) {
+  .dash-card { padding: 12px; gap: 10px; }
+  .dash-card .icon { width: 34px; height: 34px; font-size: 16px; }
+  .d-desc { -webkit-line-clamp: 1; }
+}
 
 /* ---------- 写作工作台 ---------- */
 .workbench { display: grid; grid-template-columns: 232px minmax(0, 1fr) 272px; }
