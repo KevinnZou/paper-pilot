@@ -223,19 +223,82 @@ function renderEvidenceList(items, chapters) {
   return items.map(item => `
     <article class="evidence-row">
       <div class="evidence-row-head">
-        <div class="evidence-row-title">
-          <span class="chip">${escapeHtml(item.type || 'finding')}</span>
-          ${item.linkedSectionIds?.length ? `<span class="chip doing">${escapeHtml(chapters.find(c => c.sectionId === item.linkedSectionIds[0])?.chapter || '已关联章节')}</span>` : ''}
-          ${escapeHtml(item.citation?.title || '未关联文献')}
+        <div class="evidence-row-main">
+          <div class="evidence-row-title">
+            <span class="chip">${escapeHtml(item.type || 'finding')}</span>
+            ${item.linkedSectionIds?.length ? `<span class="chip doing">${escapeHtml(chapters.find(c => c.sectionId === item.linkedSectionIds[0])?.chapter || '已关联章节')}</span>` : ''}
+            ${escapeHtml(item.citation?.title || '未关联文献')}
+          </div>
+          <div class="evidence-row-meta">${escapeHtml([
+            item.sourceLocation ? `定位：${item.sourceLocation}` : '',
+            item.page ? `页码：${item.page}` : '',
+          ].filter(Boolean).join(' · '))}</div>
         </div>
-        <div class="evidence-row-meta">${escapeHtml([
-          item.sourceLocation ? `定位：${item.sourceLocation}` : '',
-          item.page ? `页码：${item.page}` : '',
-        ].filter(Boolean).join(' · '))}</div>
+        <div class="evidence-row-actions">
+          <button class="btn btn-ghost btn-sm" data-evi-copy="${escapeHtml(item.content || '')}" title="复制证据内容">📋</button>
+          <button class="btn btn-danger btn-sm" data-evi-del="${escapeHtml(item.id)}" title="删除证据卡">🗑</button>
+        </div>
       </div>
       <div class="evidence-row-content">${escapeHtml(item.content || '')}</div>
       ${item.note ? `<div class="evidence-row-note">笔记：${escapeHtml(item.note)}</div>` : ''}
     </article>`).join('');
+}
+
+function renderEvidenceModal(list, prj) {
+  return `
+    <div class="modal-backdrop" id="evi-modal" hidden>
+      <div class="modal-panel citation-modal-panel" role="dialog" aria-modal="true" aria-labelledby="evi-modal-title">
+        <div class="citation-modal-head">
+          <div>
+            <h3 id="evi-modal-title">新增证据卡</h3>
+            <p class="desc">从已入库文献里摘一条后面写作时能直接拿来支撑论证的内容。</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" id="evi-cancel-top">关闭</button>
+        </div>
+        <label class="field-label">关联文献</label>
+        <select id="evi-citation">
+          <option value="">请选择已入库文献</option>
+          ${list.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(`[${item.litNo}] ${(item.title || '').slice(0, 40)}`)}</option>`).join('')}
+        </select>
+        <div class="form-row">
+          <div>
+            <label class="field-label">证据类型</label>
+            <select id="evi-type">
+              <option value="finding">核心发现</option>
+              <option value="definition">概念定义</option>
+              <option value="method">研究方法</option>
+              <option value="data">数据结果</option>
+              <option value="quote">原文摘录</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">关联章节</label>
+            <select id="evi-section">
+              <option value="">暂不关联</option>
+              ${(prj.outline || []).map(item => `<option value="${escapeHtml(item.sectionId || item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <label class="field-label">证据内容</label>
+        <textarea id="evi-content" placeholder="例如：该研究指出空间注意力模块能显著改善小目标分割边界。"></textarea>
+        <div class="form-row">
+          <div>
+            <label class="field-label">来源定位</label>
+            <input type="text" id="evi-location" placeholder="例如：结果分析 / 表 3 / 第 4 节">
+          </div>
+          <div>
+            <label class="field-label">页码</label>
+            <input type="text" id="evi-page" placeholder="例如：p.12">
+          </div>
+        </div>
+        <label class="field-label">我的笔记</label>
+        <textarea id="evi-note" placeholder="这条证据更适合支撑哪一章、哪一个论点？"></textarea>
+        <div class="citation-inline-actions" style="margin-top:16px">
+          <button class="btn" id="evi-save">保存证据卡</button>
+          <button class="btn btn-ghost" type="button" id="evi-cancel">取消</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 function renderTabNav(activeTab) {
@@ -374,79 +437,30 @@ function renderLibraryTab(list, citedNums) {
 }
 
 function renderEvidenceTab(list, prj) {
+  const evidenceCount = evidenceListWithCitations(list).length;
   return `
     <section class="citation-pane">
       <div class="citation-section-head">
         <div>
           <h3>证据卡</h3>
-          <p class="desc">只保留两个动作：摘录新证据，以及回看已有证据卡。</p>
+          <p class="desc">默认先看证据卡列表，需要补充时再新增，避免编辑区长期占着页面。</p>
         </div>
         <div class="citation-head-actions">
-          <span class="chip mono">${evidenceListWithCitations(list).length} 条证据</span>
+          <span class="chip mono" id="evi-count">${evidenceCount} 条证据</span>
+          <button class="btn" id="evi-open">新增证据卡</button>
         </div>
       </div>
 
-      <div class="citation-split citation-split-evidence">
-        <div class="card citation-panel">
-          <div class="citation-panel-head">
-            <div>
-              <h4>新建证据卡</h4>
-              <p class="desc">从已入库文献里摘出能直接支撑章节论证的定义、方法、数据或关键发现。</p>
-            </div>
-          </div>
-          <label class="field-label">关联文献</label>
-          <select id="evi-citation">
-            <option value="">请选择已入库文献</option>
-            ${list.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(`[${item.litNo}] ${(item.title || '').slice(0, 40)}`)}</option>`).join('')}
-          </select>
-          <div class="form-row">
-            <div>
-              <label class="field-label">证据类型</label>
-              <select id="evi-type">
-                <option value="finding">核心发现</option>
-                <option value="definition">概念定义</option>
-                <option value="method">研究方法</option>
-                <option value="data">数据结果</option>
-                <option value="quote">原文摘录</option>
-              </select>
-            </div>
-            <div>
-              <label class="field-label">关联章节</label>
-              <select id="evi-section">
-                <option value="">暂不关联</option>
-                ${(prj.outline || []).map(item => `<option value="${escapeHtml(item.sectionId || item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <label class="field-label">证据内容</label>
-          <textarea id="evi-content" placeholder="例如：该研究指出空间注意力模块能显著改善小目标分割边界。"></textarea>
-          <div class="form-row">
-            <div>
-              <label class="field-label">来源定位</label>
-              <input type="text" id="evi-location" placeholder="例如：结果分析 / 表 3 / 第 4 节">
-            </div>
-            <div>
-              <label class="field-label">页码</label>
-              <input type="text" id="evi-page" placeholder="例如：p.12">
-            </div>
-          </div>
-          <label class="field-label">我的笔记</label>
-          <textarea id="evi-note" placeholder="这条证据更适合支撑哪一章、哪一个论点？"></textarea>
-          <div class="citation-inline-actions" style="margin-top:16px">
-            <button class="btn" id="evi-save">保存证据卡</button>
+      <div class="card citation-panel citation-list-panel">
+        <div class="citation-panel-head">
+          <div>
+            <h4>证据卡列表</h4>
+            <p class="desc">优先保留后续写作时会直接拿来支撑论证的内容。</p>
           </div>
         </div>
-
-        <div class="card citation-panel citation-list-panel">
-          <div class="citation-panel-head">
-            <div>
-              <h4>证据卡列表</h4>
-              <p class="desc">优先保留后续写作时会直接拿来支撑论证的内容。</p>
-            </div>
-          </div>
-          <div class="item-list citation-evidence-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>
-        </div>
+        <div class="item-list citation-evidence-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>
       </div>
+      ${renderEvidenceModal(list, prj)}
     </section>`;
 }
 
@@ -473,12 +487,16 @@ function refreshLibrary(el) {
   if (stats) stats.innerHTML = citedStatsHtml(citedNums, list);
   const evidenceBox = el.querySelector('#cit-evidence-list');
   if (evidenceBox) evidenceBox.innerHTML = renderEvidenceList(evidenceListWithCitations(list), project.outline || []);
+  const evidenceCount = el.querySelector('#evi-count');
+  if (evidenceCount) evidenceCount.textContent = `${getEvidence().length} 条证据`;
   bindListActions(el);
 }
 
 function bindListActions(el) {
   el.querySelectorAll('[data-cit-copy]').forEach(b =>
     b.addEventListener('click', () => copyText(b.dataset.citCopy)));
+  el.querySelectorAll('[data-evi-copy]').forEach(b =>
+    b.addEventListener('click', () => copyText(b.dataset.eviCopy)));
   el.querySelectorAll('[data-cit-del]').forEach(b =>
     b.addEventListener('click', () => {
       // 用稳定编号 litNo 定位（数组顺序会因 unshift 变化，索引定位会删错）
@@ -498,6 +516,16 @@ function bindListActions(el) {
       list.splice(idx, 1);
       set('citations', list);
       toast('已删除', 'ok');
+      refreshLibrary(el);
+    }));
+  el.querySelectorAll('[data-evi-del]').forEach(b =>
+    b.addEventListener('click', () => {
+      const list = getEvidence();
+      const item = list.find(x => x.id === b.dataset.eviDel);
+      if (!item) return;
+      if (!confirm(`确定删除这张证据卡吗？\n\n${(item.content || '').slice(0, 60)}${(item.content || '').length > 60 ? '…' : ''}`)) return;
+      saveEvidence(list.filter(x => x.id !== item.id));
+      toast('证据卡已删除', 'ok');
       refreshLibrary(el);
     }));
 }
@@ -532,6 +560,25 @@ function render(el) {
       onDone: () => refreshLibrary(el),
     });
   }
+
+  const eviModal = el.querySelector('#evi-modal');
+  const openEvidenceModal = () => {
+    if (!eviModal) return;
+    eviModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    el.querySelector('#evi-citation')?.focus();
+  };
+  const closeEvidenceModal = () => {
+    if (!eviModal) return;
+    eviModal.hidden = true;
+    document.body.style.overflow = '';
+  };
+  el.querySelector('#evi-open')?.addEventListener('click', openEvidenceModal);
+  el.querySelector('#evi-cancel')?.addEventListener('click', closeEvidenceModal);
+  el.querySelector('#evi-cancel-top')?.addEventListener('click', closeEvidenceModal);
+  eviModal?.addEventListener('click', (evt) => {
+    if (evt.target === eviModal) closeEvidenceModal();
+  });
 
   // 文献库实时搜索：输入即过滤，搜索词在局部刷新中保留（不整页重渲染）
   const searchEl = el.querySelector('#cit-search');
@@ -723,6 +770,7 @@ function render(el) {
     el.querySelector('#evi-citation').value = '';
     el.querySelector('#evi-section').value = '';
     toast('证据卡已保存', 'ok');
+    closeEvidenceModal();
     refreshLibrary(el);
   });
 
