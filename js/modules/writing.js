@@ -387,6 +387,53 @@ function normalizeCitations() {
   return list;
 }
 
+function normalizeAcademicText(text) {
+  return String(text || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\t+/g, ' ')
+    .replace(/ {2,}/g, ' ')
+    .replace(/ ([，。；：！？、）】》])/g, '$1')
+    .replace(/([（【《]) /g, '$1')
+    .replace(/“ /g, '“')
+    .replace(/ ”/g, '”')
+    .replace(/‘ /g, '‘')
+    .replace(/ ’/g, '’')
+    .replace(/\s+\n/g, '\n')
+    .replace(/\n\s+/g, '\n')
+    .trim();
+}
+
+function normalizeInlineNodeContent(node, schema) {
+  const placeholders = [];
+  let raw = '';
+  node.forEach(child => {
+    if (child.isText) {
+      raw += child.text || '';
+      return;
+    }
+    const token = `__NODE_${placeholders.length}__`;
+    placeholders.push({ token, node: child });
+    raw += token;
+  });
+  const normalized = normalizeAcademicText(raw);
+  if (normalized === raw) return node;
+
+  const children = [];
+  const regex = /__NODE_(\d+)__/g;
+  let last = 0;
+  let match;
+  while ((match = regex.exec(normalized))) {
+    const before = normalized.slice(last, match.index);
+    if (before) children.push(schema.text(before));
+    const entry = placeholders[Number(match[1])];
+    if (entry) children.push(entry.node);
+    last = match.index + match[0].length;
+  }
+  const tail = normalized.slice(last);
+  if (tail) children.push(schema.text(tail));
+  return node.type.create(node.attrs, children.length ? children : null);
+}
+
 export default {
   id: 'writing',
   icon: '✍️',
@@ -438,6 +485,7 @@ export default {
                   <summary>工具</summary>
                   <div class="wb-toolbar-more-panel">
                     <button class="btn btn-ai btn-sm" data-ai="logic">逻辑检查</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-format">格式整理</button>
                     <button class="btn btn-ghost btn-sm" id="wb-insert-formula">插入公式</button>
                     <button class="btn btn-ghost btn-sm" id="wb-insert-note">插入注释</button>
                     <button class="btn btn-ghost btn-sm" id="wb-insert-image">插入图片</button>
@@ -851,6 +899,31 @@ export default {
       }
     }
 
+    function formatCurrentSection() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先把光标放到要整理的章节里', 'err');
+        return;
+      }
+      const replacements = [];
+      viewState.view.state.doc.nodesBetween(section.bodyFrom, section.bodyTo, (node, pos) => {
+        if (!node.isTextblock || node.type.name !== 'paragraph') return;
+        const nextNode = normalizeInlineNodeContent(node, paperSchema);
+        if (nextNode.eq(node)) return;
+        replacements.push({ pos, node: nextNode });
+      });
+      if (!replacements.length) {
+        toast(`「${section.chapter}」当前没有可整理的正文格式`, 'ok', 1800);
+        return;
+      }
+      let tr = viewState.view.state.tr;
+      replacements.sort((a, b) => b.pos - a.pos).forEach(item => {
+        tr = tr.replaceWith(item.pos, item.pos + viewState.view.state.doc.nodeAt(item.pos).nodeSize, item.node);
+      });
+      viewState.view.dispatch(tr.scrollIntoView());
+      toast(`已整理「${section.chapter}」的 ${replacements.length} 段正文格式`, 'ok');
+    }
+
     const editorState = EditorState.create({
       schema: paperSchema,
       doc,
@@ -900,6 +973,7 @@ export default {
     setSaveStatus('idle', '已载入');
     persistNow();
 
+    el.querySelector('#wb-format')?.addEventListener('click', formatCurrentSection);
     el.querySelector('#wb-insert-formula')?.addEventListener('click', () => openAssetModal('formula'));
     el.querySelector('#wb-insert-note')?.addEventListener('click', () => openAssetModal('footnote'));
     el.querySelector('#wb-insert-image')?.addEventListener('click', () => openAssetModal('image'));
