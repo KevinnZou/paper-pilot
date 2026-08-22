@@ -145,11 +145,11 @@ function collectIssues(project, doc, citations) {
 }
 
 function issueHtml(item, idx) {
-  return `<div class="item">
+  return `<div class="item issue-item">
     <div class="item-main">
       <div class="item-title"><span class="chip ${severityChip(item.level)}">${item.group}</span> ${escapeHtml(item.text)}</div>
     </div>
-    <div style="display:flex;gap:6px;flex-shrink:0">
+    <div class="card-actions-rail">
       <button class="btn btn-ghost btn-sm" data-issue-go="${idx}">去处理</button>
     </div>
   </div>`;

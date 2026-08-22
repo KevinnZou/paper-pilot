@@ -275,7 +275,18 @@ kbd {
 .planner-focus-grid,
 .check-layout { align-items: stretch; }
 
+.dash-focus-grid > .card,
+.dash-cols > .card,
+.planner-focus-grid > .card,
+.planner-support-grid > .card,
+.check-layout > .card,
+.project-grid > .card {
+  height: 100%;
+}
+
 .focus-card {
+  display: flex;
+  flex-direction: column;
   border-color: #D9D5C8;
   box-shadow: var(--shadow-lift);
 }
@@ -332,6 +343,14 @@ kbd {
 
 /* 写作之旅：线性轨道节点（节点坐在贯穿轨道上） */
 .journey-card { padding-bottom: 18px; }
+.journey-card,
+.side-summary-card,
+.tool-band,
+.preview-card,
+.check-summary-card {
+  display: flex;
+  flex-direction: column;
+}
 .journey { position: relative; display: flex; align-items: flex-start; padding-top: 6px; }
 .journey::before {
   content: ''; position: absolute; left: 8%; right: 8%; top: 18px; height: 2px;
@@ -380,7 +399,7 @@ kbd {
 
 /* 功能入口：一行 4 卡（icon + 名称 + 描述），主页主导航 */
 .tool-band { padding-top: 18px; }
-.dash-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.dash-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: stretch; }
 @media (max-width: 980px) { .dash-grid { grid-template-columns: 1fr; } }
 .dash-card {
   display: flex; align-items: flex-start; gap: 12px;
@@ -388,6 +407,7 @@ kbd {
   box-shadow: none; padding: 14px 16px; cursor: pointer; text-align: left; font-family: inherit;
   transition: transform .15s, box-shadow .15s, border-color .15s;
   width: 100%;
+  min-height: 102px;
 }
 .dash-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); border-color: var(--line-strong); }
 .dash-card .icon {
@@ -411,13 +431,19 @@ kbd {
 /* ---------- 项目中心 ---------- */
 .project-center-hero .hero-top { align-items: center; }
 .project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.project-card { margin-bottom: 0; }
+.project-card {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .project-card.active { border-color: #D8B4AC; box-shadow: var(--shadow-lift); }
 .project-card-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px;
 }
+.project-card-head > div { min-width: 0; flex: 1; }
 .project-card-head h2 { margin-bottom: 2px; overflow-wrap: anywhere; }
-.project-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.project-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0; min-height: 58px; align-content: flex-start; }
 .project-facts {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
   padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius);
@@ -425,7 +451,16 @@ kbd {
 .project-facts div { display: flex; flex-direction: column; gap: 3px; }
 .project-facts span { font-size: 12px; color: var(--ink-soft); }
 .project-facts b { font-family: var(--font-mono); color: var(--ink); }
-.project-actions .btn:first-child { min-width: 96px; }
+.project-actions {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+.project-actions .btn { width: 100%; min-height: 36px; }
+.project-actions .btn:first-child,
+.project-actions .btn:nth-child(2) { grid-column: span 2; }
 .modal-head { padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
 
 @media (max-width: 980px) {
@@ -611,7 +646,9 @@ kbd {
 .gantt-bar.now { outline: 2px solid var(--cinnabar); outline-offset: 1px; }
 .gantt-bar.done { background: var(--jade); opacity: .85; }
 .side-summary-card .item { background: var(--surface-2); }
-.side-summary-list { margin-bottom: 12px; }
+.side-summary-list { margin-bottom: 12px; flex: 1; }
+.side-summary-card .cal-grid { margin-top: auto; }
+.side-summary-card .hero-action-row { margin-top: 14px; }
 .planner-support-grid { align-items: start; }
 .planner-checkin-card .cal-grid { margin-top: 8px; }
 .check-summary-card .hero-stats { margin-top: 12px; }
@@ -625,10 +662,25 @@ kbd {
   background: var(--surface); transition: border-color .12s;
 }
 .item:hover { border-color: var(--line-strong); }
-.item .item-main { min-width: 0; }
+.item .item-main { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; }
 .item .item-title { font-weight: 600; font-size: 13px; line-height: 1.5; }
 .item .item-meta { color: var(--ink-soft); font-size: 12px; margin-top: 2px; line-height: 1.6; }
 .item .item-meta.gb { font-family: var(--font-serif); }
+.task-item,
+.issue-item { align-items: stretch; min-height: 88px; }
+.card-actions-rail {
+  width: 116px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.card-actions-rail .btn {
+  width: 100%;
+  justify-content: center;
+  min-height: 34px;
+}
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } }
@@ -713,6 +765,14 @@ kbd {
   .focus-layout { flex-direction: column; }
   .focus-side { text-align: left; }
   .focus-checks { grid-template-columns: 1fr; }
+  .project-actions { grid-template-columns: 1fr; }
+  .project-actions .btn:first-child,
+  .project-actions .btn:nth-child(2) { grid-column: span 1; }
+  .item,
+  .task-item,
+  .issue-item { flex-direction: column; }
+  .card-actions-rail { width: 100%; flex-direction: row; }
+  .card-actions-rail .btn { flex: 1; }
   /* 主页：旅程节点卡内横向滚动防溢出；hero 统计条收窄 */
   .journey { overflow-x: auto; padding-bottom: 4px; }
   .journey-step { flex: 0 0 auto; min-width: 108px; }

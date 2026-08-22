@@ -145,7 +145,7 @@ function taskChip(task) {
 function renderTaskList(tasks, plan, emptyText) {
   if (!tasks.length) return `<div class="result-box"><span class="placeholder">${emptyText}</span></div>`;
   return `<div class="item-list">${tasks.map(task => `
-    <div class="item">
+    <div class="item task-item">
       <div class="item-main">
         <div class="item-title">
           <span class="chip ${taskChip(task)}">${task.dueDate || '未设日期'}</span>
@@ -154,7 +154,7 @@ function renderTaskList(tasks, plan, emptyText) {
         </div>
         <div class="item-meta">${escapeHtml(task.note || '')}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
+      <div class="card-actions-rail">
         <button class="btn btn-ghost btn-sm" data-task-go="${escapeHtml(task.id)}">去处理</button>
         <button class="btn btn-sm" data-task-done="${escapeHtml(task.id)}">${isDone(task, plan) ? '撤销完成' : '标记完成'}</button>
       </div>
