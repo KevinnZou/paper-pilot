@@ -13,6 +13,12 @@ import { formatCitation } from '../gbt7714.js';
 export { formatCitation };
 
 const PARSE_SYSTEM = '你是参考文献解析助手。把用户粘贴的引用信息解析为 GB/T 7714 条目。只输出严格 JSON 数组，每项形如 {"authors":"张三, 李四","title":"题名","source":"期刊名/学校/出版社","year":"2024","volume":"34","issue":"3","pages":"45-52","doi":"","url":"","institution":"","publisher":"","place":"","type":"J"}，type 取值 J(期刊)/D(学位论文)/M(专著)/C(会议)/R(报告)/S(标准)/P(专利)/N(报纸)/EB/OL(电子资源)，不确定的字段用空字符串。不要输出 JSON 以外的任何内容。';
+const CITATION_TAB_KEY = 'citation.activeTab';
+const CITATION_TABS = [
+  { id: 'discover', label: '导入与检索' },
+  { id: 'library', label: '文献库' },
+  { id: 'evidence', label: '证据卡' },
+];
 
 // 中断恢复：导航离开时取消进行中的 AI 解析（与写作/文献模块一致；幂等——任一模块先初始化即生效）
 if (!window.__tmAbort) {
@@ -143,30 +149,38 @@ function matchKeyword(c, kw) {
   return hay.includes(kw);
 }
 
+function getActiveTab() {
+  const saved = get(CITATION_TAB_KEY, 'discover');
+  return CITATION_TABS.some(tab => tab.id === saved) ? saved : 'discover';
+}
+
 function renderList(list, citedNums, keyword = '', ctx = citationContext(list)) {
-  if (!list.length) return '<div style="color:var(--ink-soft)">暂无文献，去上方「智能推荐与检索」收集吧</div>';
+  if (!list.length) return '<div class="empty-inline">还没有文献。先去“导入与检索”收集，再回来统一整理。</div>';
   const kw = keyword.trim().toLowerCase();
   const filtered = kw ? list.filter(c => matchKeyword(c, kw)) : list;
-  if (!filtered.length) return `<div style="color:var(--ink-soft)">没有匹配「${escapeHtml(keyword.trim())}」的文献，试试标题 / 作者 / 出处关键词</div>`;
+  if (!filtered.length) return `<div class="empty-inline">没有匹配“${escapeHtml(keyword.trim())}”的文献，试试标题、作者或出处关键词。</div>`;
   return filtered.map(c => {
     const currentNo = ctx.order.get(c.id);
     const cited = !!currentNo || (c.litNo != null && citedNums.has(c.litNo));
     const badge = currentNo ? `[${currentNo}]` : c.litNo != null ? `L${c.litNo}` : '未编';
     return `
-    <div class="item">
-      <div class="item-main">
-        <div class="item-title">${badge ? `<span class="chip ref-no">${badge}</span> ` : ''}${escapeHtml(c.title || '（无题名）')} <span class="chip">${escapeHtml(c.type || '?')}</span> ${
+    <article class="citation-row">
+      <div class="citation-row-main">
+        <div class="citation-row-head">
+          <div class="citation-row-title">${badge ? `<span class="chip ref-no">${badge}</span> ` : ''}${escapeHtml(c.title || '（无题名）')} <span class="chip">${escapeHtml(c.type || '?')}</span> ${
       cited
         ? '<span class="chip done" title="正文中已引用该文献">已引用</span>'
         : '<span class="chip uncited" title="正文中未引用该文献">未引用</span>'}</div>
-        <div class="item-meta gb">${escapeHtml(c.formatted || '')}</div>
-        <div class="item-meta">${escapeHtml([c.doi ? `DOI ${c.doi}` : '', c.url || ''].filter(Boolean).join(' · '))}</div>
+          <div class="citation-row-meta">${escapeHtml([c.source || '', c.year || ''].filter(Boolean).join(' · '))}</div>
+        </div>
+        <div class="citation-row-format">${escapeHtml(c.formatted || '')}</div>
+        <div class="citation-row-links">${escapeHtml([c.doi ? `DOI ${c.doi}` : '', c.url || ''].filter(Boolean).join(' · '))}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
+      <div class="citation-row-actions">
         <button class="btn btn-ghost btn-sm" data-cit-copy="${escapeHtml(c.formatted || '')}" title="复制 GB/T 7714 格式">📋</button>
         <button class="btn btn-danger btn-sm" data-cit-del="${escapeHtml(c.id)}" title="删除该文献">🗑</button>
       </div>
-    </div>`;
+    </article>`;
   }).join('');
 }
 
@@ -205,23 +219,235 @@ function evidenceListWithCitations(citations) {
 }
 
 function renderEvidenceList(items, chapters) {
-  if (!items.length) return '<div style="color:var(--ink-soft)">还没有证据卡。可从已入库文献里摘出定义、方法、数据或关键发现。</div>';
+  if (!items.length) return '<div class="empty-inline">还没有证据卡。先从已入库文献里摘出能直接支撑论证的内容。</div>';
   return items.map(item => `
-    <div class="item">
-      <div class="item-main">
-        <div class="item-title">
+    <article class="evidence-row">
+      <div class="evidence-row-head">
+        <div class="evidence-row-title">
           <span class="chip">${escapeHtml(item.type || 'finding')}</span>
           ${item.linkedSectionIds?.length ? `<span class="chip doing">${escapeHtml(chapters.find(c => c.sectionId === item.linkedSectionIds[0])?.chapter || '已关联章节')}</span>` : ''}
           ${escapeHtml(item.citation?.title || '未关联文献')}
         </div>
-        <div class="item-meta">${escapeHtml(item.content || '')}</div>
-        <div class="item-meta">${escapeHtml([
+        <div class="evidence-row-meta">${escapeHtml([
           item.sourceLocation ? `定位：${item.sourceLocation}` : '',
           item.page ? `页码：${item.page}` : '',
-          item.note ? `备注：${item.note}` : '',
         ].filter(Boolean).join(' · '))}</div>
       </div>
-    </div>`).join('');
+      <div class="evidence-row-content">${escapeHtml(item.content || '')}</div>
+      ${item.note ? `<div class="evidence-row-note">笔记：${escapeHtml(item.note)}</div>` : ''}
+    </article>`).join('');
+}
+
+function renderTabNav(activeTab) {
+  return `
+    <div class="citation-shell-head">
+      <div>
+        <h2>文献与证据</h2>
+        <p class="desc">把“找文献、管文献、摘证据”拆开处理，当前页面只保留一类任务。</p>
+      </div>
+      <div class="citation-tabbar" role="tablist" aria-label="文献与证据分区">
+        ${CITATION_TABS.map(tab => `
+          <button class="citation-tab ${tab.id === activeTab ? 'active' : ''}" type="button" role="tab" aria-selected="${tab.id === activeTab}" data-citation-tab="${tab.id}">
+            ${tab.label}
+          </button>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+function renderDiscoverTab(prj) {
+  return `
+    <section class="citation-pane">
+      <div class="citation-section-head">
+        <div>
+          <h3>导入与检索</h3>
+          <p class="desc">先把候选文献收进来。支持 AI 解析粘贴内容、手动录入，以及基于题目和大纲做推荐检索。</p>
+        </div>
+      </div>
+
+      <div class="citation-split">
+        <div class="card citation-panel">
+          <div class="citation-panel-head">
+            <div>
+              <h4>批量解析引用</h4>
+              <p class="desc">把从知网、Google Scholar 等处复制的引用信息清洗成结构化条目，再统一入库。</p>
+            </div>
+          </div>
+          <label class="field-label">粘贴引用信息</label>
+          <textarea id="cit-parse" placeholder="例如：&#10;张伟, 李娜. 大语言模型在教育领域的应用研究[J]. 现代教育技术, 2024, 34(3): 45-52."></textarea>
+          <div class="result-actions citation-inline-actions">
+            <button class="btn btn-ai-solid" id="cit-parse-btn">解析并保存</button>
+            <button class="btn btn-ghost" id="cit-parse-demo">填入示例</button>
+          </div>
+          <div class="result-box" id="cit-parse-out"><span class="placeholder">解析结果会显示在这里</span></div>
+        </div>
+
+        <div class="card citation-panel">
+          <div class="citation-panel-head">
+            <div>
+              <h4>手动录入</h4>
+              <p class="desc">适合补录少量文献。填写题名后会实时生成 GB/T 7714 预览。</p>
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label class="field-label">文献类型</label>
+              <select id="cit-type">
+                <option value="J">期刊 [J]</option><option value="D">学位论文 [D]</option>
+                <option value="M">专著 [M]</option><option value="C">会议论文 [C]</option>
+                <option value="R">报告 [R]</option><option value="S">标准 [S]</option>
+                <option value="P">专利 [P]</option><option value="N">报纸 [N]</option>
+                <option value="EB/OL">电子资源 [EB/OL]</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">年份</label>
+              <input type="number" id="cit-year" placeholder="2024">
+            </div>
+          </div>
+          <label class="field-label">作者（逗号分隔）</label>
+          <input type="text" id="cit-author" placeholder="张伟, 李娜">
+          <label class="field-label">题名</label>
+          <input type="text" id="cit-title" placeholder="文章或书名">
+          <label class="field-label">出处（期刊名 / 学校 / 出版社）</label>
+          <input type="text" id="cit-source" placeholder="现代教育技术">
+          <div class="form-row">
+            <div>
+              <label class="field-label">卷 / 期 / 页码</label>
+              <div class="form-row">
+                <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
+                <div><input type="text" id="cit-issue" placeholder="期 3"></div>
+              </div>
+              <input type="text" id="cit-pages" placeholder="页码 45-52" style="margin-top:8px">
+            </div>
+            <div>
+              <label class="field-label">DOI / URL</label>
+              <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
+              <input type="text" id="cit-url" placeholder="https://..." style="margin-top:8px">
+            </div>
+          </div>
+          <div class="citation-inline-actions" style="margin-top:16px">
+            <button class="btn" id="cit-add">生成并保存</button>
+          </div>
+          <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
+        </div>
+      </div>
+
+      <div class="card citation-panel">
+        <div class="citation-panel-head">
+          <div>
+            <h4>智能推荐与检索</h4>
+            <p class="desc">基于当前题目和大纲批量推荐中英文文献，也支持手动输入检索词。确认后再勾选入库。</p>
+          </div>
+        </div>
+        <div id="cit-lit"></div>
+      </div>
+    </section>`;
+}
+
+function renderLibraryTab(list, citedNums) {
+  return `
+    <section class="citation-pane">
+      <div class="citation-section-head">
+        <div>
+          <h3>我的文献库</h3>
+          <p class="desc">这里专门做整理和查找，不再混入检索与证据编辑。</p>
+        </div>
+        <div class="citation-head-actions">
+          <span class="chip ref-no mono" id="cit-library-count">${list.length} 条</span>
+          <button class="btn btn-ghost btn-sm" id="cit-copy-all" ${list.length ? '' : 'disabled'}>复制全部</button>
+        </div>
+      </div>
+
+      <div class="card citation-panel citation-library-panel">
+        <div id="cit-cite-stats">${citedStatsHtml(citedNums, list)}</div>
+        <div class="cit-search-row">
+          <input type="search" id="cit-search" placeholder="搜索标题 / 作者 / 出处…" aria-label="搜索文献库">
+          <button class="btn btn-ghost btn-sm" id="cit-search-clear" title="清空搜索" ${list.length ? '' : 'disabled'}>✕</button>
+          <span class="cit-search-count" id="cit-search-count" aria-live="polite"></span>
+        </div>
+        <div class="citation-list-shell">
+          <div class="item-list citation-list-compact" id="cit-list">${renderList(list, citedNums)}</div>
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderEvidenceTab(list, prj) {
+  return `
+    <section class="citation-pane">
+      <div class="citation-section-head">
+        <div>
+          <h3>证据卡</h3>
+          <p class="desc">只保留两个动作：摘录新证据，以及回看已有证据卡。</p>
+        </div>
+        <div class="citation-head-actions">
+          <span class="chip mono">${evidenceListWithCitations(list).length} 条证据</span>
+        </div>
+      </div>
+
+      <div class="citation-split citation-split-evidence">
+        <div class="card citation-panel">
+          <div class="citation-panel-head">
+            <div>
+              <h4>新建证据卡</h4>
+              <p class="desc">从已入库文献里摘出能直接支撑章节论证的定义、方法、数据或关键发现。</p>
+            </div>
+          </div>
+          <label class="field-label">关联文献</label>
+          <select id="evi-citation">
+            <option value="">请选择已入库文献</option>
+            ${list.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(`[${item.litNo}] ${(item.title || '').slice(0, 40)}`)}</option>`).join('')}
+          </select>
+          <div class="form-row">
+            <div>
+              <label class="field-label">证据类型</label>
+              <select id="evi-type">
+                <option value="finding">核心发现</option>
+                <option value="definition">概念定义</option>
+                <option value="method">研究方法</option>
+                <option value="data">数据结果</option>
+                <option value="quote">原文摘录</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">关联章节</label>
+              <select id="evi-section">
+                <option value="">暂不关联</option>
+                ${(prj.outline || []).map(item => `<option value="${escapeHtml(item.sectionId || item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <label class="field-label">证据内容</label>
+          <textarea id="evi-content" placeholder="例如：该研究指出空间注意力模块能显著改善小目标分割边界。"></textarea>
+          <div class="form-row">
+            <div>
+              <label class="field-label">来源定位</label>
+              <input type="text" id="evi-location" placeholder="例如：结果分析 / 表 3 / 第 4 节">
+            </div>
+            <div>
+              <label class="field-label">页码</label>
+              <input type="text" id="evi-page" placeholder="例如：p.12">
+            </div>
+          </div>
+          <label class="field-label">我的笔记</label>
+          <textarea id="evi-note" placeholder="这条证据更适合支撑哪一章、哪一个论点？"></textarea>
+          <div class="citation-inline-actions" style="margin-top:16px">
+            <button class="btn" id="evi-save">保存证据卡</button>
+          </div>
+        </div>
+
+        <div class="card citation-panel citation-list-panel">
+          <div class="citation-panel-head">
+            <div>
+              <h4>证据卡列表</h4>
+              <p class="desc">优先保留后续写作时会直接拿来支撑论证的内容。</p>
+            </div>
+          </div>
+          <div class="item-list citation-evidence-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>
+        </div>
+      </div>
+    </section>`;
 }
 
 /** 局部刷新文献库列表（不整页重渲染，保留上方表单与结果） */
@@ -239,7 +465,7 @@ function refreshLibrary(el) {
     scount.textContent = kw.trim() ? `匹配 ${matched} / ${list.length} 条` : '';
     scount.className = 'cit-search-count' + (kw.trim() && !matched ? ' warn' : '');
   }
-  const countChip = el.querySelector('.card h2 .chip.ref-no');
+  const countChip = el.querySelector('#cit-library-count');
   if (countChip) countChip.textContent = `${list.length} 条`;
   const allBtn = el.querySelector('#cit-copy-all');
   if (allBtn) allBtn.disabled = !list.length;
@@ -282,164 +508,47 @@ function render(el) {
   const list = sortedList();
   const citedNums = collectCitedNums();
   const prj = getProject();
+  const activeTab = getActiveTab();
 
   el.innerHTML = `
-    <div class="card">
-      <h2><span class="mark"></span>智能推荐与检索</h2>
-      <p class="desc">一键基于「论文题目 + 大纲」批量推荐（中英文文献、AI 检索策略 + 推荐理由）；也可手动输入检索词；点「原文」核对、按「推荐理由」勾选入库</p>
-      <div id="cit-lit"></div>
-    </div>
-
-    <div class="citation-workspace">
-      <div class="citation-column">
-        <div class="card citation-card">
-          <h2><span class="mark"></span>AI 智能解析</h2>
-          <p class="desc">粘贴从知网、Google Scholar 等处复制的杂乱引用信息，先批量解析成结构化条目，再统一入库。</p>
-          <label class="field-label">粘贴引用信息</label>
-          <textarea id="cit-parse" placeholder="例如：&#10;张伟, 李娜. 大语言模型在教育领域的应用研究[J]. 现代教育技术, 2024, 34(3): 45-52."></textarea>
-          <div class="result-actions" style="margin-top:16px">
-            <button class="btn btn-ai-solid" id="cit-parse-btn">解析并保存到文献库</button>
-            <button class="btn btn-ghost" id="cit-parse-demo">填入示例试试</button>
-          </div>
-          <div class="result-box" id="cit-parse-out"><span class="placeholder">解析结果将显示在这里</span></div>
-        </div>
-
-        <div class="card citation-card">
-          <h2><span class="mark"></span>阅读笔记与证据卡</h2>
-          <p class="desc">把文献里的定义、方法、数据或关键发现摘成证据卡，后续写作时更容易按章节取用。</p>
-          <label class="field-label">关联文献</label>
-          <select id="evi-citation">
-            <option value="">请选择已入库文献</option>
-            ${list.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(`[${item.litNo}] ${(item.title || '').slice(0, 40)}`)}</option>`).join('')}
-          </select>
-          <div class="form-row">
-            <div>
-              <label class="field-label">证据类型</label>
-              <select id="evi-type">
-                <option value="finding">核心发现</option>
-                <option value="definition">概念定义</option>
-                <option value="method">研究方法</option>
-                <option value="data">数据结果</option>
-                <option value="quote">原文摘录</option>
-              </select>
-            </div>
-            <div>
-              <label class="field-label">关联章节</label>
-              <select id="evi-section">
-                <option value="">暂不关联</option>
-                ${(prj.outline || []).map(item => `<option value="${escapeHtml(item.sectionId || item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <label class="field-label">证据内容</label>
-          <textarea id="evi-content" placeholder="例如：该研究指出空间注意力模块能显著改善小目标分割边界。"></textarea>
-          <div class="form-row">
-            <div>
-              <label class="field-label">来源定位</label>
-              <input type="text" id="evi-location" placeholder="例如：结果分析 / 表 3 / 第 4 节">
-            </div>
-            <div>
-              <label class="field-label">页码</label>
-              <input type="text" id="evi-page" placeholder="例如：p.12">
-            </div>
-          </div>
-          <label class="field-label">我的笔记</label>
-          <textarea id="evi-note" placeholder="这条证据可用于哪一章？支撑哪个论点？"></textarea>
-          <div style="margin-top:16px">
-            <button class="btn" id="evi-save">保存证据卡</button>
-          </div>
-        </div>
+    <div class="card citation-shell">
+      ${renderTabNav(activeTab)}
+      <div class="citation-shell-body">
+        ${activeTab === 'discover' ? renderDiscoverTab(prj) : ''}
+        ${activeTab === 'library' ? renderLibraryTab(list, citedNums) : ''}
+        ${activeTab === 'evidence' ? renderEvidenceTab(list, prj) : ''}
       </div>
-
-      <div class="citation-column">
-        <div class="card citation-card">
-          <h2><span class="mark"></span>手动录入</h2>
-          <p class="desc">按字段录入，规则引擎实时生成 GB/T 7714 格式。卷、期、页、DOI、URL 会单独存储。</p>
-          <div class="form-row">
-            <div>
-              <label class="field-label">文献类型</label>
-              <select id="cit-type">
-                <option value="J">期刊 [J]</option><option value="D">学位论文 [D]</option>
-                <option value="M">专著 [M]</option><option value="C">会议论文 [C]</option>
-                <option value="R">报告 [R]</option><option value="S">标准 [S]</option>
-                <option value="P">专利 [P]</option><option value="N">报纸 [N]</option>
-                <option value="EB/OL">电子资源 [EB/OL]</option>
-              </select>
-            </div>
-            <div>
-              <label class="field-label">年份</label>
-              <input type="number" id="cit-year" placeholder="2024">
-            </div>
-          </div>
-          <label class="field-label">作者（逗号分隔，超过 3 人自动"等"）</label>
-          <input type="text" id="cit-author" placeholder="张伟, 李娜">
-          <label class="field-label">题名</label>
-          <input type="text" id="cit-title" placeholder="文章或书名">
-          <label class="field-label">出处（期刊名 / 学校 / 出版社）</label>
-          <input type="text" id="cit-source" placeholder="现代教育技术">
-          <div class="form-row">
-            <div>
-              <label class="field-label">卷 / 期 / 页码</label>
-              <div class="form-row">
-                <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
-                <div><input type="text" id="cit-issue" placeholder="期 3"></div>
-              </div>
-              <input type="text" id="cit-pages" placeholder="页码 45-52" style="margin-top:8px">
-            </div>
-            <div>
-              <label class="field-label">DOI / URL</label>
-              <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
-              <input type="text" id="cit-url" placeholder="https://..." style="margin-top:8px">
-            </div>
-          </div>
-          <div style="margin-top:16px">
-            <button class="btn" id="cit-add">生成并保存</button>
-          </div>
-          <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
-        </div>
-
-        <div class="card citation-card citation-list-card">
-          <h2><span class="mark"></span>证据卡列表</h2>
-          <p class="desc">优先记录能直接支撑章节论证的内容，避免写作时回头翻全文。</p>
-          <div class="item-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2><span class="mark"></span>我的文献库　<span class="chip ref-no mono">${list.length} 条</span></h2>
-      <p class="desc">文献保存在浏览器本地；在「写作工作台」中可直接「插入引用」（GB/T 7714 格式）</p>
-      <div id="cit-cite-stats">${citedStatsHtml(citedNums, list)}</div>
-      <div class="result-actions" style="margin:0 0 10px">
-        <button class="btn btn-ghost btn-sm" id="cit-copy-all" ${list.length ? '' : 'disabled'}>复制全部（编号）</button>
-      </div>
-      <div class="cit-search-row">
-        <input type="search" id="cit-search" placeholder="搜索标题 / 作者 / 出处…" aria-label="搜索文献库">
-        <button class="btn btn-ghost btn-sm" id="cit-search-clear" title="清空搜索" ${list.length ? '' : 'disabled'}>✕</button>
-        <span class="cit-search-count" id="cit-search-count" aria-live="polite"></span>
-      </div>
-      <div class="item-list" id="cit-list">${renderList(list, citedNums)}</div>
     </div>`;
 
-  // 在线查找文献（真实数据库 → 人工勾选 → 入库，链路⑦；支持批量推荐）
-  renderLitSearch(el.querySelector('#cit-lit'), {
-    batchFrom: { title: prj.title, chapters: prj.outline.map(c => c.chapter) },
-    onDone: () => refreshLibrary(el), // 只刷新文献库，保留检索结果与「已入库」引导
-  });
+  el.querySelectorAll('[data-citation-tab]').forEach(btn => btn.addEventListener('click', () => {
+    set(CITATION_TAB_KEY, btn.dataset.citationTab);
+    render(el);
+  }));
+
+  const litRoot = el.querySelector('#cit-lit');
+  if (litRoot) {
+    renderLitSearch(litRoot, {
+      batchFrom: { title: prj.title, chapters: prj.outline.map(c => c.chapter) },
+      onDone: () => refreshLibrary(el),
+    });
+  }
 
   // 文献库实时搜索：输入即过滤，搜索词在局部刷新中保留（不整页重渲染）
   const searchEl = el.querySelector('#cit-search');
-  searchEl.addEventListener('input', () => refreshLibrary(el));
-  el.querySelector('#cit-search-clear').addEventListener('click', () => {
-    searchEl.value = '';
-    refreshLibrary(el);
-    searchEl.focus();
-  });
+  if (searchEl) {
+    searchEl.addEventListener('input', () => refreshLibrary(el));
+    el.querySelector('#cit-search-clear').addEventListener('click', () => {
+      searchEl.value = '';
+      refreshLibrary(el);
+      searchEl.focus();
+    });
+  }
 
   // 手动录入：规则引擎实时生成格式（desc 承诺的「实时」，输入即预览）
   const previewEl = el.querySelector('#cit-preview');
   let previewTimer = null;
   function updatePreview() {
+    if (!previewEl) return;
     const entry = {
       type: el.querySelector('#cit-type').value,
       year: el.querySelector('#cit-year').value.trim(),
@@ -462,14 +571,15 @@ function render(el) {
     previewEl.classList.add('filled');
   }
   ['#cit-type', '#cit-year', '#cit-author', '#cit-title', '#cit-source', '#cit-volume', '#cit-issue', '#cit-pages', '#cit-doi', '#cit-url'].forEach(s => {
-    el.querySelector(s).addEventListener('input', () => {
+    const node = el.querySelector(s);
+    if (node) node.addEventListener('input', () => {
       clearTimeout(previewTimer);
       previewTimer = setTimeout(updatePreview, 300);
     });
   });
 
   // 保存入库（预览已在输入时实时生成，保存后清空字段、预览保留便于连续录入）
-  el.querySelector('#cit-add').addEventListener('click', () => {
+  el.querySelector('#cit-add')?.addEventListener('click', () => {
     const entry = {
       type: el.querySelector('#cit-type').value,
       year: el.querySelector('#cit-year').value.trim(),
@@ -501,7 +611,7 @@ function render(el) {
   });
 
   // 填入示例：一键体验 AI 解析（无需手打）
-  el.querySelector('#cit-parse-demo').addEventListener('click', () => {
+  el.querySelector('#cit-parse-demo')?.addEventListener('click', () => {
     const inp = el.querySelector('#cit-parse');
     inp.value = '张伟, 李娜. 大语言模型在教育领域的应用研究[J]. 现代教育技术, 2024, 34(3): 45-52.\n刘洋. 基于深度学习的医学图像分割方法研究[D]. 北京: 清华大学, 2023.';
     inp.focus();
@@ -509,7 +619,7 @@ function render(el) {
   });
 
   // AI 解析：AI 结构化 → 规则引擎格式化 → 批量入库
-  el.querySelector('#cit-parse-btn').addEventListener('click', async () => {
+  el.querySelector('#cit-parse-btn')?.addEventListener('click', async () => {
     const raw = el.querySelector('#cit-parse').value.trim();
     if (!raw) { toast('请先粘贴引用信息', 'err'); return; }
     const btn = el.querySelector('#cit-parse-btn');
@@ -576,11 +686,11 @@ function render(el) {
   });
 
   // 复制全部（按稳定编号排序）
-  el.querySelector('#cit-copy-all').addEventListener('click', () => {
+  el.querySelector('#cit-copy-all')?.addEventListener('click', () => {
     copyText(sortedList().map(c => `[${c.litNo}] ${c.formatted || c.title}`).join('\n'));
   });
 
-  el.querySelector('#evi-save').addEventListener('click', () => {
+  el.querySelector('#evi-save')?.addEventListener('click', () => {
     const citationId = el.querySelector('#evi-citation').value;
     const content = el.querySelector('#evi-content').value.trim();
     if (!citationId) {
