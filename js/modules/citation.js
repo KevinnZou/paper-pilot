@@ -59,6 +59,71 @@ function citationContext(list = sortedList()) {
   return { usage, order, citedIds, byId };
 }
 
+function docRegions(doc) {
+  const regions = [];
+  let current = null;
+  doc.forEach((node, offset) => {
+    const from = offset + 1;
+    const to = offset + node.nodeSize - 1;
+    if (node.type.name === 'heading') {
+      if (current) current.to = from - 1;
+      const label = node.attrs.role === 'section'
+        ? node.textContent.trim()
+        : ({
+            title: '论文标题',
+            abstract: '摘要',
+            keywords: '关键词',
+            references: '参考文献',
+            ack: '致谢',
+          }[node.attrs.role] || node.textContent.trim());
+      current = { label, from, to };
+      regions.push(current);
+      return;
+    }
+    if (!current) {
+      current = { label: '未命名部分', from, to };
+      regions.push(current);
+      return;
+    }
+    current.to = to;
+  });
+  return regions;
+}
+
+function citationUsageMessage(list, item) {
+  let refs = 0;
+  const locations = [];
+  const project = getProject();
+  if (project.documentV2 && item.id) {
+    const doc = docFromJSON({ ...project, citations: list });
+    const usage = collectCitationUsage(doc).get(item.id);
+    refs = usage?.count || 0;
+    if (usage?.positions?.length) {
+      const regions = docRegions(doc);
+      const seen = new Set();
+      usage.positions.forEach(pos => {
+        const region = regions.find(entry => pos >= entry.from && pos <= entry.to);
+        const label = region?.label || '未命名部分';
+        if (!seen.has(label)) {
+          seen.add(label);
+          locations.push(label);
+        }
+      });
+    }
+  } else {
+    const pattern = new RegExp(`\\[${item.litNo}\\]`, 'g');
+    Object.entries(get('drafts', {})).forEach(([chapter, draft]) => {
+      const text = draft?.content || '';
+      const matches = text.match(pattern);
+      if (matches?.length) {
+        refs += matches.length;
+        locations.push(chapter);
+      }
+    });
+  }
+  return { refs, locations };
+}
+
 function citedStatsHtml(citedNums, list) {
   if (!list.length) return '';
   const project = getProject();
@@ -161,22 +226,13 @@ function bindListActions(el) {
       const idx = list.findIndex(x => x.id === b.dataset.citDel);
       const item = idx >= 0 ? list[idx] : null;
       if (!item) return;
-      // 防误操作 + 衔接检查：优先看结构化文档里的 citation id 使用情况
-      let refs = 0;
-      const project = getProject();
-      if (project.documentV2 && item.id) {
-        const usage = collectCitationUsage(docFromJSON({ ...project, citations: list }));
-        refs = usage.get(item.id)?.count || 0;
-      } else {
-        const pattern = new RegExp(`\\[${item.litNo}\\]`, 'g');
-        Object.values(get('drafts', {})).forEach(d => {
-          const m = (d?.content || '').match(pattern);
-          if (m) refs += m.length;
-        });
-      }
+      const { refs, locations } = citationUsageMessage(list, item);
       const currentNo = citationContext(list).order.get(item.id) || item.litNo || '?';
+      const locationLine = locations.length
+        ? `\n引用位置：${locations.slice(0, 4).join('、')}${locations.length > 4 ? ` 等 ${locations.length} 处` : ''}`
+        : '';
       const msg = refs
-        ? `「${(item.title || '').slice(0, 24)}」在正文中被引用 ${refs} 次，删除后这些 [${currentNo}] 引用将失效且无法恢复。确定删除吗？`
+        ? `「${(item.title || '').slice(0, 24)}」在正文中被引用 ${refs} 次，删除后这些 [${currentNo}] 引用将失效且无法恢复。${locationLine}\n确定删除吗？`
         : `确定删除「${(item.title || '').slice(0, 24)}」吗？删除后无法恢复。`;
       if (!confirm(msg)) return;
       list.splice(idx, 1);

@@ -255,6 +255,14 @@ export default {
     const countEl = el.querySelector('#wb-count');
     let saveTimer = null;
 
+    function setSaveStatus(state, detail = '') {
+      savedEl.dataset.state = state;
+      if (state === 'saving') savedEl.textContent = '保存中…';
+      else if (state === 'saved') savedEl.textContent = detail ? `已保存 ${detail}` : '已保存';
+      else if (state === 'error') savedEl.textContent = detail || '保存失败';
+      else savedEl.textContent = detail || '已载入';
+    }
+
     function getCitationNumber(id) {
       const map = buildCitationNumberMap(viewState.view.state.doc);
       return map.get(id) || '?';
@@ -321,13 +329,21 @@ export default {
     }
 
     function persistNow() {
-      const current = getProject();
-      const next = serializeProjectDoc(viewState.view.state.doc, viewState.currentChapter, current);
-      saveProject(next);
-      countEl.textContent = `全文字数 ${wordCount(fullTextFromDoc(viewState.view.state.doc, citationMap(citations)))}`;
-      savedEl.textContent = `已保存 ${new Date().toLocaleTimeString('zh-CN')}`;
-      renderOutline();
-      renderCitationPicker();
+      try {
+        const current = getProject();
+        const next = serializeProjectDoc(viewState.view.state.doc, viewState.currentChapter, current);
+        saveProject(next);
+        countEl.textContent = `全文字数 ${wordCount(fullTextFromDoc(viewState.view.state.doc, citationMap(citations)))}`;
+        setSaveStatus('saved', new Date().toLocaleTimeString('zh-CN'));
+        renderOutline();
+        renderCitationPicker();
+        return true;
+      } catch (error) {
+        console.error('save writing project failed', error);
+        setSaveStatus('error', '保存失败，请重试');
+        toast(error?.message || '保存失败，请检查本地存储空间或浏览器权限', 'err', 3000);
+        return false;
+      }
     }
 
     const editorState = EditorState.create({
@@ -340,8 +356,11 @@ export default {
           'Mod-y': redo,
           'Mod-Shift-z': redo,
           'Mod-s': () => {
-            persistNow();
-            toast('已保存', 'ok', 1200);
+            if (saveTimer) {
+              clearTimeout(saveTimer);
+              saveTimer = null;
+            }
+            if (persistNow()) toast('已保存', 'ok', 1200);
             return true;
           },
         }),
@@ -358,7 +377,7 @@ export default {
         viewState.view.updateState(nextState);
         syncCurrentChapter();
         if (saveTimer) clearTimeout(saveTimer);
-        savedEl.textContent = '保存中…';
+        setSaveStatus('saving');
         saveTimer = setTimeout(persistNow, 500);
       },
     });
@@ -367,6 +386,7 @@ export default {
     renderOutline();
     renderCitationPicker();
     renderSuggestionBox(suggestionBox, viewState);
+    setSaveStatus('idle', '已载入');
     persistNow();
 
     async function runSuggestion(action, sourceText, replaceFrom, replaceTo, sourceLabel) {
