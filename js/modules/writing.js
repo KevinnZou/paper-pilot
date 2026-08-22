@@ -6,6 +6,7 @@ import { Fragment } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText } from '../ui.js';
 import { chat } from '../api.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
+import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
 import {
   paperSchema,
   docFromJSON,
@@ -17,7 +18,6 @@ import {
   insertFormulaNode,
   insertFigureNode,
   insertTableNode,
-  replaceSelectionWithText,
   collectCitationUsage,
   fullTextFromDoc,
 } from '../document-model.js';
@@ -446,6 +446,15 @@ function normalizeInlineNodeContent(node, schema) {
   return node.type.create(node.attrs, children.length ? children : null);
 }
 
+function timeLabel(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function currentTimestampLabel() {
+  return new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
 export default {
   id: 'writing',
   icon: '✍️',
@@ -491,12 +500,14 @@ export default {
                 <span class="cur-note" id="wb-cur-note">自动保存</span>
               </div>
               <div class="wb-header-actions">
+                <button class="btn btn-ghost btn-sm" id="wb-topic">研究设计</button>
                 <button class="btn btn-ghost btn-sm" id="wb-done">标记完成</button>
                 <button class="btn btn-ghost btn-sm" id="wb-copy">复制全文</button>
                 <details class="wb-toolbar-more">
                   <summary>工具</summary>
                   <div class="wb-toolbar-more-panel">
                     <button class="btn btn-ai btn-sm" data-ai="logic">逻辑检查</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-save-version">保存整稿版本</button>
                     <button class="btn btn-ghost btn-sm" id="wb-format">格式整理</button>
                     <button class="btn btn-ghost btn-sm" id="wb-insert-formula">插入公式</button>
                     <button class="btn btn-ghost btn-sm" id="wb-insert-note">插入注释</button>
@@ -529,6 +540,7 @@ export default {
               <button class="wb-side-tab active" type="button" data-side-tab="assistant">写作助手</button>
               <button class="wb-side-tab" type="button" data-side-tab="citation">引用</button>
               <button class="wb-side-tab" type="button" data-side-tab="evidence">证据</button>
+              <button class="wb-side-tab" type="button" data-side-tab="versions">版本</button>
             </div>
             <div class="wb-side-pane active" data-side-pane="assistant">
               <div id="wb-suggestion"></div>
@@ -546,6 +558,13 @@ export default {
                 <p class="desc">优先看和当前章节直接相关的证据卡。</p>
               </div>
               <div id="wb-evidence"></div>
+            </div>
+            <div class="wb-side-pane" data-side-pane="versions">
+              <div class="wb-side-pane-head">
+                <h3><span class="mark"></span>版本与回退</h3>
+                <p class="desc">重要节点先留一个整稿版本，需要时可以回退。</p>
+              </div>
+              <div id="wb-versions"></div>
             </div>
           </aside>
         </div>
@@ -579,6 +598,7 @@ export default {
     const chapterCard = el.querySelector('#wb-chapter-card');
     const sideTabs = [...el.querySelectorAll('[data-side-tab]')];
     const sidePanes = [...el.querySelectorAll('[data-side-pane]')];
+    const versionsBox = el.querySelector('#wb-versions');
     const assetModal = el.querySelector('#wb-asset-modal');
     const assetForm = el.querySelector('#wb-asset-form');
     const assetTitle = el.querySelector('#wb-asset-title');
@@ -902,6 +922,135 @@ export default {
       evidenceBox.innerHTML = relatedEvidenceHtml(section, citations);
     }
 
+    function createDocSnapshot(label = '手动保存') {
+      const text = fullTextFromDoc(viewState.view.state.doc, citationMap(citations));
+      const version = snapshotDoc(text, label, {
+        documentV2: viewState.view.state.doc.toJSON(),
+        currentChapter: viewState.currentChapter,
+      });
+      if (version) renderVersionsPanel();
+      return version;
+    }
+
+    function createChapterSnapshot(section, label = '阶段保存') {
+      if (!section) return null;
+      const text = viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n').trim();
+      if (!text) return null;
+      const version = snapshotChapter(section.chapter, text, 'manual', label, {
+        chapter: section.chapter,
+      });
+      if (version) renderVersionsPanel();
+      return version;
+    }
+
+    function restoreDocVersion(id) {
+      const version = getDocVersions().find(item => item.id === id);
+      if (!version) {
+        toast('这个版本记录已经不存在了', 'err');
+        return;
+      }
+      if (!window.confirm(`确认回退到 ${timeLabel(version.at)} 保存的整稿版本吗？当前未另存的修改会被覆盖。`)) return;
+      if (version.documentV2?.type === 'doc') {
+        const nextDoc = paperSchema.nodeFromJSON(version.documentV2);
+        let tr = viewState.view.state.tr.replaceWith(0, viewState.view.state.doc.content.size, nextDoc.content);
+        const focusName = version.currentChapter || topLevelSections(nextDoc)[0]?.chapter || '';
+        const focusSection = topLevelSections(tr.doc).find(item => item.chapter === focusName) || topLevelSections(tr.doc)[0];
+        if (focusSection) tr = tr.setSelection(TextSelection.create(tr.doc, focusSection.headingFrom));
+        viewState.view.dispatch(tr.scrollIntoView());
+      } else {
+        toast('该整稿版本来自旧格式记录，暂不支持结构化恢复。', 'err', 2600);
+        return;
+      }
+      toast('已回退到所选整稿版本', 'ok');
+    }
+
+    function restoreChapterVersion(id) {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先进入要回退的章节', 'err');
+        return;
+      }
+      const version = getChapterVersions(section.chapter).find(item => item.id === id);
+      if (!version) {
+        toast('当前章节没有这个版本记录', 'err');
+        return;
+      }
+      if (!window.confirm(`确认回退章节「${section.chapter}」到 ${timeLabel(version.at)} 的版本吗？`)) return;
+      viewState.view.dispatch(viewState.view.state.tr.insertText(version.text || '', section.bodyFrom, section.bodyTo).scrollIntoView());
+      toast(`已回退章节「${section.chapter}」`, 'ok');
+    }
+
+    function renderVersionsPanel() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      const docVersions = getDocVersions().slice(0, 5);
+      const chapterVersions = section ? getChapterVersions(section.chapter).slice(0, 6) : [];
+      const sections = topLevelSections(viewState.view.state.doc);
+      const nextTodo = sections.find(item => (getProject().chapterProgress?.[item.chapter] || '未开始') !== '已完成' && item.chapter !== viewState.currentChapter);
+      versionsBox.innerHTML = `
+        <div class="wb-version-actions">
+          <button class="btn btn-sm" type="button" id="wb-version-save">保存整稿版本</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="wb-go-topic">回研究设计</button>
+        </div>
+        <div class="wb-version-callout">
+          <div>
+            <b>当前结构会自动同步到项目大纲</b>
+            <div class="desc">章节标题、顺序和新增删除都会直接写回项目，不用另做一次“保存大纲”。</div>
+          </div>
+          ${nextTodo ? `<button class="btn btn-ghost btn-sm" type="button" id="wb-next-todo">去下一个未完成章节</button>` : ''}
+        </div>
+        <div class="wb-version-group">
+          <div class="wb-version-group-head">
+            <h4>整稿版本</h4>
+            <span>${docVersions.length} 条</span>
+          </div>
+          ${docVersions.length ? docVersions.map(item => `
+            <div class="wb-version-item">
+              <div class="wb-version-main">
+                <div class="wb-version-title">${escapeHtml(item.label || '整稿版本')}</div>
+                <div class="wb-version-meta">${timeLabel(item.at)}</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" data-doc-restore="${item.id}">回退</button>
+            </div>`).join('') : '<p class="desc">还没有整稿版本，建议在每轮大改后手动保存一次。</p>'}
+        </div>
+        <div class="wb-version-group">
+          <div class="wb-version-group-head">
+            <h4>${escapeHtml(section?.chapter || '当前章节')}的历史</h4>
+            <span>${chapterVersions.length} 条</span>
+          </div>
+          ${section ? `
+            <div class="wb-version-actions">
+              <button class="btn btn-ghost btn-sm" type="button" id="wb-version-save-chapter">保存本章版本</button>
+            </div>` : ''}
+          ${chapterVersions.length ? chapterVersions.map(item => `
+            <div class="wb-version-item">
+              <div class="wb-version-main">
+                <div class="wb-version-title">${escapeHtml(item.label || '章节版本')}</div>
+                <div class="wb-version-meta">${timeLabel(item.at)}</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" data-chapter-restore="${item.id}">回退</button>
+            </div>`).join('') : '<p class="desc">当前章节还没有版本记录，完成一轮修改后可以手动留一个。</p>'}
+        </div>`;
+      versionsBox.querySelector('#wb-version-save')?.addEventListener('click', () => {
+        const v = createDocSnapshot(`整稿保存 · ${currentTimestampLabel()}`);
+        toast(v ? '已保存整稿版本' : '内容未变化，未重复保存', 'ok', 1800);
+      });
+      versionsBox.querySelector('#wb-version-save-chapter')?.addEventListener('click', () => {
+        const current = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+        const v = createChapterSnapshot(current, `章节保存 · ${currentTimestampLabel()}`);
+        toast(v ? '已保存本章版本' : '本章暂无新变化', 'ok', 1800);
+      });
+      versionsBox.querySelector('#wb-go-topic')?.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' }));
+      });
+      versionsBox.querySelector('#wb-next-todo')?.addEventListener('click', () => {
+        if (nextTodo) jumpToSection(nextTodo.sectionId);
+      });
+      versionsBox.querySelectorAll('[data-doc-restore]').forEach(btn =>
+        btn.addEventListener('click', () => restoreDocVersion(btn.dataset.docRestore)));
+      versionsBox.querySelectorAll('[data-chapter-restore]').forEach(btn =>
+        btn.addEventListener('click', () => restoreChapterVersion(btn.dataset.chapterRestore)));
+    }
+
     function switchRightTab(tab) {
       panelState.activeRightTab = tab;
       sideTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.sideTab === tab));
@@ -1127,6 +1276,7 @@ export default {
       if (note) note.textContent = `${wordCount(viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n'))} 字 · 自动保存`;
       renderEvidencePanel();
       renderChapterCard();
+      renderVersionsPanel();
     }
 
     function persistNow() {
@@ -1140,6 +1290,7 @@ export default {
         renderCitationPicker();
         renderEvidencePanel();
         renderChapterCard();
+        renderVersionsPanel();
         return true;
       } catch (error) {
         console.error('save writing project failed', error);
@@ -1188,7 +1339,10 @@ export default {
               clearTimeout(saveTimer);
               saveTimer = null;
             }
-            if (persistNow()) toast('已保存', 'ok', 1200);
+            if (persistNow()) {
+              createDocSnapshot(`整稿保存 · ${currentTimestampLabel()}`);
+              toast('已保存', 'ok', 1200);
+            }
             return true;
           },
         }),
@@ -1219,6 +1373,7 @@ export default {
     renderCitationPicker();
     renderEvidencePanel();
     renderChapterCard();
+    renderVersionsPanel();
     renderSuggestionBox(suggestionBox, viewState);
     syncOutlineCollapse();
     setSaveStatus('idle', '已载入');
@@ -1226,6 +1381,14 @@ export default {
     switchRightTab(panelState.activeRightTab);
 
     sideTabs.forEach(btn => btn.addEventListener('click', () => switchRightTab(btn.dataset.sideTab)));
+    el.querySelector('#wb-topic')?.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' }));
+    });
+    el.querySelector('#wb-save-version')?.addEventListener('click', () => {
+      const v = createDocSnapshot(`整稿保存 · ${currentTimestampLabel()}`);
+      toast(v ? '已保存整稿版本' : '内容未变化，未重复保存', 'ok', 1800);
+      switchRightTab('versions');
+    });
     el.querySelector('#wb-format')?.addEventListener('click', formatCurrentSection);
     el.querySelector('#wb-insert-formula')?.addEventListener('click', () => openAssetModal('formula'));
     el.querySelector('#wb-insert-note')?.addEventListener('click', () => openAssetModal('footnote'));
@@ -1393,8 +1556,12 @@ export default {
         return;
       }
       setChapterProgress(viewState.currentChapter, '已完成');
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      createChapterSnapshot(section, `章节完成 · ${currentTimestampLabel()}`);
+      createDocSnapshot(`阶段完成 · ${viewState.currentChapter}`);
       toast(`「${viewState.currentChapter}」已标记完成`, 'ok');
       renderOutline();
+      renderVersionsPanel();
     });
 
     el.querySelector('#wb-undo').addEventListener('click', () => {

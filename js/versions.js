@@ -50,13 +50,13 @@ export function getVersion(name, id) {
 }
 
 /** 章节快照：name 与 drafts/outline 同键；text 为该章正文（不含标题行） */
-export function snapshotChapter(name, text, src = 'auto', label = '') {
+export function snapshotChapter(name, text, src = 'auto', label = '', extra = {}) {
   if (!name) return null;
   const s = store();
   const list = s.chapters[name] || [];
   // 与最新版本相同则跳过（防碎片）
   if (list[0] && list[0].text === text) return null;
-  const v = { id: makeId(), at: Date.now(), src, label, text };
+  const v = { id: makeId(), at: Date.now(), src, label, text, ...extra };
   s.chapters[name] = [v, ...list].slice(0, CHAPTER_CAP); // 超限截断即淘汰最旧（列表最新在前）
   // 截断只删 auto 时可能误删 manual：补一刀——超限且尾部为 manual 时删最旧 auto
   const arr = s.chapters[name];
@@ -69,11 +69,11 @@ export function snapshotChapter(name, text, src = 'auto', label = '') {
 }
 
 /** 整文档里程碑（标记章节完成 / Ctrl+S） */
-export function snapshotDoc(text, label = '') {
+export function snapshotDoc(text, label = '', extra = {}) {
   if (!text) return null;
   const s = store();
   if (s.doc[0] && s.doc[0].text === text) return null;
-  const v = { id: makeId(), at: Date.now(), src: 'milestone', label, text };
+  const v = { id: makeId(), at: Date.now(), src: 'milestone', label, text, ...extra };
   s.doc = [v, ...s.doc].slice(0, DOC_CAP);
   // 与章节同规则：截断时优先保 milestone 之外无优先级差异，doc 全为 milestone，直接删最旧即可
   persist(s);
