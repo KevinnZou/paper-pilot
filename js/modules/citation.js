@@ -4,6 +4,8 @@ import { get, set } from '../storage.js';
 import { chat } from '../api.js';
 import { renderLitSearch } from '../litsearch.js';
 import { getProject } from '../project.js';
+import { ensureCitationIds, formatCitationEntry } from '../citation-utils.js';
+import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../document-model.js';
 
 // ---------- GB/T 7714 格式化：规则引擎抽至 gbt7714.js（供文献查找等模块复用） ----------
 // 注意：`export ... from` 不建立本地绑定，必须先 import 再 re-export（历史 bug 修复）
@@ -24,6 +26,15 @@ const abortSignal = () => window.__tmAbort.signal;
 
 /** 汇总所有草稿正文中被引用的编号集合（GB/T 7714 自查：参考文献应为正文实际引用项） */
 function collectCitedNums() {
+  const project = getProject();
+  if (project.documentV2) {
+    const citations = get('citations', []);
+    const { list, changed } = ensureCitationIds(citations);
+    if (changed) set('citations', list);
+    const usage = collectCitationUsage(docFromJSON({ ...project, citations: list }));
+    const order = buildCitationNumberMap(docFromJSON({ ...project, citations: list }));
+    return new Set([...usage.keys()].map(id => order.get(id)).filter(Boolean));
+  }
   const nums = new Set();
   Object.values(get('drafts', {})).forEach(d => {
     const text = (d && typeof d === 'object' ? d.content : d) || '';
@@ -75,12 +86,14 @@ function renderList(list, citedNums, keyword = '') {
 /** 为缺编号的旧条目补上稳定引用编号（正文引用 [n] 依赖此编号）
  *  按 max+1 递增分配——用数组下标 i+1 会与已有编号冲突（出现两个同编号条目） */
 function ensureNumbers(list) {
+  const withIds = ensureCitationIds(list);
+  list = withIds.list;
   let changed = false;
   let next = list.reduce((m, c) => Math.max(m, c.litNo || 0), 0) + 1;
   list.forEach(c => {
     if (c.litNo == null) { c.litNo = next++; changed = true; }
   });
-  if (changed) set('citations', list);
+  if (changed || withIds.changed) set('citations', list);
 }
 
 function nextLitNo(list) {
@@ -123,13 +136,19 @@ function bindListActions(el) {
       const idx = list.findIndex(x => x.litNo === Number(b.dataset.citDel));
       const item = idx >= 0 ? list[idx] : null;
       if (!item) return;
-      // 防误操作 + 衔接检查：正文中引用过该编号则明确警告
-      const pattern = new RegExp(`\\[${item.litNo}\\]`, 'g');
+      // 防误操作 + 衔接检查：优先看结构化文档里的 citation id 使用情况
       let refs = 0;
-      Object.values(get('drafts', {})).forEach(d => {
-        const m = (d?.content || '').match(pattern);
-        if (m) refs += m.length;
-      });
+      const project = getProject();
+      if (project.documentV2 && item.id) {
+        const usage = collectCitationUsage(docFromJSON({ ...project, citations: list }));
+        refs = usage.get(item.id)?.count || 0;
+      } else {
+        const pattern = new RegExp(`\\[${item.litNo}\\]`, 'g');
+        Object.values(get('drafts', {})).forEach(d => {
+          const m = (d?.content || '').match(pattern);
+          if (m) refs += m.length;
+        });
+      }
       const msg = refs
         ? `「${(item.title || '').slice(0, 24)}」在正文中被引用 ${refs} 次，删除后这些 [${item.litNo}] 引用将失效且无法恢复。确定删除吗？`
         : `确定删除「${(item.title || '').slice(0, 24)}」吗？删除后无法恢复。`;
@@ -268,9 +287,10 @@ function render(el) {
       vol: el.querySelector('#cit-vol').value.trim(),
     };
     if (!entry.title) { toast('请至少填写题名', 'err'); return; }
-    entry.formatted = formatCitation(entry);
+    Object.assign(entry, formatCitationEntry({ ...entry, id: entry.id || crypto.randomUUID?.() }));
     updatePreview(); // 同步刷新预览（防抖未触发时立即点保存也能看到最新格式）
     const list = get('citations', []);
+    if (!entry.id) entry.id = crypto.randomUUID?.() || `cit-${Date.now()}`;
     entry.litNo = nextLitNo(list);
     list.unshift(entry);
     set('citations', list);
@@ -338,6 +358,7 @@ function render(el) {
         return;
       }
       objs.forEach(e => {
+        e.id = e.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         e.formatted = formatCitation({
           type: e.type, year: e.year, author: e.author,
           title: e.title, source: e.source, vol: e.vol,

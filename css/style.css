@@ -436,6 +436,40 @@ kbd {
   transition: border-color .15s;
 }
 .paper-sheet:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.pm-editor { min-height: 480px; padding: 0; }
+.pm-editor .ProseMirror {
+  min-height: 480px;
+  padding: 18px 26px 26px;
+  outline: none;
+  white-space: pre-wrap;
+}
+.pm-editor .ProseMirror h1,
+.pm-editor .ProseMirror h2,
+.pm-editor .ProseMirror h3 {
+  font-family: var(--font-serif);
+  line-height: 1.5;
+  margin: 18px 0 10px;
+}
+.pm-editor .ProseMirror h1 { font-size: 24px; margin-top: 0; }
+.pm-editor .ProseMirror h2 { font-size: 18px; }
+.pm-editor .ProseMirror p { margin: 0 0 12px; }
+.pm-editor .ProseMirror blockquote {
+  margin: 12px 0; padding: 6px 14px;
+  border-left: 3px solid var(--amber); background: var(--amber-soft);
+}
+.pm-editor .ProseMirror ul,
+.pm-editor .ProseMirror ol { margin: 10px 0 14px 24px; padding: 0; }
+.pm-editor .ProseMirror li { margin: 4px 0; }
+.pm-citation {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; padding: 0 4px; margin: 0 1px;
+  border-radius: 4px; background: var(--brand-soft); color: var(--brand-strong);
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
+}
+.pm-citation.ProseMirror-selectednode,
+.ProseMirror-selectednode.pm-citation {
+  outline: 2px solid var(--cinnabar);
+}
 .wb-meta { display: flex; gap: 14px; align-items: center; margin-top: 10px; font-size: 12px; color: var(--ink-soft); flex-wrap: wrap; font-family: var(--font-mono); }
 .wb-meta .hint-plain { margin-left: auto; font-family: var(--font-sans); }
 

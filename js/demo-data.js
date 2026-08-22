@@ -2,6 +2,7 @@
 // 注意：载入会覆盖当前本地数据（调用方需先确认）
 import { saveProject, getProject, hasActiveProject, createProject } from './project.js';
 import { get, set } from './storage.js';
+import { ensureCitationIds } from './citation-utils.js';
 
 const DAY = 86400000;
 
@@ -49,11 +50,12 @@ export function loadDemoData() {
   chapters.slice(2).forEach(c => { drafts[c] = { content: '', updatedAt: Date.now() }; });
   set('drafts', drafts);
 
-  set('citations', [
+  const demoCitations = ensureCitationIds([
     { litNo: 1, type: 'J', author: 'Vaswani A, Shazeer N, Parmar N, 等', title: 'Attention is all you need', source: 'Advances in Neural Information Processing Systems', year: '2017', vol: '30', formatted: 'Vaswani A, Shazeer N, Parmar N, 等. Attention is all you need[J]. Advances in Neural Information Processing Systems, 2017, 30.' },
     { litNo: 2, type: 'J', author: 'Snell J, Swersky K, Zemel R', title: 'Prototypical networks for few-shot learning', source: 'Advances in Neural Information Processing Systems', year: '2017', vol: '30', formatted: 'Snell J, Swersky K, Zemel R. Prototypical networks for few-shot learning[J]. Advances in Neural Information Processing Systems, 2017, 30.' },
     { litNo: 3, type: 'J', author: 'Ronneberger O, Fischer P, Brox T', title: 'U-Net: Convolutional networks for biomedical image segmentation', source: 'Medical Image Computing and Computer-Assisted Intervention', year: '2015', vol: '', formatted: 'Ronneberger O, Fischer P, Brox T. U-Net: Convolutional networks for biomedical image segmentation[J]. Medical Image Computing and Computer-Assisted Intervention, 2015.' },
-  ]);
+  ]).list;
+  set('citations', demoCitations);
 
   set('checkins', [
     { date: iso(Date.now()), chapter: '第二章 相关理论基础', note: '完成注意力机制小节，约900字' },

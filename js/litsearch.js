@@ -5,6 +5,7 @@ import { formatCitation } from './gbt7714.js';
 import { toast, escapeHtml, setLoading } from './ui.js';
 import { get, set } from './storage.js';
 import { chat } from './api.js';
+import { ensureCitationIds } from './citation-utils.js';
 
 // 中断恢复：导航离开时取消进行中的检索与 AI 标注（避免结果写进已卸载的页面、浪费 token）
 // tm:navigate 由 document.dispatchEvent 触发且不冒泡，监听必须挂在 document；模块只加载一次，每次导航后换新 controller
@@ -409,6 +410,10 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
         get('citations', []).map(c => itemKey(c)).filter(Boolean)
       );
       const list = get('citations', []);
+      const normalized = ensureCitationIds(list);
+      if (normalized.changed) {
+        list.splice(0, list.length, ...normalized.list);
+      }
       let next = list.reduce((m, c) => Math.max(m, c.litNo || 0), 0);
       const seen = new Set();
       let added = 0;
@@ -417,6 +422,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
         const key = itemKey(r);
         if (seen.has(key) || libKeysNow.has(key)) { skipped++; return; }
         seen.add(key);
+        r.id = r.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         r.formatted = formatCitation(r);
         r.litNo = ++next;
         list.unshift(r);
