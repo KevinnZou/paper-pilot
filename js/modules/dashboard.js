@@ -6,9 +6,9 @@ import { loadDemoData, hasExistingData } from '../demo-data.js';
 import { ICONS } from '../icons.js';
 
 const CARDS = [
-  { id: 'topic', title: '选题与大纲', desc: '选题建议 → 设为题目 → 生成并采用大纲' },
+  { id: 'topic', title: '研究设计', desc: '研究想法 → 研究问题 → 可行性检查 → 论文大纲' },
   { id: 'writing', title: '写作工作台', desc: '一份完整论文文档：目录定位、AI 动作、规范引用' },
-  { id: 'citation', title: '文献中心', desc: '智能推荐中英文文献，核对理由后勾选入库' },
+  { id: 'citation', title: '文献与证据', desc: '智能推荐中英文文献，核对理由后勾选入库' },
   { id: 'planner', title: '计划与进度', desc: '截止日期倒排甘特图、每日打卡、进度监督' },
 ];
 
@@ -40,6 +40,15 @@ export default {
     const streak = calcStreak(checkins);
     const chapters = p.outline || [];
     const doneCount = chapters.filter(c => p.chapterProgress[c.chapter] === '已完成').length;
+    const researchDesign = p.researchDesign || {};
+    const researchReadyCount = [
+      !!(researchDesign.initialIdea || '').trim(),
+      !!(p.title || researchDesign.title || '').trim(),
+      !!(researchDesign.researchQuestions || []).length,
+      !!(researchDesign.methods || []).length,
+      !!(researchDesign.dataSources || []).length,
+      !!(researchDesign.feasibility?.score || researchDesign.feasibility?.risks?.length),
+    ].filter(Boolean).length;
     const overallPct = chapters.length
       ? Math.round(chapters.reduce((s, c) => s + (PROGRESS_WEIGHT[p.chapterProgress[c.chapter]] || 0), 0) / chapters.length * 100)
       : 0;
@@ -52,7 +61,8 @@ export default {
     // 五步写作之旅（onboarding 流程条）
     const steps = [
       { label: '填入 API Key', done: !!(cfg?.apiKey), extra: cfg?.apiKey ? '已配置' : '', nav: 'settings' },
-      { label: '确定论文题目', done: !!p.title, extra: p.title ? shortName(p.title, 8) : '', nav: 'topic' },
+      { label: '明确研究题目', done: !!p.title, extra: p.title ? shortName(p.title, 8) : '', nav: 'topic' },
+      { label: '补齐研究设计', done: researchReadyCount >= 4, extra: `${researchReadyCount}/6`, nav: 'topic' },
       { label: '采用章节大纲', done: chapters.length > 0, extra: chapters.length ? `${chapters.length} 章` : '', nav: 'topic' },
       { label: '设定截止日期', done: !!p.dueDate, extra: p.dueDate ? p.dueDate.slice(5).replace('-', '/') : '', nav: 'planner' },
       { label: '开始按章写作', done: Object.values(drafts).some(d => (d?.content || '').trim()), nav: 'writing' },
@@ -71,7 +81,8 @@ export default {
     // 主行动按钮 = 下一步
     let heroAction = '';
     if (!cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">第一步：填入 API Key</button>';
-    else if (!p.title) heroAction = '<button class="btn btn-lg" data-nav="topic">去确定选题</button>';
+    else if (!p.title) heroAction = '<button class="btn btn-lg" data-nav="topic">去确定研究题目</button>';
+    else if (researchReadyCount < 4) heroAction = '<button class="btn btn-lg" data-nav="topic">补齐研究设计</button>';
     else if (!chapters.length) heroAction = '<button class="btn btn-lg" data-nav="topic">去生成并采用大纲</button>';
     else if (!p.dueDate) heroAction = '<button class="btn btn-lg" data-nav="planner">设定截止日期</button>';
     else heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '开始写作'}</button>`;
@@ -86,6 +97,7 @@ export default {
           <div class="meta">
             ${p.degreeType ? `<span class="chip">${escapeHtml(p.degreeType)}</span>` : ''}
             ${p.dueDate ? `<span class="chip">截止 ${escapeHtml(p.dueDate)}</span>` : ''}
+            ${researchReadyCount ? `<span class="chip">研究设计 ${researchReadyCount}/6</span>` : ''}
             ${chapters.length ? `<span class="chip">${chapters.length} 章大纲</span>` : ''}
             ${doneCount ? `<span class="chip done">已完成 ${doneCount} 章</span>` : ''}
             ${p.materials.length ? `<span class="chip">素材 ${p.materials.length} 条</span>` : ''}
@@ -96,7 +108,7 @@ export default {
           ? `覆盖选题、写作、文献、进度的全流程助手${daysLeft !== null
               ? (daysLeft >= 0 ? `　·　距截止 <b>${daysLeft}</b> 天` : `　·　已过截止 <b>${-daysLeft}</b> 天`)
               : ''}`
-          : '五个步骤，从选题到定稿。先完成下方流程条的第一步。'}</p>
+          : '先把研究设计立住，再进入大纲、写作、文献和进度推进。'}</p>
         <div class="hero-action-row">
           ${heroAction}
           ${!p.title ? '<button class="btn btn-ghost" id="hero-demo">先载入演示数据看效果</button>' : ''}
@@ -114,7 +126,7 @@ export default {
     const journeyHtml = `
       <div class="card journey-card">
         <h2><span class="mark"></span>写作之旅　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
-        <p class="desc">按顺序完成以下步骤，每步完成后自动打勾；点击任意一步可直接前往</p>
+        <p class="desc">按顺序把研究设计、写作和计划串起来；点击任意一步可直接前往</p>
         <div class="journey">
           ${steps.map((s, i) => `
             <button class="journey-step ${s.done ? 'done' : i === currentIdx ? 'current' : ''}" data-nav="${s.nav}" title="${escapeHtml(s.label)}${s.done ? '（已完成）' : i === currentIdx ? '（当前步骤）' : ''}">

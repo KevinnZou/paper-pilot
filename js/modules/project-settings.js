@@ -71,7 +71,7 @@ export default {
 
         <div class="result-actions">
           <button class="btn" id="ps-save">保存项目设置</button>
-          <button class="btn btn-ghost" id="ps-next">去研究与大纲</button>
+          <button class="btn btn-ghost" id="ps-next">去研究设计</button>
         </div>
       </div>`;
 
