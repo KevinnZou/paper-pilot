@@ -290,117 +290,119 @@ function render(el) {
       <div id="cit-lit"></div>
     </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <h2><span class="mark"></span>AI 智能解析</h2>
-        <p class="desc">粘贴从知网、Google Scholar 等处复制的杂乱引用信息（可一次多条），AI 解析为结构化条目并生成标准格式</p>
-        <label class="field-label">粘贴引用信息</label>
-        <textarea id="cit-parse" placeholder="例如：&#10;张伟, 李娜. 大语言模型在教育领域的应用研究[J]. 现代教育技术, 2024, 34(3): 45-52."></textarea>
-        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ai-solid" id="cit-parse-btn">解析并保存到文献库</button>
-          <button class="btn btn-ghost" id="cit-parse-demo">填入示例试试</button>
+    <div class="citation-workspace">
+      <div class="citation-column">
+        <div class="card citation-card">
+          <h2><span class="mark"></span>AI 智能解析</h2>
+          <p class="desc">粘贴从知网、Google Scholar 等处复制的杂乱引用信息，先批量解析成结构化条目，再统一入库。</p>
+          <label class="field-label">粘贴引用信息</label>
+          <textarea id="cit-parse" placeholder="例如：&#10;张伟, 李娜. 大语言模型在教育领域的应用研究[J]. 现代教育技术, 2024, 34(3): 45-52."></textarea>
+          <div class="result-actions" style="margin-top:16px">
+            <button class="btn btn-ai-solid" id="cit-parse-btn">解析并保存到文献库</button>
+            <button class="btn btn-ghost" id="cit-parse-demo">填入示例试试</button>
+          </div>
+          <div class="result-box" id="cit-parse-out"><span class="placeholder">解析结果将显示在这里</span></div>
         </div>
-        <div class="result-box" id="cit-parse-out"><span class="placeholder">解析结果将显示在这里</span></div>
-      </div>
 
-      <div class="card">
-        <h2><span class="mark"></span>手动录入</h2>
-        <p class="desc">按字段录入，规则引擎实时生成 GB/T 7714 格式。已切到更细的数据结构：卷、期、页、DOI、URL 分开保存。</p>
-        <div class="form-row">
-          <div>
-            <label class="field-label">文献类型</label>
-            <select id="cit-type">
-              <option value="J">期刊 [J]</option><option value="D">学位论文 [D]</option>
-              <option value="M">专著 [M]</option><option value="C">会议论文 [C]</option>
-              <option value="R">报告 [R]</option><option value="S">标准 [S]</option>
-              <option value="P">专利 [P]</option><option value="N">报纸 [N]</option>
-              <option value="EB/OL">电子资源 [EB/OL]</option>
-            </select>
-          </div>
-          <div>
-            <label class="field-label">年份</label>
-            <input type="number" id="cit-year" placeholder="2024">
-          </div>
-        </div>
-        <label class="field-label">作者（逗号分隔，超过 3 人自动"等"）</label>
-        <input type="text" id="cit-author" placeholder="张伟, 李娜">
-        <label class="field-label">题名</label>
-        <input type="text" id="cit-title" placeholder="文章或书名">
-        <label class="field-label">出处（期刊名 / 学校 / 出版社）</label>
-        <input type="text" id="cit-source" placeholder="现代教育技术">
-        <div class="form-row">
-          <div>
-            <label class="field-label">卷 / 期 / 页码</label>
-            <div class="form-row">
-              <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
-              <div><input type="text" id="cit-issue" placeholder="期 3"></div>
+        <div class="card citation-card">
+          <h2><span class="mark"></span>阅读笔记与证据卡</h2>
+          <p class="desc">把文献里的定义、方法、数据或关键发现摘成证据卡，后续写作时更容易按章节取用。</p>
+          <label class="field-label">关联文献</label>
+          <select id="evi-citation">
+            <option value="">请选择已入库文献</option>
+            ${list.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(`[${item.litNo}] ${(item.title || '').slice(0, 40)}`)}</option>`).join('')}
+          </select>
+          <div class="form-row">
+            <div>
+              <label class="field-label">证据类型</label>
+              <select id="evi-type">
+                <option value="finding">核心发现</option>
+                <option value="definition">概念定义</option>
+                <option value="method">研究方法</option>
+                <option value="data">数据结果</option>
+                <option value="quote">原文摘录</option>
+              </select>
             </div>
-            <input type="text" id="cit-pages" placeholder="页码 45-52" style="margin-top:8px">
+            <div>
+              <label class="field-label">关联章节</label>
+              <select id="evi-section">
+                <option value="">暂不关联</option>
+                ${(prj.outline || []).map(item => `<option value="${escapeHtml(item.sectionId || item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
+              </select>
+            </div>
           </div>
-          <div>
-            <label class="field-label">DOI / URL</label>
-            <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
-            <input type="text" id="cit-url" placeholder="https://..." style="margin-top:8px">
+          <label class="field-label">证据内容</label>
+          <textarea id="evi-content" placeholder="例如：该研究指出空间注意力模块能显著改善小目标分割边界。"></textarea>
+          <div class="form-row">
+            <div>
+              <label class="field-label">来源定位</label>
+              <input type="text" id="evi-location" placeholder="例如：结果分析 / 表 3 / 第 4 节">
+            </div>
+            <div>
+              <label class="field-label">页码</label>
+              <input type="text" id="evi-page" placeholder="例如：p.12">
+            </div>
           </div>
-        </div>
-        <div style="margin-top:16px">
-          <button class="btn" id="cit-add">生成并保存</button>
-        </div>
-        <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <h2><span class="mark"></span>阅读笔记与证据卡</h2>
-        <p class="desc">把文献里的定义、方法、数据或关键发现摘成证据卡，后续写作时更容易按章节取用。</p>
-        <label class="field-label">关联文献</label>
-        <select id="evi-citation">
-          <option value="">请选择已入库文献</option>
-          ${list.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(`[${item.litNo}] ${(item.title || '').slice(0, 40)}`)}</option>`).join('')}
-        </select>
-        <div class="form-row">
-          <div>
-            <label class="field-label">证据类型</label>
-            <select id="evi-type">
-              <option value="finding">核心发现</option>
-              <option value="definition">概念定义</option>
-              <option value="method">研究方法</option>
-              <option value="data">数据结果</option>
-              <option value="quote">原文摘录</option>
-            </select>
+          <label class="field-label">我的笔记</label>
+          <textarea id="evi-note" placeholder="这条证据可用于哪一章？支撑哪个论点？"></textarea>
+          <div style="margin-top:16px">
+            <button class="btn" id="evi-save">保存证据卡</button>
           </div>
-          <div>
-            <label class="field-label">关联章节</label>
-            <select id="evi-section">
-              <option value="">暂不关联</option>
-              ${(prj.outline || []).map(item => `<option value="${escapeHtml(item.sectionId || item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <label class="field-label">证据内容</label>
-        <textarea id="evi-content" placeholder="例如：该研究指出空间注意力模块能显著改善小目标分割边界。"></textarea>
-        <div class="form-row">
-          <div>
-            <label class="field-label">来源定位</label>
-            <input type="text" id="evi-location" placeholder="例如：结果分析 / 表 3 / 第 4 节">
-          </div>
-          <div>
-            <label class="field-label">页码</label>
-            <input type="text" id="evi-page" placeholder="例如：p.12">
-          </div>
-        </div>
-        <label class="field-label">我的笔记</label>
-        <textarea id="evi-note" placeholder="这条证据可用于哪一章？支撑哪个论点？"></textarea>
-        <div style="margin-top:16px">
-          <button class="btn" id="evi-save">保存证据卡</button>
         </div>
       </div>
 
-      <div class="card">
-        <h2><span class="mark"></span>证据卡列表</h2>
-        <p class="desc">优先记录能直接支撑章节论证的内容，避免写作时回头翻全文。</p>
-        <div class="item-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>
+      <div class="citation-column">
+        <div class="card citation-card">
+          <h2><span class="mark"></span>手动录入</h2>
+          <p class="desc">按字段录入，规则引擎实时生成 GB/T 7714 格式。卷、期、页、DOI、URL 会单独存储。</p>
+          <div class="form-row">
+            <div>
+              <label class="field-label">文献类型</label>
+              <select id="cit-type">
+                <option value="J">期刊 [J]</option><option value="D">学位论文 [D]</option>
+                <option value="M">专著 [M]</option><option value="C">会议论文 [C]</option>
+                <option value="R">报告 [R]</option><option value="S">标准 [S]</option>
+                <option value="P">专利 [P]</option><option value="N">报纸 [N]</option>
+                <option value="EB/OL">电子资源 [EB/OL]</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">年份</label>
+              <input type="number" id="cit-year" placeholder="2024">
+            </div>
+          </div>
+          <label class="field-label">作者（逗号分隔，超过 3 人自动"等"）</label>
+          <input type="text" id="cit-author" placeholder="张伟, 李娜">
+          <label class="field-label">题名</label>
+          <input type="text" id="cit-title" placeholder="文章或书名">
+          <label class="field-label">出处（期刊名 / 学校 / 出版社）</label>
+          <input type="text" id="cit-source" placeholder="现代教育技术">
+          <div class="form-row">
+            <div>
+              <label class="field-label">卷 / 期 / 页码</label>
+              <div class="form-row">
+                <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
+                <div><input type="text" id="cit-issue" placeholder="期 3"></div>
+              </div>
+              <input type="text" id="cit-pages" placeholder="页码 45-52" style="margin-top:8px">
+            </div>
+            <div>
+              <label class="field-label">DOI / URL</label>
+              <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
+              <input type="text" id="cit-url" placeholder="https://..." style="margin-top:8px">
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn" id="cit-add">生成并保存</button>
+          </div>
+          <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
+        </div>
+
+        <div class="card citation-card citation-list-card">
+          <h2><span class="mark"></span>证据卡列表</h2>
+          <p class="desc">优先记录能直接支撑章节论证的内容，避免写作时回头翻全文。</p>
+          <div class="item-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>
+        </div>
       </div>
     </div>
 

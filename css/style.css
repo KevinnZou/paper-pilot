@@ -572,6 +572,36 @@ kbd {
 .wb-meta .hint-plain { margin-left: auto; font-family: var(--font-sans); }
 
 /* ---------- 文献 ---------- */
+.citation-workspace {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.citation-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.citation-card {
+  display: flex;
+  flex-direction: column;
+}
+.citation-card .result-box {
+  margin-top: 16px;
+}
+.citation-card textarea {
+  min-height: 118px;
+}
+.citation-list-card .item-list {
+  gap: 10px;
+}
+.citation-list-card .item {
+  min-height: 96px;
+  background: var(--surface-2);
+}
+
 .lit-item { align-items: flex-start; gap: 10px; }
 .lit-item input[type=checkbox] {
   margin-top: 6px; flex-shrink: 0; width: 15px; height: 15px; accent-color: var(--cinnabar);
@@ -765,6 +795,7 @@ kbd {
   .focus-layout { flex-direction: column; }
   .focus-side { text-align: left; }
   .focus-checks { grid-template-columns: 1fr; }
+  .citation-workspace { grid-template-columns: 1fr; }
   .project-actions { grid-template-columns: 1fr; }
   .project-actions .btn:first-child,
   .project-actions .btn:nth-child(2) { grid-column: span 1; }
