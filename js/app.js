@@ -9,7 +9,7 @@ import projectSettings from './modules/project-settings.js';
 import settings from './modules/settings.js';
 import { ICONS } from './icons.js';
 import { getConfig } from './api.js';
-import { getProject, hasActiveProject } from './project.js';
+import { getProject, hasActiveProject, projectStoreReady } from './project.js';
 
 const MODULES = [projects, dashboard, topic, citation, writing, planner, projectSettings, settings];
 const container = document.getElementById('module-container');
@@ -99,6 +99,7 @@ document.addEventListener('tm:projects-changed', renderNav);
 document.getElementById('nav-settings').addEventListener('click', () =>
   document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'settings' })));
 
+await projectStoreReady;
 renderNav();
 switchModule(hasActiveProject() ? 'dashboard' : 'projects');
 updateApiPill();
