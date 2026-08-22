@@ -1,5 +1,5 @@
 import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js';
-import { chat } from '../api.js';
+import { chat, shouldUseLiveAI } from '../api.js';
 import { getProject, adoptOutline, updateBasics, saveProject } from '../project.js';
 import { renderLitSearch } from '../litsearch.js';
 
@@ -36,6 +36,18 @@ function linesToArray(text) {
     .split(/\n|；|;/)
     .map(s => s.replace(/^\s*[-*•\d.、]+\s*/, '').trim())
     .filter(Boolean);
+}
+
+function normalizeOptionStrings(list = []) {
+  return Array.isArray(list)
+    ? list.map(item => {
+        if (typeof item === 'string') return item.trim();
+        if (item && typeof item === 'object') {
+          return String(item.label || item.name || item.title || item.value || '').trim();
+        }
+        return '';
+      }).filter(Boolean)
+    : [];
 }
 
 function normalizeTitleCandidates(list = []) {
@@ -83,10 +95,10 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     variables: Array.isArray(design.variables) ? design.variables : [],
     hypotheses: Array.isArray(design.hypotheses) ? design.hypotheses : [],
     methods: Array.isArray(design.methods) ? design.methods : [],
-    methodOptions: Array.isArray(design.methodOptions) ? design.methodOptions : [],
+    methodOptions: normalizeOptionStrings(design.methodOptions),
     selectedMethod: design.selectedMethod || '',
     dataSources: Array.isArray(design.dataSources) ? design.dataSources : [],
-    dataOptions: Array.isArray(design.dataOptions) ? design.dataOptions : [],
+    dataOptions: normalizeOptionStrings(design.dataOptions),
     selectedDataSource: design.selectedDataSource || '',
     feasibility: {
       score: design.feasibility?.score || '',
@@ -285,6 +297,90 @@ function renderStepNav(step, maxStep, project, design) {
   </div>`;
 }
 
+function mockTitles({ idea, keywords, constraints }) {
+  const hint = `${idea} ${keywords} ${constraints}`;
+  if (/装修|标准|规范|采购|数字化/.test(hint)) {
+    return [
+      {
+        id: 'title-1',
+        title: '装修行业数字化转型中的 AI 赋能路径与规范化效应研究',
+        feasibility: '可结合企业访谈、流程制度和采购资料展开，数据抓取难度适中。',
+        innovation: '把 AI 从工具层提升到行业规范化与管理流程重构层面讨论。',
+      },
+      {
+        id: 'title-2',
+        title: 'AI 驱动下装修企业标准化管理机制优化研究',
+        feasibility: '题目边界清晰，适合采用案例研究与访谈结合的方式推进。',
+        innovation: '聚焦标准化管理机制，而不是泛泛讨论数字化转型。',
+      },
+      {
+        id: 'title-3',
+        title: '基于 AI 赋能的装修企业采购规范化路径研究',
+        feasibility: '采购流程通常更容易找到可观察样本，适合硕士论文体量。',
+        innovation: '把采购规范化作为切入口，更容易落到可验证的流程层面。',
+      },
+      {
+        id: 'title-4',
+        title: 'AI 介入装修行业流程标准化的作用机制与实践路径研究',
+        feasibility: '适合多案例比较，兼顾理论分析与实践建议。',
+        innovation: '同时讨论作用机制与实践路径，利于后续生成完整五章结构。',
+      },
+    ];
+  }
+  return [
+    {
+      id: 'title-1',
+      title: '基于人工智能赋能的行业数字化转型路径研究',
+      feasibility: '适合案例研究或访谈法，资料获取难度中等。',
+      innovation: '从赋能路径切入，便于后续拆成机制、条件与建议三个层面。',
+    },
+    {
+      id: 'title-2',
+      title: '人工智能技术在组织管理优化中的应用机制研究',
+      feasibility: '题目较稳，适合管理类论文常用结构。',
+      innovation: '把技术应用和组织管理机制直接联结，便于后续展开研究问题。',
+    },
+    {
+      id: 'title-3',
+      title: 'AI 驱动下企业流程重构与绩效提升研究',
+      feasibility: '适合围绕具体流程场景展开，不必追求大样本。',
+      innovation: '将流程重构与绩效提升放在同一主线中，更贴近实务。',
+    },
+    {
+      id: 'title-4',
+      title: '人工智能赋能业务规范化管理的实现路径研究',
+      feasibility: '可围绕制度文本、流程资料和访谈构建论证。',
+      innovation: '更强调规范化管理这一管理学视角，而非纯技术视角。',
+    },
+  ];
+}
+
+function mockOutline(current) {
+  const title = current.title || '论文题目';
+  const method = selectedMethod(current) || '案例研究法';
+  const data = selectedDataSource(current) || '企业访谈资料';
+  return `第1章 绪论
+  1.1 研究背景
+  1.2 研究意义
+  1.3 研究思路与结构安排
+第2章 理论基础与文献综述
+  2.1 核心概念界定
+  2.2 理论基础
+  2.3 国内外研究现状
+第3章 研究设计
+  3.1 研究问题与分析框架
+  3.2 研究方法：${method}
+  3.3 数据来源：${data}
+第4章 ${title}的实证/案例分析
+  4.1 现状与问题识别
+  4.2 关键影响机制分析
+  4.3 优化路径与实施条件
+第5章 结论与建议
+  5.1 研究结论
+  5.2 管理建议
+  5.3 不足与展望`;
+}
+
 function render(el) {
   const project = getProject();
   const design = normalizeResearchDesign(project.researchDesign, project);
@@ -348,6 +444,7 @@ function render(el) {
         ${integrityNote()}
       </section>`;
   } else if (step === 2) {
+    const hasPlanSuggestions = !!(design.questionCandidates.length || design.methodOptions.length || design.dataOptions.length);
     body = `
       <section class="card topic-wizard-card">
         <div class="topic-wizard-head">
@@ -366,8 +463,9 @@ function render(el) {
         </div>
         <div class="result-actions" style="margin:0 0 16px">
           <button class="btn btn-ai-solid" id="rd-plan-gen">生成研究方案建议</button>
-          <button class="btn" id="rd-plan-save">确认这些选择，进入下一步</button>
+          ${hasPlanSuggestions ? '<button class="btn" id="rd-plan-save">确认这些选择，进入下一步</button>' : ''}
         </div>
+        ${hasPlanSuggestions ? `
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
             <h3>研究问题候选</h3>
@@ -389,6 +487,7 @@ function render(el) {
           <h3>可行性检查</h3>
           ${renderFeasibility(design)}
         </div>
+        ` : '<div class="topic-empty">先点击上方「生成研究方案建议」，系统再展示研究问题、方法、数据来源和可行性判断。</div>'}
       </section>`;
   } else {
     body = `
@@ -473,11 +572,16 @@ function render(el) {
       setLoading(btn, true, '生成中…');
       titleOut.innerHTML = '<div class="topic-empty">AI 正在生成题目候选…</div>';
       try {
-        const reply = await chat([
-          { role: 'system', content: `${SYSTEM} 只输出严格 JSON 数组。` },
-          { role: 'user', content: `请围绕下面的研究设想生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。\n研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}\n请根据反馈明显调整方向，不要只是换几个近义词。` : ''}` },
-        ], { temperature: 0.6, signal: topicSignal() });
-        const parsed = normalizeTitleCandidates(parseJson(reply));
+        let parsed;
+        if (shouldUseLiveAI()) {
+          const reply = await chat([
+            { role: 'system', content: `${SYSTEM} 只输出严格 JSON 数组。` },
+            { role: 'user', content: `请围绕下面的研究设想生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。\n研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}\n请根据反馈明显调整方向，不要只是换几个近义词。` : ''}` },
+          ], { temperature: 0.6, signal: topicSignal() });
+          parsed = normalizeTitleCandidates(parseJson(reply));
+        } else {
+          parsed = mockTitles({ idea, keywords, constraints });
+        }
         if (!parsed.length) throw new Error('AI 未返回有效题目候选');
         saveDesignPatch({
           currentStep: 1,
@@ -528,13 +632,55 @@ function render(el) {
   }
 
   if (step === 2) {
+    function mockPlan(current, feedback = '') {
+      const baseTitle = current.title || getProject().title || '未命名论文';
+      const practical = /采购|标准|规范|管理|数字化|企业|流程/.test(`${baseTitle} ${feedback}`);
+      return {
+        questions: practical ? [
+          { id: 'rq-1', question: 'AI 介入后，装修企业标准化流程的执行效率是否会显著提升？', object: '中小型装修企业流程', variable: '标准执行效率', dataNeed: '流程前后对比与访谈', method: '案例研究法' },
+          { id: 'rq-2', question: '装修行业数字化转型中，AI 对采购规范化的关键影响路径是什么？', object: '采购与供应链环节', variable: '采购规范化程度', dataNeed: '企业访谈与制度文本', method: '访谈研究法' },
+          { id: 'rq-3', question: 'AI 赋能标准化管理后，企业内部协同成本会如何变化？', object: '企业协同流程', variable: '协同成本', dataNeed: '管理者访谈与流程记录', method: '多案例比较法' },
+        ] : [
+          { id: 'rq-1', question: '该研究主题下的核心作用机制是什么？', object: '目标场景', variable: '关键影响因素', dataNeed: '案例材料与二手资料', method: '案例研究法' },
+          { id: 'rq-2', question: '不同实施条件下，结果差异会体现在哪些方面？', object: '实施主体', variable: '实施条件差异', dataNeed: '访谈与文档分析', method: '比较研究法' },
+          { id: 'rq-3', question: '相关策略落地的主要阻碍与优化路径分别是什么？', object: '实际落地过程', variable: '阻碍因素', dataNeed: '专家访谈与过程资料', method: '访谈研究法' },
+        ],
+        methods: practical
+          ? ['案例研究法', '访谈研究法', '多案例比较法']
+          : ['案例研究法', '访谈研究法', '文献分析法'],
+        dataSources: practical
+          ? ['企业访谈记录', '内部流程制度文本', '采购与执行台账']
+          : ['公开案例材料', '半结构化访谈', '行业二手资料'],
+        objectives: practical
+          ? ['梳理 AI 赋能装修行业标准化的主要路径', '识别采购与流程规范化中的关键作用点', '提出可落地的管理优化建议']
+          : ['界定研究对象与核心问题', '总结主要影响机制', '形成可执行的优化路径'],
+        researchGap: practical
+          ? '现有研究更多讨论 AI 工具本身或单点应用，对装修行业如何通过 AI 推动标准化与规范化管理、并形成可复制流程的研究仍然不足。'
+          : '现有研究对该主题的实际落地路径与场景差异讨论还不够具体，缺少可直接支撑论文结构的方案化表达。',
+        hypotheses: practical
+          ? ['AI 赋能会提升标准流程执行一致性', '采购规范化是数字化转型中最先显效的环节']
+          : ['实施条件差异会显著影响最终效果', '组织协同机制是结果差异的重要解释变量'],
+        feasibility: {
+          score: practical ? '8.6 / 10' : '8.1 / 10',
+          risks: practical
+            ? ['企业一手资料获取需要提前沟通', '案例过少会削弱结论说服力']
+            : ['样本边界可能不够清晰', '问题范围若继续扩大，后续写作会发散'],
+          suggestions: practical
+            ? ['优先锁定 2-3 家企业做访谈', '把研究问题收敛到标准化流程或采购规范化其中一条主线']
+            : ['尽快明确研究对象边界', '优先采用案例或访谈型方法，避免方案过空'],
+        },
+      };
+    }
+
     async function generatePlan(feedback = '') {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const btn = el.querySelector('#rd-plan-gen');
       setLoading(btn, true, '生成中…');
       el.querySelector('#rd-question-out').innerHTML = '<div class="topic-empty">AI 正在生成研究问题与方案建议…</div>';
       try {
-        const reply = await chat([
+        let parsed;
+        if (shouldUseLiveAI()) {
+          const reply = await chat([
           { role: 'system', content: `${SYSTEM} 只输出严格 JSON 对象。` },
           { role: 'user', content: `请基于下面的论文题目生成一个“低输入”的研究方案建议包。输出 JSON 对象，字段包括：
 questions: [{id, question, object, variable, dataNeed, method}]
@@ -552,11 +698,14 @@ feasibility: {score, risks[], suggestions[]}
 研究对象：${current.population || '未提供'}
 学位类型：${getProject().degreeType || '硕士论文'}
 ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。` : ''}` },
-        ], { temperature: 0.35, signal: topicSignal() });
-        const parsed = parseJson(reply);
+          ], { temperature: 0.35, signal: topicSignal() });
+          parsed = parseJson(reply);
+        } else {
+          parsed = mockPlan(current, feedback);
+        }
         const questions = normalizeQuestionCandidates(parsed.questions || []);
-        const methodOptions = Array.isArray(parsed.methods) ? parsed.methods.filter(Boolean) : [];
-        const dataOptions = Array.isArray(parsed.dataSources) ? parsed.dataSources.filter(Boolean) : [];
+        const methodOptions = normalizeOptionStrings(parsed.methods || []);
+        const dataOptions = normalizeOptionStrings(parsed.dataSources || []);
         if (!questions.length) throw new Error('AI 未返回有效研究问题');
         saveDesignPatch({
           questionCandidates: questions,
@@ -611,7 +760,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         render(el);
       }));
 
-    el.querySelector('#rd-plan-save').addEventListener('click', () => {
+    el.querySelector('#rd-plan-save')?.addEventListener('click', () => {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const question = selectedQuestion(current);
       const method = selectedMethod(current);
@@ -650,10 +799,12 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       setLoading(btn, true, '生成中…');
       outlineOut.innerHTML = '<div class="topic-empty">AI 正在生成论文大纲…</div>';
       try {
-        const reply = await chat([
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法和数据来源一致。\n论文题目：${current.title || getProject().title}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
-        ], { temperature: 0.4, signal: topicSignal() });
+        const reply = shouldUseLiveAI()
+          ? await chat([
+              { role: 'system', content: SYSTEM },
+              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法和数据来源一致。\n论文题目：${current.title || getProject().title}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
+            ], { temperature: 0.4, signal: topicSignal() })
+          : mockOutline(current);
         outlineOut.innerHTML = renderOutlinePreview(reply);
         outlineOut.dataset.outlineText = reply;
         el.querySelector('#outline-copy').disabled = false;

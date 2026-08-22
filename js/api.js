@@ -9,6 +9,7 @@ export const DEFAULT_CONFIG = {
   apiKey: '',
   baseURL: 'https://api.deepseek.com',
   model: 'deepseek-chat',
+  enableLiveAI: false,
 };
 
 export function getConfig() {
@@ -17,6 +18,10 @@ export function getConfig() {
 
 export function saveConfig(partial) {
   set(CONFIG_KEY, { ...getConfig(), ...partial });
+}
+
+export function shouldUseLiveAI() {
+  return !!getConfig().enableLiveAI;
 }
 
 export class ApiError extends Error {

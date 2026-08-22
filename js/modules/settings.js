@@ -78,6 +78,10 @@ export default {
           <button class="btn" id="cfg-save">保存配置</button>
           <button class="btn btn-ai" id="cfg-test">测试连接</button>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;color:var(--ink-soft)">
+          <input type="checkbox" id="cfg-live-ai" ${cfg.enableLiveAI ? 'checked' : ''}>
+          启用真实 AI 调用（默认关闭，先用测试数据验证流程）
+        </label>
         <div class="result-box" id="cfg-test-out"><span class="placeholder">测试结果将显示在这里</span></div>
       </div>
 
@@ -138,6 +142,7 @@ export default {
         apiKey: el.querySelector('#cfg-key').value.trim(),
         baseURL,
         model: el.querySelector('#cfg-model').value.trim() || 'deepseek-chat',
+        enableLiveAI: el.querySelector('#cfg-live-ai').checked,
       });
       return true;
     }
