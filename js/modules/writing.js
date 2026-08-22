@@ -223,16 +223,25 @@ export default {
     el.innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
         <div class="workbench">
-          <button class="wb-outline-peek" id="wb-outline-peek" title="展开目录" aria-label="展开目录">目录</button>
           <aside class="wb-left">
-            <div class="wb-side-head">
-              <div>
-                <h3><span class="mark"></span>论文目录</h3>
-                <p class="desc" id="wb-outline-desc">按章节快速跳转与切换</p>
+            <div class="wb-left-expanded">
+              <div class="wb-side-head">
+                <div>
+                  <h3><span class="mark"></span>论文目录</h3>
+                  <p class="desc" id="wb-outline-desc">按章节快速跳转与切换</p>
+                </div>
+                <button class="btn btn-ghost btn-sm icon-only" id="wb-toggle-outline" title="收起目录" aria-label="收起目录">⇤</button>
               </div>
-              <button class="btn btn-ghost btn-sm icon-only" id="wb-toggle-outline" title="折叠目录" aria-label="折叠目录">⇤</button>
+              <div class="chapter-list" id="wb-outline"></div>
             </div>
-            <div class="chapter-list" id="wb-outline"></div>
+            <div class="wb-left-collapsed" id="wb-outline-peek" title="展开目录" aria-label="展开目录" role="button" tabindex="0">
+              <button class="btn btn-ghost btn-sm icon-only wb-outline-rail-btn" type="button" id="wb-outline-rail-trigger" title="展开目录" aria-label="展开目录">⇥</button>
+              <div class="wb-outline-rail-meta">
+                <span class="wb-outline-rail-label">目录</span>
+                <span class="wb-outline-rail-count" id="wb-outline-rail-count">0</span>
+              </div>
+              <div class="wb-outline-rail-dots" id="wb-outline-rail-dots"></div>
+            </div>
           </aside>
 
           <section class="wb-center">
@@ -289,15 +298,17 @@ export default {
     const workbench = el.querySelector('.workbench');
     const outlineToggle = el.querySelector('#wb-toggle-outline');
     const outlinePeek = el.querySelector('#wb-outline-peek');
+    const outlineRailTrigger = el.querySelector('#wb-outline-rail-trigger');
+    const outlineRailCount = el.querySelector('#wb-outline-rail-count');
+    const outlineRailDots = el.querySelector('#wb-outline-rail-dots');
     let saveTimer = null;
 
     function syncOutlineCollapse() {
       workbench.classList.toggle('outline-collapsed', panelState.outlineCollapsed);
-      outlinePeek?.classList.toggle('visible', panelState.outlineCollapsed);
       if (outlineToggle) {
         outlineToggle.textContent = panelState.outlineCollapsed ? '⇥' : '⇤';
-        outlineToggle.title = panelState.outlineCollapsed ? '展开目录' : '折叠目录';
-        outlineToggle.setAttribute('aria-label', panelState.outlineCollapsed ? '展开目录' : '折叠目录');
+        outlineToggle.title = panelState.outlineCollapsed ? '展开目录' : '收起目录';
+        outlineToggle.setAttribute('aria-label', panelState.outlineCollapsed ? '展开目录' : '收起目录');
       }
     }
 
@@ -316,6 +327,15 @@ export default {
 
     function renderOutline() {
       const sections = topLevelSections(viewState.view.state.doc);
+      if (outlineRailCount) outlineRailCount.textContent = String(sections.length);
+      if (outlineRailDots) {
+        outlineRailDots.innerHTML = sections.slice(0, 6).map(sec => {
+          const isActive = sec.chapter === viewState.currentChapter;
+          const st = getProject().chapterProgress?.[sec.chapter] || '未开始';
+          const cls = st === '已完成' ? 'done' : st === '进行中' ? 'doing' : '';
+          return `<span class="wb-outline-rail-dot ${cls} ${isActive ? 'active' : ''}" title="${escapeHtml(sec.chapter)}"></span>`;
+        }).join('');
+      }
       outlineBox.innerHTML = sections.length
         ? sections.map(sec => {
             const active = sec.chapter === viewState.currentChapter;
@@ -448,9 +468,23 @@ export default {
       panelState.outlineCollapsed = !panelState.outlineCollapsed;
       syncOutlineCollapse();
     });
-    outlinePeek?.addEventListener('click', () => {
+    const expandOutline = () => {
       panelState.outlineCollapsed = false;
       syncOutlineCollapse();
+    };
+    outlinePeek?.addEventListener('click', (evt) => {
+      if (evt.target === outlineRailTrigger) return;
+      expandOutline();
+    });
+    outlinePeek?.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Enter' || evt.key === ' ') {
+        evt.preventDefault();
+        expandOutline();
+      }
+    });
+    outlineRailTrigger?.addEventListener('click', (evt) => {
+      evt.stopPropagation();
+      expandOutline();
     });
 
     async function runSuggestion(action, sourceText, replaceFrom, replaceTo, sourceLabel) {
