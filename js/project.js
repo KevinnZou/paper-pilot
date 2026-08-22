@@ -487,7 +487,11 @@ export function adoptOutline(text, projectId = getActiveProjectId()) {
   const chapters = parseOutline(text);
   const progress = {};
   chapters.forEach(c => { progress[c.chapter] = '未开始'; });
-  saveProject({ outline: chapters, chapterProgress: progress }, projectId);
+  saveProject({
+    outline: chapters,
+    chapterProgress: progress,
+    currentChapter: chapters[0]?.chapter || '',
+  }, projectId);
   return chapters;
 }
 

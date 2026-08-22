@@ -901,8 +901,8 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         currentStep: 3,
       });
       updateBasics({ title: current.title || getProject().title, degreeType: getProject().degreeType });
-      toast(`已采用大纲（${chapters.length} 章），可以开始正式写作`, 'ok');
-      render(el);
+      toast(`已采用大纲（${chapters.length} 章），正在进入论文写作`, 'ok');
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'writing' }));
     });
   }
 }
