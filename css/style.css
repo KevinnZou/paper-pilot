@@ -255,57 +255,87 @@ kbd {
   border-radius: 50%; background: radial-gradient(circle, rgba(192,59,45,.05), transparent 70%);
   pointer-events: none;
 }
-.project-hero h2 { font-size: 22px; }
-.project-hero .hero-lead { color: var(--ink-soft); font-size: 13.5px; margin: 6px 0 0; line-height: 1.7; }
+.project-hero h2 { font-size: 22px; overflow-wrap: anywhere; }  /* 超长题防撑破（r26） */
+.project-hero .hero-lead { color: var(--ink-soft); font-size: 13.5px; margin: 8px 0 0; line-height: 1.7; }
 .project-hero .hero-lead b { color: var(--cinnabar); font-family: var(--font-serif-latin), var(--font-serif); font-size: 15px; }
-.project-hero .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.hero-stats { display: flex; gap: 34px; margin: 18px 0 4px; }
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px 16px; flex-wrap: wrap; }
+.project-hero .meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.hero-action-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.btn-lg { padding: 11px 24px; font-size: 14.5px; }
+.hero-stats {
+  display: flex; gap: 34px; flex-wrap: wrap;
+  margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--line);  /* 数据带下沉，与动作区隔开 */
+}
 .stat { display: flex; flex-direction: column; }
 .stat-num { font-family: var(--font-serif-latin), var(--font-serif); font-size: 23px; font-weight: 700; color: var(--brand); line-height: 1.2; }
 .stat-num.danger { color: var(--cinnabar); }
 .stat-label { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
 
-/* 写作之旅 */
-.journey { display: flex; gap: 0; flex-wrap: wrap; align-items: center; }
+/* 写作之旅：线性轨道节点（节点坐在贯穿轨道上） */
+.journey { position: relative; display: flex; align-items: flex-start; padding-top: 8px; }
+.journey::before {
+  content: ''; position: absolute; left: 8%; right: 8%; top: 18px; height: 2px;
+  background: var(--line); border-radius: 999px;
+}
 .journey-step {
-  display: flex; align-items: center; gap: 8px; padding: 7px 13px;
-  border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
-  font-size: 12.5px; font-family: inherit; cursor: pointer; color: var(--ink); transition: all .15s;
+  position: relative; z-index: 1; flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 0 4px 4px; border: 0; background: transparent;
+  font-size: 12px; font-family: inherit; cursor: pointer; color: var(--ink-soft);
+  transition: color .15s;
 }
-.journey-step:hover { border-color: var(--brand); }
-.journey-step:not(:last-child)::after { content: '→'; color: var(--line-strong); margin-left: 9px; }
-.journey-step.current:not(:last-child)::after { color: var(--brand); }
-.journey-step.done { background: var(--jade-soft); border-color: #C6DECB; color: var(--jade); }
-.journey-step.current { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+.journey-step:hover { color: var(--brand); }
+.journey-step:not(:last-child)::after {
+  content: '→'; position: absolute; right: -8px; top: 6px;
+  color: var(--line-strong); font-size: 11px; z-index: 2;
+}
 .journey-step .js-check {
-  width: 19px; height: 19px; border-radius: 50%; background: #F0EEE6; color: var(--ink-soft);
+  width: 18px; height: 18px; border-radius: 50%; background: var(--surface);
+  border: 2px solid var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 10.5px; font-family: var(--font-mono); flex-shrink: 0;
+  font-size: 10px; font-family: var(--font-mono); flex-shrink: 0;
+  transition: all .15s;
 }
-.journey-step.done .js-check { background: #fff; color: var(--jade); font-weight: 700; }
-.journey-step.current .js-check { background: rgba(255,255,255,.22); color: #fff; }
-.journey-step.current .js-tag {
-  font-size: 10px; background: rgba(255,255,255,.22); padding: 1px 7px; border-radius: 999px; font-weight: 500;
+.journey-step.done .js-check { background: var(--jade); border-color: var(--jade); color: #fff; font-weight: 700; }
+.journey-step.done .js-label { color: var(--jade); }
+.journey-step.done:not(:last-child)::after { color: var(--jade); }
+.journey-step.current .js-check { background: var(--brand); border-color: var(--brand); color: #fff; }
+.journey-step.current .js-label { color: var(--brand); font-weight: 600; }
+.journey-step.current:not(:last-child)::after { color: var(--brand); }
+.journey-step .js-label { text-align: center; line-height: 1.4; }
+.journey-step .js-tag {
+  font-size: 10px; background: var(--brand); color: #fff; padding: 1px 7px;
+  border-radius: 999px; font-weight: 500;
 }
 
-/* 模块卡片 */
-.dash-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-@media (max-width: 980px) { .dash-grid { grid-template-columns: 1fr; } }
+/* 主工作区：章节进度（行动核心）2/3 + 打卡 1/3 */
+.dash-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 980px) { .dash-cols { grid-template-columns: 1fr; } }
+
+/* 下一章聚焦行：浅墨蓝底 + 左缘墨蓝描边，主按钮给「继续写」 */
+.progress-row.is-next {
+  background: var(--brand-soft); border: 1px solid #C9D8E2; border-left: 3px solid var(--brand);
+  border-radius: var(--radius); padding: 7px 10px; margin: 9px -10px;
+}
+
+/* 快捷入口：一行 4 个（icon + 名称），不再是大卡片 */
+.dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (max-width: 980px) { .dash-grid { grid-template-columns: repeat(2, 1fr); } }
 .dash-card {
+  display: flex; align-items: center; gap: 10px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 20px; cursor: pointer; text-align: left; font-family: inherit;
+  box-shadow: var(--shadow); padding: 12px 14px; cursor: pointer; text-align: left; font-family: inherit;
   transition: transform .15s, box-shadow .15s, border-color .15s;
-  display: block; width: 100%;
+  width: 100%;
 }
 .dash-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); border-color: var(--line-strong); }
 .dash-card .icon {
-  width: 38px; height: 38px; border-radius: var(--radius); background: #F1EFE8;
+  width: 32px; height: 32px; border-radius: var(--radius); background: #F1EFE8;
   display: inline-flex; align-items: center; justify-content: center;
-  color: var(--ink); font-size: 19px;
+  color: var(--ink); font-size: 16px; flex-shrink: 0;
 }
-.dash-card .icon svg { width: 19px; height: 19px; }
-.dash-card h3 { margin: 11px 0 3px; font-size: 15px; font-family: var(--font-serif); }
-.dash-card p { margin: 0; color: var(--ink-soft); font-size: 12.5px; }
+.dash-card .icon svg { width: 16px; height: 16px; }
+.dash-card h3 { margin: 0; font-size: 13.5px; font-family: var(--font-serif); }
 
 /* ---------- 写作工作台 ---------- */
 .workbench { display: grid; grid-template-columns: 232px minmax(0, 1fr) 272px; }
@@ -528,4 +558,16 @@ kbd {
   .main { padding: 22px 16px 48px; }
   .main-header { align-items: flex-start; flex-direction: column; }
   .pills { flex-wrap: wrap; }
+  /* 主页：旅程节点卡内横向滚动防溢出；hero 统计条收窄 */
+  .journey { overflow-x: auto; padding-bottom: 4px; }
+  .journey-step { flex: 0 0 auto; min-width: 108px; }
+  .hero-stats { gap: 18px; }
+  .stat-num { font-size: 20px; }
+}
+@media (max-width: 560px) {
+  /* 390px：进度轨道空间不足，用状态 chip 表达进度；行内元素收紧 */
+  .progress-track { display: none; }
+  .progress-row { gap: 7px; }
+  .progress-label { width: 96px; }
+  .hero-action-row { margin-top: 12px; }
 }

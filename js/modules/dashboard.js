@@ -69,20 +69,35 @@ export default {
 
     // 主行动按钮 = 下一步
     let heroAction = '';
-    if (!cfg?.apiKey) heroAction = '<button class="btn" data-nav="settings">第一步：填入 API Key</button>';
-    else if (!p.title) heroAction = '<button class="btn" data-nav="topic">去确定选题</button>';
-    else if (!chapters.length) heroAction = '<button class="btn" data-nav="topic">去生成并采用大纲</button>';
-    else if (!p.dueDate) heroAction = '<button class="btn" data-nav="planner">设定截止日期</button>';
-    else heroAction = `<button class="btn" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '开始写作'}</button>`;
+    if (!cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">第一步：填入 API Key</button>';
+    else if (!p.title) heroAction = '<button class="btn btn-lg" data-nav="topic">去确定选题</button>';
+    else if (!chapters.length) heroAction = '<button class="btn btn-lg" data-nav="topic">去生成并采用大纲</button>';
+    else if (!p.dueDate) heroAction = '<button class="btn btn-lg" data-nav="planner">设定截止日期</button>';
+    else heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '开始写作'}</button>`;
 
     el.innerHTML = `
       <div class="card hero project-hero">
-        <h2><span class="mark"></span>${p.title ? escapeHtml(p.title) : '开始你的论文之旅'}</h2>
+        <div class="hero-top">
+          <h2><span class="mark"></span>${p.title ? escapeHtml(p.title) : '开始你的论文之旅'}</h2>
+          <div class="meta">
+            ${p.degreeType ? `<span class="chip">${escapeHtml(p.degreeType)}</span>` : ''}
+            ${p.dueDate ? `<span class="chip">截止 ${escapeHtml(p.dueDate)}</span>` : ''}
+            ${chapters.length ? `<span class="chip">${chapters.length} 章大纲</span>` : ''}
+            ${doneCount ? `<span class="chip done">已完成 ${doneCount} 章</span>` : ''}
+            ${p.materials.length ? `<span class="chip">素材 ${p.materials.length} 条</span>` : ''}
+            ${doneSteps === steps.length ? '<span class="chip done">旅程五步全部完成</span>' : ''}
+          </div>
+        </div>
         <p class="hero-lead">${p.title
           ? `覆盖选题、写作、文献、进度的全流程助手${daysLeft !== null
               ? (daysLeft >= 0 ? `　·　距截止 <b>${daysLeft}</b> 天` : `　·　已过截止 <b>${-daysLeft}</b> 天`)
               : ''}`
           : '五个步骤，从选题到定稿。先完成下方流程条的第一步。'}</p>
+        <div class="hero-action-row">
+          ${heroAction}
+          ${!p.title ? '<button class="btn btn-ghost" id="hero-demo">先载入演示数据看效果</button>' : ''}
+          ${p.title ? '<button class="btn btn-ghost" data-nav="planner">查看写作计划</button>' : ''}
+        </div>
         ${p.title ? `
           <div class="hero-stats">
             <div class="stat"><span class="stat-num ${daysLeft !== null && daysLeft <= 14 ? 'danger' : ''}" ${daysLeft !== null && daysLeft <= 14 ? 'title="已不足两周，注意写作节奏"' : ''}>${daysLeft !== null ? daysLeft : '—'}</span><span class="stat-label">距截止天数</span></div>
@@ -90,19 +105,6 @@ export default {
             <div class="stat"><span class="stat-num">${totalWords || 0}</span><span class="stat-label">已写字数</span></div>
             <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续打卡</span></div>
           </div>` : ''}
-        <div class="meta">
-          ${p.degreeType ? `<span class="chip">${escapeHtml(p.degreeType)}</span>` : ''}
-          ${p.dueDate ? `<span class="chip">截止 ${escapeHtml(p.dueDate)}</span>` : ''}
-          ${chapters.length ? `<span class="chip">${chapters.length} 章大纲</span>` : ''}
-          ${doneCount ? `<span class="chip done">已完成 ${doneCount} 章</span>` : ''}
-          ${p.materials.length ? `<span class="chip">素材 ${p.materials.length} 条</span>` : ''}
-          ${doneSteps === steps.length ? '<span class="chip done">旅程五步全部完成</span>' : ''}
-        </div>
-        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-          ${heroAction}
-          ${!p.title ? '<button class="btn btn-ghost" id="hero-demo">先载入演示数据看效果</button>' : ''}
-          ${p.title ? '<button class="btn btn-ghost" data-nav="planner">查看写作计划</button>' : ''}
-        </div>
       </div>
 
       <div class="card">
@@ -118,7 +120,7 @@ export default {
         </div>
       </div>
 
-      <div class="grid-2">
+      <div class="grid dash-cols">
         <div class="card">
           <h2><span class="mark"></span>章节进度</h2>
           <p class="desc">${chapters.length
@@ -129,12 +131,13 @@ export default {
               ${chapters.map(c => {
                 const st = p.chapterProgress[c.chapter] || '未开始';
                 const chipCls = st === '已完成' ? 'done' : st === '进行中' ? 'doing' : '';
-                return `<div class="progress-row">
+                const isNext = c.chapter === nextChapter;
+                return `<div class="progress-row ${isNext ? 'is-next' : ''}">
                   <span class="progress-label" title="${escapeHtml(c.chapter)}">${escapeHtml(shortName(c.chapter, 10))}</span>
                   <div class="progress-track"><div class="progress-fill" style="width:${PROGRESS_WEIGHT[st] * 100}%"></div></div>
                   <span class="chip ${chipCls}">${st}</span>
                   ${drafts[c.chapter]?.content ? `<span class="chip">${wordCount(drafts[c.chapter].content)}字</span>` : ''}
-                  <button class="btn btn-ghost btn-sm" data-write="${escapeHtml(c.chapter)}">去写</button>
+                  <button class="btn ${isNext ? '' : 'btn-ghost'} btn-sm" data-write="${escapeHtml(c.chapter)}">${isNext ? '继续写' : '去写'}</button>
                 </div>`;
               }).join('')}
             </div>` : `
@@ -158,10 +161,9 @@ export default {
 
       <div class="dash-grid">
         ${CARDS.map(c => `
-          <button class="dash-card" data-nav="${c.id}">
+          <button class="dash-card" data-nav="${c.id}" title="${escapeHtml(c.desc)}">
             <span class="icon">${ICONS[c.id] || ''}</span>
             <h3>${c.title}</h3>
-            <p>${c.desc}</p>
           </button>`).join('')}
       </div>`;
 
