@@ -138,6 +138,26 @@ body {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 @media (max-width: 980px) { .grid-2 { grid-template-columns: 1fr; } }
 
+.workspace-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.workspace-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.workspace-card {
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 980px) {
+  .workspace-columns { grid-template-columns: 1fr; }
+}
+
 label.field-label { display: block; font-size: 12.5px; font-weight: 600; margin: 14px 0 6px; color: var(--ink); }
 input[type=text], input[type=password], input[type=date], input[type=number], select, textarea {
   width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius);
