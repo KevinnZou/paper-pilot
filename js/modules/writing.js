@@ -4,7 +4,7 @@ import { history, undo, redo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { toast, integrityNote, escapeHtml, setLoading, copyText } from '../ui.js';
 import { chat } from '../api.js';
-import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations } from '../project.js';
+import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
 import {
   paperSchema,
   docFromJSON,
@@ -183,6 +183,22 @@ function renderSuggestionBox(box, state) {
     ${integrityNote()}`;
 }
 
+function relatedEvidenceHtml(section, citations) {
+  const evidence = getEvidence();
+  const byCitationId = new Map(citations.map(item => [item.id, item]));
+  const relevant = evidence.filter(item =>
+    !section?.sectionId || !item.linkedSectionIds?.length || item.linkedSectionIds.includes(section.sectionId));
+  if (!relevant.length) return '<p class="desc">当前章节还没有关联证据卡，可去「文献与证据」补充。</p>';
+  return relevant.slice(0, 6).map(item => `
+    <div class="item">
+      <div class="item-main">
+        <div class="item-title"><span class="chip">${escapeHtml(item.type || 'finding')}</span> ${escapeHtml(byCitationId.get(item.citationId)?.title || '未关联文献')}</div>
+        <div class="item-meta">${escapeHtml(item.content || '')}</div>
+        <div class="item-meta">${escapeHtml(item.note || '')}</div>
+      </div>
+    </div>`).join('');
+}
+
 function normalizeCitations() {
   const current = getCitations();
   const { list, changed } = ensureCitationIds(current);
@@ -244,6 +260,8 @@ export default {
             <h3 style="margin-top:24px"><span class="mark"></span>插入引用</h3>
             <div id="wb-citations"></div>
             <p class="hint">编辑器内部保存的是 citation id，显示编号会按正文首次出现顺序自动重排。</p>
+            <h3 style="margin-top:24px"><span class="mark"></span>相关证据</h3>
+            <div id="wb-evidence"></div>
           </aside>
         </div>
       </div>`;
@@ -251,6 +269,7 @@ export default {
     const suggestionBox = el.querySelector('#wb-suggestion');
     const outlineBox = el.querySelector('#wb-outline');
     const citationBox = el.querySelector('#wb-citations');
+    const evidenceBox = el.querySelector('#wb-evidence');
     const savedEl = el.querySelector('#wb-saved');
     const countEl = el.querySelector('#wb-count');
     let saveTimer = null;
@@ -319,6 +338,11 @@ export default {
       });
     }
 
+    function renderEvidencePanel() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      evidenceBox.innerHTML = relatedEvidenceHtml(section, citations);
+    }
+
     function syncCurrentChapter() {
       const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
       if (!section) return;
@@ -326,6 +350,7 @@ export default {
       setCurrentChapter(section.chapter);
       const title = el.querySelector('#wb-cur-title');
       if (title) title.innerHTML = `正在写：<b>${escapeHtml(section.chapter)}</b>`;
+      renderEvidencePanel();
     }
 
     function persistNow() {
@@ -337,6 +362,7 @@ export default {
         setSaveStatus('saved', new Date().toLocaleTimeString('zh-CN'));
         renderOutline();
         renderCitationPicker();
+        renderEvidencePanel();
         return true;
       } catch (error) {
         console.error('save writing project failed', error);
@@ -385,6 +411,7 @@ export default {
     syncCurrentChapter();
     renderOutline();
     renderCitationPicker();
+    renderEvidencePanel();
     renderSuggestionBox(suggestionBox, viewState);
     setSaveStatus('idle', '已载入');
     persistNow();

@@ -3,7 +3,7 @@ import { toast, copyText, escapeHtml, setLoading } from '../ui.js';
 import { get, set } from '../storage.js';
 import { chat } from '../api.js';
 import { renderLitSearch } from '../litsearch.js';
-import { getProject } from '../project.js';
+import { getProject, getEvidence, saveEvidence } from '../project.js';
 import { ensureCitationIds, normalizeCitationEntry, formatCitationEntry } from '../citation-utils.js';
 import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../document-model.js';
 
@@ -187,10 +187,41 @@ function nextLitNo(list) {
   return list.reduce((m, c) => Math.max(m, c.litNo || 0), 0) + 1;
 }
 
+function makeEvidenceId() {
+  return globalThis.crypto?.randomUUID?.() || `ev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function sortedList() {
   const list = ensureCitationIds(get('citations', [])).list.map(item =>
     normalizeCitationEntry(item, getProject().referenceStandard));
   return list.sort((a, b) => (a.litNo || 0) - (b.litNo || 0));
+}
+
+function evidenceListWithCitations(citations) {
+  const byId = new Map(citations.map(item => [item.id, item]));
+  return getEvidence()
+    .map(item => ({ ...item, citation: byId.get(item.citationId) || null }))
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+}
+
+function renderEvidenceList(items, chapters) {
+  if (!items.length) return '<div style="color:var(--ink-soft)">还没有证据卡。可从已入库文献里摘出定义、方法、数据或关键发现。</div>';
+  return items.map(item => `
+    <div class="item">
+      <div class="item-main">
+        <div class="item-title">
+          <span class="chip">${escapeHtml(item.type || 'finding')}</span>
+          ${item.linkedSectionIds?.length ? `<span class="chip doing">${escapeHtml(chapters.find(c => c.sectionId === item.linkedSectionIds[0])?.chapter || '已关联章节')}</span>` : ''}
+          ${escapeHtml(item.citation?.title || '未关联文献')}
+        </div>
+        <div class="item-meta">${escapeHtml(item.content || '')}</div>
+        <div class="item-meta">${escapeHtml([
+          item.sourceLocation ? `定位：${item.sourceLocation}` : '',
+          item.page ? `页码：${item.page}` : '',
+          item.note ? `备注：${item.note}` : '',
+        ].filter(Boolean).join(' · '))}</div>
+      </div>
+    </div>`).join('');
 }
 
 /** 局部刷新文献库列表（不整页重渲染，保留上方表单与结果） */
@@ -198,6 +229,7 @@ function refreshLibrary(el) {
   const list = sortedList();
   const citedNums = collectCitedNums();
   const ctx = citationContext(list);
+  const project = getProject();
   const box = el.querySelector('#cit-list');
   const kw = el.querySelector('#cit-search')?.value || '';
   if (box) box.innerHTML = renderList(list, citedNums, kw, ctx);
@@ -213,6 +245,8 @@ function refreshLibrary(el) {
   if (allBtn) allBtn.disabled = !list.length;
   const stats = el.querySelector('#cit-cite-stats');
   if (stats) stats.innerHTML = citedStatsHtml(citedNums, list);
+  const evidenceBox = el.querySelector('#cit-evidence-list');
+  if (evidenceBox) evidenceBox.innerHTML = renderEvidenceList(evidenceListWithCitations(list), project.outline || []);
   bindListActions(el);
 }
 
@@ -313,6 +347,60 @@ function render(el) {
           <button class="btn" id="cit-add">生成并保存</button>
         </div>
         <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2><span class="mark"></span>阅读笔记与证据卡</h2>
+        <p class="desc">把文献里的定义、方法、数据或关键发现摘成证据卡，后续写作时更容易按章节取用。</p>
+        <label class="field-label">关联文献</label>
+        <select id="evi-citation">
+          <option value="">请选择已入库文献</option>
+          ${list.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(`[${item.litNo}] ${(item.title || '').slice(0, 40)}`)}</option>`).join('')}
+        </select>
+        <div class="form-row">
+          <div>
+            <label class="field-label">证据类型</label>
+            <select id="evi-type">
+              <option value="finding">核心发现</option>
+              <option value="definition">概念定义</option>
+              <option value="method">研究方法</option>
+              <option value="data">数据结果</option>
+              <option value="quote">原文摘录</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">关联章节</label>
+            <select id="evi-section">
+              <option value="">暂不关联</option>
+              ${(prj.outline || []).map(item => `<option value="${escapeHtml(item.sectionId || item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <label class="field-label">证据内容</label>
+        <textarea id="evi-content" placeholder="例如：该研究指出空间注意力模块能显著改善小目标分割边界。"></textarea>
+        <div class="form-row">
+          <div>
+            <label class="field-label">来源定位</label>
+            <input type="text" id="evi-location" placeholder="例如：结果分析 / 表 3 / 第 4 节">
+          </div>
+          <div>
+            <label class="field-label">页码</label>
+            <input type="text" id="evi-page" placeholder="例如：p.12">
+          </div>
+        </div>
+        <label class="field-label">我的笔记</label>
+        <textarea id="evi-note" placeholder="这条证据可用于哪一章？支撑哪个论点？"></textarea>
+        <div style="margin-top:16px">
+          <button class="btn" id="evi-save">保存证据卡</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="mark"></span>证据卡列表</h2>
+        <p class="desc">优先记录能直接支撑章节论证的内容，避免写作时回头翻全文。</p>
+        <div class="item-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>
       </div>
     </div>
 
@@ -490,14 +578,50 @@ function render(el) {
     copyText(sortedList().map(c => `[${c.litNo}] ${c.formatted || c.title}`).join('\n'));
   });
 
+  el.querySelector('#evi-save').addEventListener('click', () => {
+    const citationId = el.querySelector('#evi-citation').value;
+    const content = el.querySelector('#evi-content').value.trim();
+    if (!citationId) {
+      toast('请先选择关联文献', 'err');
+      return;
+    }
+    if (!content) {
+      toast('请填写证据内容', 'err');
+      return;
+    }
+    const sectionId = el.querySelector('#evi-section').value;
+    const next = [{
+      id: makeEvidenceId(),
+      projectId: prj.id,
+      citationId,
+      type: el.querySelector('#evi-type').value,
+      content,
+      sourceLocation: el.querySelector('#evi-location').value.trim(),
+      page: el.querySelector('#evi-page').value.trim(),
+      note: el.querySelector('#evi-note').value.trim(),
+      linkedSectionIds: sectionId ? [sectionId] : [],
+      linkedClaimIds: [],
+      createdAt: new Date().toISOString(),
+    }, ...getEvidence()];
+    saveEvidence(next);
+    ['#evi-content', '#evi-location', '#evi-page', '#evi-note'].forEach(selector => {
+      const input = el.querySelector(selector);
+      if (input) input.value = '';
+    });
+    el.querySelector('#evi-citation').value = '';
+    el.querySelector('#evi-section').value = '';
+    toast('证据卡已保存', 'ok');
+    refreshLibrary(el);
+  });
+
   bindListActions(el);
 }
 
 export default {
   id: 'citation',
   icon: '📚',
-  title: '文献与格式',
-  subtitle: 'GB/T 7714 引用格式，一键生成',
+  title: '文献与证据',
+  subtitle: '文献检索、证据卡与 GB/T 7714 引用管理',
   projectScoped: true,
   render,
 };

@@ -67,6 +67,7 @@ function blankProject(id = makeId(), partial = {}) {
     chapterProgress: {},
     currentChapter: '',
     materials: [],
+    evidence: [],
     currentStage: '',
     stages: [],
     abstract: '',
@@ -94,6 +95,7 @@ function ensureProjectKeys(project) {
     checkins: project.checkins || [],
     documentV2: project.documentV2 || null,
     materials: project.materials || [],
+    evidence: project.evidence || [],
     outline: project.outline || [],
     chapterProgress: project.chapterProgress || {},
     stages: project.stages || [],
@@ -180,6 +182,7 @@ function hydrateFromLegacyLocalStorage() {
       chapterProgress: legacy?.chapterProgress || {},
       currentChapter: legacy?.currentChapter || '',
       materials: legacy?.materials || [],
+      evidence: legacy?.evidence || [],
       stages: legacy?.stages || [],
       currentStage: legacy?.currentStage || '',
       abstract: legacy?.abstract || '',
@@ -415,6 +418,14 @@ export function getCheckins(projectId) {
 
 export function saveCheckins(checkins, projectId) {
   return saveBucket('checkins', checkins, projectId);
+}
+
+export function getEvidence(projectId) {
+  return getBucket('evidence', [], projectId);
+}
+
+export function saveEvidence(evidence, projectId) {
+  return saveBucket('evidence', evidence, projectId);
 }
 
 export function getVersionsStore(projectId) {
