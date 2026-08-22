@@ -261,8 +261,18 @@ function renderDiscoverTab(prj) {
       <div class="citation-section-head">
         <div>
           <h3>导入与检索</h3>
-          <p class="desc">先把候选文献收进来。支持 AI 解析粘贴内容、手动录入，以及基于题目和大纲做推荐检索。</p>
+          <p class="desc">先根据课题拿到一批合适候选，再决定哪些要入库，最后才是补录零散文献。</p>
         </div>
+      </div>
+
+      <div class="card citation-panel">
+        <div class="citation-panel-head">
+          <div>
+            <h4>智能推荐与检索</h4>
+            <p class="desc">这是最常用的入口。基于当前题目和大纲批量推荐中英文文献，也支持手动输入检索词，确认后再勾选入库。</p>
+          </div>
+        </div>
+        <div id="cit-lit"></div>
       </div>
 
       <div class="citation-split">
@@ -331,16 +341,6 @@ function renderDiscoverTab(prj) {
           </div>
           <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
         </div>
-      </div>
-
-      <div class="card citation-panel">
-        <div class="citation-panel-head">
-          <div>
-            <h4>智能推荐与检索</h4>
-            <p class="desc">基于当前题目和大纲批量推荐中英文文献，也支持手动输入检索词。确认后再勾选入库。</p>
-          </div>
-        </div>
-        <div id="cit-lit"></div>
       </div>
     </section>`;
 }
