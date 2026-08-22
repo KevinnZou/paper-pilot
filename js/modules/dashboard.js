@@ -9,7 +9,8 @@ const CARDS = [
   { id: 'topic', title: '研究设计', desc: '研究想法 → 研究问题 → 可行性检查 → 论文大纲' },
   { id: 'writing', title: '写作工作台', desc: '一份完整论文文档：目录定位、AI 动作、规范引用' },
   { id: 'citation', title: '文献与证据', desc: '智能推荐中英文文献，核对理由后勾选入库' },
-  { id: 'planner', title: '计划与进度', desc: '截止日期倒排甘特图、每日打卡、进度监督' },
+  { id: 'planner', title: '计划与进度', desc: '今日任务、本周任务、时间轴与写作记录' },
+  { id: 'checkExport', title: '检查与导出', desc: '结构、引用、格式检查，以及 DOCX / PDF / Markdown 导出' },
 ];
 
 const PROGRESS_WEIGHT = { '已完成': 1, '进行中': 0.5, '未开始': 0 };

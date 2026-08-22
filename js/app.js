@@ -5,13 +5,14 @@ import topic from './modules/topic.js';
 import writing from './modules/writing.js';
 import citation from './modules/citation.js';
 import planner from './modules/planner.js';
+import checkExport from './modules/check-export.js';
 import projectSettings from './modules/project-settings.js';
 import settings from './modules/settings.js';
 import { ICONS } from './icons.js';
 import { getConfig } from './api.js';
 import { getProject, hasActiveProject, projectStoreReady } from './project.js';
 
-const MODULES = [projects, dashboard, topic, citation, writing, planner, projectSettings, settings];
+const MODULES = [projects, dashboard, topic, citation, writing, planner, checkExport, projectSettings, settings];
 const container = document.getElementById('module-container');
 const navEl = document.getElementById('nav');
 

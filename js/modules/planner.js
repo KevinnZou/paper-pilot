@@ -1,7 +1,5 @@
-// 计划与进度：按截止日期真实倒排的甘特图 + 打卡关联章节（PRD §4.4 链路①③）
 import { toast, escapeHtml, calGridHtml } from '../ui.js';
-import { getProject, updateBasics, saveProject, setChapterProgress, calcStreak, isoLocal } from '../project.js';
-import { get, set } from '../storage.js';
+import { getProject, updateBasics, saveProject, setChapterProgress, calcStreak, isoLocal, getPlan, savePlan, getEvidence } from '../project.js';
 
 const TEMPLATES = [
   {
@@ -29,7 +27,18 @@ function fmtDate(ms) {
   return `${t.getMonth() + 1}/${t.getDate()}`;
 }
 
-/** 从截止日期倒排各阶段起止时间 */
+function dateKey(ms) {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+function plusDays(n) {
+  return dateKey(Date.now() + n * DAY);
+}
+
+function makeTaskId(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
 function backschedule(stages, dueDate) {
   const due = new Date(dueDate).getTime();
   let end = due;
@@ -50,7 +59,7 @@ function renderGantt(stages, totalDays, chapterProgress = {}) {
     const isNow = s.start <= now && now <= s.end;
     const done = s.end < now;
     const title = `${s.name}：${fmtDate(s.start)} – ${fmtDate(s.end)}（${s.weeks} 周）${isNow ? ' · 当前阶段' : done ? ' · 已完成' : ''}`;
-    const tasks = s.tasks && s.tasks.length
+    const tasks = s.tasks?.length
       ? `<div class="gantt-tasks">${s.tasks.map(t => {
           const st = chapterProgress[t];
           const chipCls = st === '已完成' ? 'done' : st === '进行中' ? 'doing' : '';
@@ -70,58 +79,188 @@ function renderGantt(stages, totalDays, chapterProgress = {}) {
   return `<div class="result-box filled">${info}<div class="gantt-placeholder">${rows}</div></div>`;
 }
 
+function chapterTasks(project) {
+  const chapters = project.outline || [];
+  const progress = project.chapterProgress || {};
+  const ordered = chapters
+    .map((item, index) => ({ ...item, index, status: progress[item.chapter] || '未开始' }))
+    .filter(item => item.status !== '已完成')
+    .slice(0, 4);
+  return ordered.map((item, idx) => ({
+    id: `auto-chapter-${item.sectionId || item.chapter}`,
+    title: item.status === '进行中' ? `继续推进 ${item.chapter}` : `启动 ${item.chapter}`,
+    dueDate: plusDays(idx === 0 ? 0 : Math.min(idx + 1, 5)),
+    source: 'auto',
+    nav: 'writing',
+    chapter: item.chapter,
+    sectionId: item.sectionId || item.chapter,
+    note: item.status === '进行中' ? '补正文并回看引用支撑' : '先写出可工作的初稿',
+  }));
+}
+
+function derivedTasks(project) {
+  const design = project.researchDesign || {};
+  const tasks = [];
+  if (!project.dueDate) {
+    tasks.push({ id: 'auto-due', title: '设定论文截止日期', dueDate: plusDays(0), source: 'auto', nav: 'planner', note: '没有截止日期，系统无法准确倒排' });
+  }
+  if (!project.title) {
+    tasks.push({ id: 'auto-title', title: '确定论文题目', dueDate: plusDays(0), source: 'auto', nav: 'topic', note: '先把研究想法落成明确题目' });
+  }
+  if (!(design.researchQuestions || []).length) {
+    tasks.push({ id: 'auto-rq', title: '补齐研究问题', dueDate: plusDays(0), source: 'auto', nav: 'topic', note: '至少生成 3-5 个候选问题' });
+  }
+  if (!(design.methods || []).length) {
+    tasks.push({ id: 'auto-method', title: '明确研究方法', dueDate: plusDays(1), source: 'auto', nav: 'topic', note: '方法决定后续写作结构' });
+  }
+  if (!(design.dataSources || []).length) {
+    tasks.push({ id: 'auto-data', title: '补充数据来源', dueDate: plusDays(1), source: 'auto', nav: 'topic', note: '至少确认数据或材料从哪里来' });
+  }
+  if (!design.feasibility?.score && !(design.feasibility?.risks || []).length) {
+    tasks.push({ id: 'auto-feasibility', title: '做一轮可行性检查', dueDate: plusDays(2), source: 'auto', nav: 'topic', note: '确认时间、样本和方法都可落地' });
+  }
+  if (!(project.outline || []).length) {
+    tasks.push({ id: 'auto-outline', title: '生成并采用论文大纲', dueDate: plusDays(2), source: 'auto', nav: 'topic', note: '大纲会驱动写作与文献推荐' });
+  }
+  tasks.push(...chapterTasks(project));
+  if ((project.citations || []).length && !getEvidence().length) {
+    tasks.push({ id: 'auto-evidence', title: '从文献中整理 2 张证据卡', dueDate: plusDays(3), source: 'auto', nav: 'citation', note: '让右栏证据能支撑写作' });
+  }
+  return tasks;
+}
+
+function allTasks(project, plan) {
+  return [...derivedTasks(project), ...(plan.tasks || [])].sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')));
+}
+
+function isDone(task, plan) {
+  return (plan.doneTaskIds || []).includes(task.id);
+}
+
+function taskChip(task) {
+  if (task.source === 'manual') return 'done';
+  return task.dueDate < isoLocal(Date.now()) ? 'uncited' : task.dueDate === isoLocal(Date.now()) ? 'doing' : '';
+}
+
+function renderTaskList(tasks, plan, emptyText) {
+  if (!tasks.length) return `<div class="result-box"><span class="placeholder">${emptyText}</span></div>`;
+  return `<div class="item-list">${tasks.map(task => `
+    <div class="item">
+      <div class="item-main">
+        <div class="item-title">
+          <span class="chip ${taskChip(task)}">${task.dueDate || '未设日期'}</span>
+          ${isDone(task, plan) ? '<span class="chip done">已完成</span>' : ''}
+          ${escapeHtml(task.title)}
+        </div>
+        <div class="item-meta">${escapeHtml(task.note || '')}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" data-task-go="${escapeHtml(task.id)}">去处理</button>
+        <button class="btn btn-sm" data-task-done="${escapeHtml(task.id)}">${isDone(task, plan) ? '撤销完成' : '标记完成'}</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function currentStageText(stages) {
+  const now = Date.now();
+  const stage = stages.find(item => item.start <= now && now <= item.end);
+  return stage ? `${stage.name}（${fmtDate(stage.start)} - ${fmtDate(stage.end)}）` : '尚未生成计划';
+}
+
 function render(el) {
-  const p = getProject();
-  const rawCheckins = get('checkins', []);
+  const project = getProject();
+  const plan = getPlan();
+  const rawCheckins = project.checkins || [];
   const checkins = rawCheckins.map(c => (typeof c === 'string' ? { date: c, chapter: '', note: '' } : c));
   const today = isoLocal(Date.now());
   const checkedToday = checkins.some(c => c.date === today);
-  const daysLeft = p.dueDate ? Math.ceil((new Date(p.dueDate).getTime() - Date.now()) / DAY) : null;
+  const daysLeft = project.dueDate ? Math.ceil((new Date(project.dueDate).getTime() - Date.now()) / DAY) : null;
   const streak = calcStreak(checkins.map(c => c.date));
-  const chapters = p.outline || [];
-  const stages = p.stages || [];
+  const chapters = project.outline || [];
+  const stages = project.stages || [];
   const totalDays = stages.length ? (stages[0].end - stages[stages.length - 1].start) : 1;
+  const tasks = allTasks(project, plan);
+  const todayTasks = tasks.filter(task => task.dueDate <= today && !isDone(task, plan));
+  const weekEnd = plusDays(6);
+  const weekTasks = tasks.filter(task => task.dueDate >= today && task.dueDate <= weekEnd && !isDone(task, plan));
+  const overdueTasks = tasks.filter(task => task.dueDate < today && !isDone(task, plan));
 
-  // 打卡日历热力图（共用组件）
   const calHtml = calGridHtml(checkins.map(c => c.date));
 
   el.innerHTML = `
-    <div class="card">
-      <h2><span class="mark"></span>写作计划</h2>
-      <p class="desc">选择计划模板并设定论文截止日期，系统按截止日期倒排每个阶段的时间轴${chapters.length ? '；已采用的大纲章节会自动挂到撰写阶段' : ''}</p>
-      <div class="form-row">
-        <div>
-          <label class="field-label">计划模板</label>
-          <select id="plan-tpl">${TEMPLATES.map((t, i) => `<option value="${i}">${t.name}</option>`).join('')}</select>
-        </div>
-        <div>
-          <label class="field-label">论文截止日期</label>
-          <input type="date" id="plan-due" value="${p.dueDate || ''}">
-        </div>
+    <div class="grid-2">
+      <div class="card">
+        <h2><span class="mark"></span>今日任务</h2>
+        <p class="desc">默认先看今天最该推进什么。${overdueTasks.length ? `当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '目前没有逾期任务。'}</p>
+        ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
+        ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
       </div>
-      <div style="margin-top:16px">
-        <button class="btn" id="plan-gen">生成写作计划</button>
+
+      <div class="card">
+        <h2><span class="mark"></span>本周任务</h2>
+        <p class="desc">本周阶段：<b>${escapeHtml(currentStageText(stages))}</b>${daysLeft != null ? ` · 距截止 ${daysLeft >= 0 ? `<b>${daysLeft}</b> 天` : `已超期 <b>${-daysLeft}</b> 天`}` : ''}</p>
+        ${renderTaskList(weekTasks, plan, '本周自动任务还不多，可以补充一个手动任务。')}
       </div>
-      <div id="plan-out">
-        ${stages.length
-          ? renderGantt(stages, totalDays, p.chapterProgress)
-          : '<div class="result-box"><span class="placeholder">设定截止日期并点击生成，计划甘特图将显示在这里</span></div>'}
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2><span class="mark"></span>手动补充任务</h2>
+        <p class="desc">可把导师反馈、补文献、补数据、改某一章这些任务手动挂进来。</p>
+        <label class="field-label">任务内容</label>
+        <input type="text" id="plan-task-title" placeholder="例如：补第三章 3 篇近三年中文文献">
+        <div class="form-row">
+          <div>
+            <label class="field-label">截止日期</label>
+            <input type="date" id="plan-task-due" value="${plusDays(2)}">
+          </div>
+          <div>
+            <label class="field-label">关联章节</label>
+            <select id="plan-task-section">
+              <option value="">暂不关联</option>
+              ${chapters.map(item => `<option value="${escapeHtml(item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <label class="field-label">备注（可选）</label>
+        <input type="text" id="plan-task-note" placeholder="例如：优先补方法比较和近三年研究现状">
+        <div style="margin-top:16px"><button class="btn" id="plan-task-add">加入任务列表</button></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="mark"></span>计划与时间轴</h2>
+        <p class="desc">甘特图保留为辅助视图，真正的执行入口现在在今日任务和本周任务。</p>
+        <div class="form-row">
+          <div>
+            <label class="field-label">计划模板</label>
+            <select id="plan-tpl">${TEMPLATES.map((t, i) => `<option value="${i}"${t.name === plan.lastTemplate ? ' selected' : ''}>${t.name}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label class="field-label">论文截止日期</label>
+            <input type="date" id="plan-due" value="${project.dueDate || ''}">
+          </div>
+        </div>
+        <div style="margin-top:16px"><button class="btn" id="plan-gen">生成 / 更新计划</button></div>
+        <div id="plan-out" style="margin-top:14px">
+          ${stages.length
+            ? renderGantt(stages, totalDays, project.chapterProgress)
+            : '<div class="result-box"><span class="placeholder">设定截止日期后，这里会显示倒排计划</span></div>'}
+        </div>
       </div>
     </div>
 
     <div class="card">
       <h2><span class="mark"></span>每日打卡</h2>
-      <p class="desc">累计 <b>${checkins.length}</b> 天 · 连续 <b>${streak}</b> 天 🔥${daysLeft !== null ? (daysLeft >= 0 ? ` · 距截止还有 <b>${daysLeft}</b> 天` : ` · 已过截止 <b>${-daysLeft}</b> 天`) : ''}</p>
+      <p class="desc">累计 <b>${checkins.length}</b> 天 · 连续 <b>${streak}</b> 天${daysLeft !== null ? (daysLeft >= 0 ? ` · 距截止还有 <b>${daysLeft}</b> 天` : ` · 已过截止 <b>${-daysLeft}</b> 天`) : ''}</p>
       ${calHtml}
       ${chapters.length ? `
-        <label class="field-label">今天写了哪一章？（进度会同步到论文主页）</label>
+        <label class="field-label">今天主要推进了哪一章？</label>
         <select id="ck-chapter">
           <option value="">（未写章节，仅打卡）</option>
-          ${chapters.map(c => `<option value="${escapeHtml(c.chapter)}"${c.chapter === p.currentChapter ? ' selected' : ''}>${escapeHtml(c.chapter)}</option>`).join('')}
-        </select>` : `
-        <p class="desc">提示：先在「选题与大纲」采用大纲，打卡时就能记录每章进度</p>`}
+          ${chapters.map(c => `<option value="${escapeHtml(c.chapter)}"${c.chapter === project.currentChapter ? ' selected' : ''}>${escapeHtml(c.chapter)}</option>`).join('')}
+        </select>` : '<p class="desc">先在研究设计里采用大纲，打卡时就能同步章节进度。</p>'}
       <label class="field-label">今日小结（可选）</label>
-      <input type="text" id="ck-note" placeholder="例如：完成文献综述第一小节，约800字">
+      <input type="text" id="ck-note" placeholder="例如：完成第二章 900 字，并补了两条证据卡">
       <div style="margin-top:14px">
         <button class="btn" id="checkin-btn" ${checkedToday ? 'disabled title="今天已经打过卡，明天再来"' : ''}>${checkedToday ? '今日已打卡' : '今日已写作，打卡'}</button>
         ${checkedToday ? '<span class="seal" style="margin-left:10px">已打卡</span>' : ''}
@@ -140,28 +279,100 @@ function render(el) {
         </div>` : ''}
     </div>`;
 
-  // 生成计划：倒排日期 + 大纲章节挂到撰写阶段（链路①）
   el.querySelector('#plan-gen').addEventListener('click', () => {
     const dueVal = el.querySelector('#plan-due').value;
-    if (!dueVal) { toast('请先选择论文截止日期', 'err'); return; }
-    const tpl = TEMPLATES[el.querySelector('#plan-tpl').value];
-    const stages = backschedule(tpl.stages, dueVal);
-    stages.forEach(s => {
-      if (/撰写/.test(s.name) && chapters.length) s.tasks = chapters.map(c => c.chapter);
+    if (!dueVal) {
+      toast('请先选择论文截止日期', 'err');
+      return;
+    }
+    const tpl = TEMPLATES[Number(el.querySelector('#plan-tpl').value)];
+    const nextStages = backschedule(tpl.stages, dueVal);
+    nextStages.forEach(stage => {
+      if (/撰写/.test(stage.name) && chapters.length) stage.tasks = chapters.map(c => c.chapter);
     });
     updateBasics({ dueDate: dueVal });
-    saveProject({ stages });
-    toast(`写作计划已生成：${stages.length} 个阶段，按截止日期倒排`, 'ok');
+    saveProject({ stages: nextStages });
+    savePlan({ ...plan, lastTemplate: tpl.name });
+    toast(`计划已更新：${tpl.name}`, 'ok');
     render(el);
   });
 
-  // 打卡：写入记录 + 更新章节进度（链路③）
+  el.querySelector('#plan-task-add').addEventListener('click', () => {
+    const title = el.querySelector('#plan-task-title').value.trim();
+    if (!title) {
+      toast('请先填写任务内容', 'err');
+      return;
+    }
+    const dueDate = el.querySelector('#plan-task-due').value || plusDays(2);
+    const chapter = el.querySelector('#plan-task-section').value;
+    const note = el.querySelector('#plan-task-note').value.trim();
+    const nextPlan = {
+      ...plan,
+      tasks: [{
+        id: makeTaskId('manual'),
+        title,
+        dueDate,
+        chapter,
+        note,
+        source: 'manual',
+        nav: chapter ? 'writing' : 'planner',
+      }, ...(plan.tasks || [])],
+    };
+    savePlan(nextPlan);
+    toast('任务已加入本周列表', 'ok');
+    render(el);
+  });
+
+  el.querySelectorAll('[data-task-go]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const task = tasks.find(item => item.id === btn.dataset.taskGo);
+      if (!task) return;
+      if (task.chapter) {
+        setChapterProgress(task.chapter, '进行中');
+        saveProject({ currentChapter: task.chapter });
+      }
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: task.nav || 'planner' }));
+    }));
+
+  el.querySelectorAll('[data-task-done]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.taskDone;
+      const done = new Set(plan.doneTaskIds || []);
+      const task = tasks.find(item => item.id === id);
+      if (done.has(id)) done.delete(id);
+      else done.add(id);
+      savePlan({ ...plan, doneTaskIds: [...done] });
+      if (task?.chapter && done.has(id)) setChapterProgress(task.chapter, '已完成');
+      toast(done.has(id) ? '任务已标记完成' : '已撤销完成状态', 'ok');
+      render(el);
+    }));
+
+  el.querySelector('#plan-reschedule')?.addEventListener('click', () => {
+    if (!overdueTasks.length) return;
+    if (!confirm(`当前有 ${overdueTasks.length} 个逾期任务，是否把未完成的手动任务顺延到未来 7 天内？`)) return;
+    let shift = 1;
+    const rescheduled = (plan.tasks || []).map(task => {
+      if ((plan.doneTaskIds || []).includes(task.id)) return task;
+      if (!task.dueDate || task.dueDate >= today) return task;
+      const next = { ...task, dueDate: plusDays(Math.min(shift, 7)) };
+      shift += 1;
+      return next;
+    });
+    savePlan({
+      ...plan,
+      tasks: rescheduled,
+      lastRescheduledAt: new Date().toISOString(),
+    });
+    toast('后续任务已顺延，请按新的节奏推进', 'ok');
+    render(el);
+  });
+
   el.querySelector('#checkin-btn').addEventListener('click', () => {
     const chapter = el.querySelector('#ck-chapter')?.value || '';
     const note = el.querySelector('#ck-note').value.trim();
-    const list = get('checkins', []);
+    const list = [...(project.checkins || [])];
     list.unshift({ date: isoLocal(Date.now()), chapter, note });
-    set('checkins', list);
+    saveProject({ checkins: list });
     if (chapter) setChapterProgress(chapter, '进行中');
     toast(chapter ? `打卡成功，${chapter} 已标记为「进行中」` : '打卡成功，继续保持！', 'ok');
     render(el);
@@ -172,7 +383,7 @@ export default {
   id: 'planner',
   icon: '📅',
   title: '计划与进度',
-  subtitle: '甘特图、倒计时、打卡，对抗拖延',
+  subtitle: '今日任务、本周任务与时间轴',
   projectScoped: true,
   render,
 };

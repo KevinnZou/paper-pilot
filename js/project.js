@@ -68,6 +68,12 @@ function blankProject(id = makeId(), partial = {}) {
     currentChapter: '',
     materials: [],
     evidence: [],
+    plan: {
+      tasks: [],
+      doneTaskIds: [],
+      lastTemplate: '',
+      lastRescheduledAt: '',
+    },
     currentStage: '',
     stages: [],
     abstract: '',
@@ -96,6 +102,12 @@ function ensureProjectKeys(project) {
     documentV2: project.documentV2 || null,
     materials: project.materials || [],
     evidence: project.evidence || [],
+    plan: {
+      tasks: project.plan?.tasks || [],
+      doneTaskIds: project.plan?.doneTaskIds || [],
+      lastTemplate: project.plan?.lastTemplate || '',
+      lastRescheduledAt: project.plan?.lastRescheduledAt || '',
+    },
     outline: project.outline || [],
     chapterProgress: project.chapterProgress || {},
     stages: project.stages || [],
@@ -183,6 +195,7 @@ function hydrateFromLegacyLocalStorage() {
       currentChapter: legacy?.currentChapter || '',
       materials: legacy?.materials || [],
       evidence: legacy?.evidence || [],
+      plan: legacy?.plan || { tasks: [], doneTaskIds: [], lastTemplate: '', lastRescheduledAt: '' },
       stages: legacy?.stages || [],
       currentStage: legacy?.currentStage || '',
       abstract: legacy?.abstract || '',
@@ -426,6 +439,19 @@ export function getEvidence(projectId) {
 
 export function saveEvidence(evidence, projectId) {
   return saveBucket('evidence', evidence, projectId);
+}
+
+export function getPlan(projectId) {
+  return getBucket('plan', {
+    tasks: [],
+    doneTaskIds: [],
+    lastTemplate: '',
+    lastRescheduledAt: '',
+  }, projectId);
+}
+
+export function savePlan(plan, projectId) {
+  return saveBucket('plan', plan, projectId);
 }
 
 export function getVersionsStore(projectId) {
