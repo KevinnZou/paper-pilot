@@ -218,13 +218,19 @@ export default {
     const citations = normalizeCitations();
     const doc = docFromJSON({ ...project, citations });
     const viewState = { pending: null, rerun: null, view: null, currentChapter: project.currentChapter || project.outline?.[0]?.chapter || '' };
+    const panelState = { outlineCollapsed: false };
 
     el.innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
         <div class="workbench">
           <aside class="wb-left">
-            <h3><span class="mark"></span>论文目录</h3>
-            <p class="desc" id="wb-outline-desc">结构化章节会从编辑器实时同步到这里</p>
+            <div class="wb-side-head">
+              <div>
+                <h3><span class="mark"></span>论文目录</h3>
+                <p class="desc" id="wb-outline-desc">结构化章节会从编辑器实时同步到这里</p>
+              </div>
+              <button class="btn btn-ghost btn-sm icon-only" id="wb-toggle-outline" title="折叠目录" aria-label="折叠目录">⇤</button>
+            </div>
             <div class="chapter-list" id="wb-outline"></div>
           </aside>
 
@@ -234,17 +240,27 @@ export default {
               <span class="cur-note">ProseMirror 结构化文档 · 自动保存</span>
             </div>
             <div class="wb-toolbar">
-              ${AI_ACTIONS.map(item => `<button class="btn ${item.id === 'academic' ? 'btn-ai-solid' : 'btn-ai'} btn-sm" data-ai="${item.id}">${item.label}</button>`).join('')}
-              <span class="wb-sep"></span>
+              <div class="wb-toolbar-main">
+                ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="btn ${item.id === 'academic' ? 'btn-ai-solid' : 'btn-ai'} btn-sm" data-ai="${item.id}">${item.label}</button>`).join('')}
+              </div>
+              <div class="wb-toolbar-main">
+                <button class="btn btn-ghost btn-sm" id="wb-done">标记本章完成</button>
+                <button class="btn btn-ghost btn-sm" id="wb-copy">复制全文</button>
+              </div>
+              <details class="wb-toolbar-more">
+                <summary>更多工具</summary>
+                <div class="wb-toolbar-more-panel">
+                  <button class="btn btn-ai btn-sm" data-ai="logic">本章逻辑检查</button>
+                  <button class="btn btn-ghost btn-sm" id="wb-undo">↶ 撤销</button>
+                  <button class="btn btn-ghost btn-sm" id="wb-redo">↷ 重做</button>
+                  <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
+                  <button class="btn btn-ghost btn-sm" id="wb-preview">排版预览</button>
+                </div>
+              </details>
+            </div>
+            <div class="wb-toolbar wb-toolbar-secondary">
               <button class="btn btn-ghost btn-sm" id="wb-draft">生成本章草稿</button>
-              <button class="btn btn-ghost btn-sm" id="wb-done">标记本章完成</button>
-              <span class="wb-sep"></span>
-              <button class="btn btn-ghost btn-sm" id="wb-undo">↶ 撤销</button>
-              <button class="btn btn-ghost btn-sm" id="wb-redo">↷ 重做</button>
-              <span class="wb-sep"></span>
-              <button class="btn btn-ghost btn-sm" id="wb-copy">复制全文</button>
-              <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
-              <button class="btn btn-ghost btn-sm" id="wb-preview">排版预览</button>
+              <span class="hint-plain">常用动作放在上面，其余工具收进“更多工具”里。</span>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
             <div class="wb-meta">
@@ -272,7 +288,18 @@ export default {
     const evidenceBox = el.querySelector('#wb-evidence');
     const savedEl = el.querySelector('#wb-saved');
     const countEl = el.querySelector('#wb-count');
+    const workbench = el.querySelector('.workbench');
+    const outlineToggle = el.querySelector('#wb-toggle-outline');
     let saveTimer = null;
+
+    function syncOutlineCollapse() {
+      workbench.classList.toggle('outline-collapsed', panelState.outlineCollapsed);
+      if (outlineToggle) {
+        outlineToggle.textContent = panelState.outlineCollapsed ? '⇥' : '⇤';
+        outlineToggle.title = panelState.outlineCollapsed ? '展开目录' : '折叠目录';
+        outlineToggle.setAttribute('aria-label', panelState.outlineCollapsed ? '展开目录' : '折叠目录');
+      }
+    }
 
     function setSaveStatus(state, detail = '') {
       savedEl.dataset.state = state;
@@ -413,8 +440,14 @@ export default {
     renderCitationPicker();
     renderEvidencePanel();
     renderSuggestionBox(suggestionBox, viewState);
+    syncOutlineCollapse();
     setSaveStatus('idle', '已载入');
     persistNow();
+
+    outlineToggle?.addEventListener('click', () => {
+      panelState.outlineCollapsed = !panelState.outlineCollapsed;
+      syncOutlineCollapse();
+    });
 
     async function runSuggestion(action, sourceText, replaceFrom, replaceTo, sourceLabel) {
       const button = el.querySelector(`[data-ai="${action.id}"]`);
