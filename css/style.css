@@ -1155,6 +1155,15 @@ kbd {
 .wb-side-nav .btn {
   flex: 1;
 }
+.wb-side-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.wb-side-actions .btn {
+  min-width: 0;
+}
 .wb-side-tabs {
   display: inline-flex;
   gap: 6px;

@@ -46,6 +46,10 @@ function wordCount(text) {
   return String(text || '').replace(/\s/g, '').length;
 }
 
+function makeSectionId() {
+  return globalThis.crypto?.randomUUID?.() || `sec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function sectionMetaFromProject(project) {
   return (project.outline || []).map((item, index) => ({
     chapter: item.chapter,
@@ -908,6 +912,66 @@ export default {
       viewState.view.focus();
     }
 
+    function sectionFragment(title) {
+      return [
+        paperSchema.nodes.heading.create(
+          { level: 2, role: 'section', sectionId: makeSectionId() },
+          paperSchema.text(title)
+        ),
+        paperSchema.nodes.paragraph.create(),
+      ];
+    }
+
+    function insertSectionRelative(position, title) {
+      let tr = viewState.view.state.tr;
+      tr = tr.insert(position, sectionFragment(title));
+      viewState.view.dispatch(tr.scrollIntoView());
+    }
+
+    function renameCurrentSection() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先把光标放到要修改的章节里', 'err');
+        return;
+      }
+      const nextTitle = window.prompt('修改章节标题', section.chapter);
+      if (!nextTitle) return;
+      const title = nextTitle.trim();
+      if (!title || title === section.chapter) return;
+      const headingNode = viewState.view.state.doc.nodeAt(section.headingFrom);
+      if (!headingNode) return;
+      const contentFrom = section.headingFrom + 1;
+      const contentTo = section.headingFrom + headingNode.nodeSize - 1;
+      viewState.view.dispatch(
+        viewState.view.state.tr.replaceWith(contentFrom, contentTo, paperSchema.text(title)).scrollIntoView()
+      );
+      toast('章节标题已更新', 'ok');
+    }
+
+    function addSectionBeforeCurrent() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先进入一个章节', 'err');
+        return;
+      }
+      const title = window.prompt('新章节标题', '新增章节');
+      if (!title?.trim()) return;
+      insertSectionRelative(section.headingFrom - 1, title.trim());
+      toast('已在当前章节前插入新章节', 'ok');
+    }
+
+    function addSectionAfterCurrent() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先进入一个章节', 'err');
+        return;
+      }
+      const title = window.prompt('新章节标题', '新增章节');
+      if (!title?.trim()) return;
+      insertSectionRelative(section.bodyTo + 1, title.trim());
+      toast('已在当前章节后插入新章节', 'ok');
+    }
+
     function renderChapterCard() {
       const sections = topLevelSections(viewState.view.state.doc);
       const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from) || sections[0];
@@ -945,11 +1009,23 @@ export default {
         <div class="wb-side-nav">
           <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${prev?.sectionId || ''}" ${prev ? '' : 'disabled'}>上一章</button>
           <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${next?.sectionId || ''}" ${next ? '' : 'disabled'}>下一章</button>
+        </div>
+        <div class="wb-side-actions">
+          <button class="btn btn-ghost btn-sm" type="button" data-section-action="rename">改标题</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-section-action="before">前插一章</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-section-action="after">后加一章</button>
         </div>`;
       chapterCard.querySelectorAll('[data-jump-section]').forEach(btn => {
         btn.addEventListener('click', () => {
           if (!btn.dataset.jumpSection) return;
           jumpToSection(btn.dataset.jumpSection);
+        });
+      });
+      chapterCard.querySelectorAll('[data-section-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.sectionAction === 'rename') renameCurrentSection();
+          if (btn.dataset.sectionAction === 'before') addSectionBeforeCurrent();
+          if (btn.dataset.sectionAction === 'after') addSectionAfterCurrent();
         });
       });
     }
