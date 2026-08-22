@@ -196,11 +196,19 @@ function buildDocxParts(project, doc, citations) {
   renderable.forEach(block => {
     if (block.type === 'title') { blocks.push(paragraph(block.text, 'Title')); return; }
     if (block.type === 'heading') { blocks.push(paragraph(block.text, 'Heading1')); return; }
+    if (block.type === 'notes_heading') { blocks.push(paragraph(block.text, 'Heading1')); return; }
     if (block.type === 'paragraph') { blocks.push(paragraph(block.text, 'BodyText')); return; }
     if (block.type === 'blockquote') { blocks.push(paragraph(block.text, 'BodyQuote')); return; }
     if (block.type === 'reference') { blocks.push(paragraph(block.text, 'Reference')); return; }
+    if (block.type === 'note') { blocks.push(paragraph(`[注${block.number}] ${block.text}`, 'Reference')); return; }
     if (block.type === 'list') {
       block.items.forEach((item, index) => blocks.push(paragraph(`${block.ordered ? `${index + 1}. ` : '• '}${item}`, 'BodyText')));
+      return;
+    }
+    if (block.type === 'formula') {
+      blocks.push(paragraph(block.latex || '', 'BodyQuote'));
+      blocks.push(paragraph(`式${block.number}${block.label ? ` ${block.label}` : ''}`, 'Caption'));
+      if (block.note) blocks.push(paragraph(`说明：${block.note}`, 'BodyQuote'));
       return;
     }
     if (block.type === 'figure') {
@@ -223,6 +231,7 @@ function buildDocxParts(project, doc, citations) {
       if (block.rows?.length) blocks.push(tableXml(block.rows));
       blocks.push(paragraph(`表${block.number} ${block.caption || '未命名表格'}`, 'Caption'));
       if (block.note) blocks.push(paragraph(`说明：${block.note}`, 'BodyQuote'));
+      return;
     }
   });
 

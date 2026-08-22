@@ -37,11 +37,13 @@ function openPrintPreview(title, html) {
       h2 { font-size:18px; margin: 28px 0 12px; border-bottom:1px solid #ddd; padding-bottom:6px; }
       p { text-indent: 2em; margin: 8px 0; }
       .ref { text-indent: -2em; padding-left: 2em; font-size: 13px; }
+      .pp-note-row { text-indent: 0; padding-left: 0; }
       blockquote { margin: 12px 0; padding: 8px 16px; border-left: 3px solid #C03B2D; background: #FBF7F0; }
       ul, ol { margin: 10px 0 14px 32px; }
-      .pp-figure, .pp-table-wrap { margin: 18px 0; }
+      .pp-figure, .pp-table-wrap, .pp-formula { margin: 18px 0; }
+      .pp-formula-body { padding: 14px 16px; border: 1px solid #DDD7CA; background: #FCFBF8; font-family: "SFMono-Regular", Menlo, Consolas, monospace; text-align: center; white-space: pre-wrap; }
       .pp-figure img { max-width: 100%; display: block; margin: 0 auto; border: 1px solid #DDD7CA; }
-      .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
+      .pp-figure figcaption, .pp-table-wrap figcaption, .pp-formula figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
       .pp-note { margin: 6px 0 0; text-indent: 0; font-size: 13px; color: #5A6570; }
       .pp-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
       .pp-table th, .pp-table td { border: 1px solid #CFC9BB; padding: 8px 10px; text-align: left; vertical-align: top; }
@@ -57,12 +59,21 @@ function buildPreviewHtml(project, doc, citations) {
   return blocks.map(block => {
     if (block.type === 'title') return `<h1>${escapeHtml(block.text)}</h1>`;
     if (block.type === 'heading') return `<h2>${escapeHtml(block.text)}</h2>`;
+    if (block.type === 'notes_heading') return `<h2>${escapeHtml(block.text)}</h2>`;
     if (block.type === 'paragraph') return `<p>${escapeHtml(block.text)}</p>`;
     if (block.type === 'blockquote') return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
     if (block.type === 'reference') return `<p class="ref">${escapeHtml(block.text)}</p>`;
+    if (block.type === 'note') return `<p class="ref pp-note-row">[注${block.number}] ${escapeHtml(block.text)}</p>`;
     if (block.type === 'list') {
       const tag = block.ordered ? 'ol' : 'ul';
       return `<${tag}>${block.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</${tag}>`;
+    }
+    if (block.type === 'formula') {
+      return `<figure class="pp-formula">
+        <div class="pp-formula-body">${escapeHtml(block.latex || '')}</div>
+        <figcaption>式${block.number}${block.label ? `　${escapeHtml(block.label)}` : ''}</figcaption>
+        ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
+      </figure>`;
     }
     if (block.type === 'figure') {
       const caption = block.caption || block.alt || '未命名图片';
@@ -174,6 +185,11 @@ function collectIssues(project, doc, citations) {
   const uncapturedTables = renderable.filter(block => block.type === 'table' && !block.caption?.trim());
   if (uncapturedTables.length) {
     issues.push({ level: 'medium', group: '格式检查', text: `有 ${uncapturedTables.length} 个表格还没有表题，导出前建议补齐。`, nav: 'writing' });
+  }
+
+  const unlabeledFormulas = renderable.filter(block => block.type === 'formula' && !block.label?.trim());
+  if (unlabeledFormulas.length) {
+    issues.push({ level: 'low', group: '格式检查', text: `有 ${unlabeledFormulas.length} 个公式还没有标题，后续校对时可能不方便定位。`, nav: 'writing' });
   }
 
   return issues;

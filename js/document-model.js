@@ -53,6 +53,46 @@ const baseNodes = {
       return ['span', { 'data-citation-id': node.attrs.citationId, class: 'pm-citation' }, '[?]'];
     },
   },
+  footnote: {
+    inline: true,
+    atom: true,
+    group: 'inline',
+    selectable: true,
+    attrs: { noteText: { default: '' } },
+    parseDOM: [{
+      tag: 'span[data-footnote-text]',
+      getAttrs: dom => ({ noteText: dom.getAttribute('data-footnote-text') || '' }),
+    }],
+    toDOM(node) {
+      return ['span', { 'data-footnote-text': node.attrs.noteText, class: 'pm-footnote' }, '[注]'];
+    },
+  },
+  formula_block: {
+    group: 'block',
+    atom: true,
+    selectable: true,
+    attrs: {
+      latex: { default: '' },
+      label: { default: '' },
+      note: { default: '' },
+    },
+    parseDOM: [{
+      tag: 'div[data-formula-latex]',
+      getAttrs: dom => ({
+        latex: dom.getAttribute('data-formula-latex') || '',
+        label: dom.getAttribute('data-formula-label') || '',
+        note: dom.getAttribute('data-formula-note') || '',
+      }),
+    }],
+    toDOM(node) {
+      return ['div', {
+        'data-formula-latex': node.attrs.latex,
+        'data-formula-label': node.attrs.label,
+        'data-formula-note': node.attrs.note,
+        class: 'pm-formula-block',
+      }];
+    },
+  },
   figure: {
     group: 'block',
     atom: true,
@@ -188,6 +228,7 @@ function textWithCitations(node) {
   node.forEach(child => {
     if (child.isText) out += child.text;
     else if (child.type.name === 'citation') out += `[[CIT:${child.attrs.citationId}]]`;
+    else if (child.type.name === 'footnote') out += `[[NOTE:${child.attrs.noteText || ''}]]`;
   });
   return out.trim();
 }
@@ -203,20 +244,38 @@ function parseTableRows(rowsAttr) {
   }
 }
 
-function renderInlineText(node, numberMap) {
+function collectFootnotes(doc) {
+  const notes = [];
+  const byText = new Map();
+  doc.descendants(node => {
+    if (node.type.name === 'footnote') {
+      const text = String(node.attrs.noteText || '').trim() || '未填写注释';
+      if (!byText.has(text)) {
+        byText.set(text, notes.length + 1);
+        notes.push(text);
+      }
+    }
+  });
+  return { notes, byText };
+}
+
+function renderInlineText(node, numberMap, footnoteMap) {
   let out = '';
   node.forEach(child => {
     if (child.isText) out += child.text;
     else if (child.type.name === 'citation') out += `[${numberMap.get(child.attrs.citationId) || '?'}]`;
+    else if (child.type.name === 'footnote') out += `[注${footnoteMap.get(String(child.attrs.noteText || '').trim() || '未填写注释') || '?'}]`;
   });
   return out.trim();
 }
 
 export function buildRenderableBlocks(doc, citationsById) {
   const numberMap = buildCitationNumberMap(doc);
+  const { notes, byText: footnoteMap } = collectFootnotes(doc);
   const blocks = [];
   let figureNo = 0;
   let tableNo = 0;
+  let formulaNo = 0;
   let skipReferenceBody = false;
   const refs = [...numberMap.entries()]
     .sort((a, b) => a[1] - b[1])
@@ -228,6 +287,10 @@ export function buildRenderableBlocks(doc, citationsById) {
   doc.forEach(node => {
     if (node.type.name === 'heading') {
       skipReferenceBody = node.attrs.role === 'references';
+      if (node.attrs.role === 'references' && notes.length) {
+        blocks.push({ type: 'notes_heading', text: '注释' });
+        notes.forEach((text, idx) => blocks.push({ type: 'note', number: idx + 1, text }));
+      }
       blocks.push({
         type: node.attrs.role === 'title' ? 'title' : 'heading',
         role: node.attrs.role,
@@ -242,13 +305,13 @@ export function buildRenderableBlocks(doc, citationsById) {
     if (skipReferenceBody) return;
 
     if (node.type.name === 'paragraph') {
-      const text = renderInlineText(node, numberMap);
+      const text = renderInlineText(node, numberMap, footnoteMap);
       if (text) blocks.push({ type: 'paragraph', text });
       return;
     }
 
     if (node.type.name === 'blockquote') {
-      const text = renderInlineText(node, numberMap);
+      const text = renderInlineText(node, numberMap, footnoteMap);
       if (text) blocks.push({ type: 'blockquote', text });
       return;
     }
@@ -258,11 +321,23 @@ export function buildRenderableBlocks(doc, citationsById) {
       node.forEach(item => {
         let text = '';
         item.forEach(child => {
-          if (child.type.name === 'paragraph') text = renderInlineText(child, numberMap);
+          if (child.type.name === 'paragraph') text = renderInlineText(child, numberMap, footnoteMap);
         });
         if (text) items.push(text);
       });
       if (items.length) blocks.push({ type: 'list', ordered: node.type.name === 'ordered_list', items });
+      return;
+    }
+
+    if (node.type.name === 'formula_block') {
+      formulaNo += 1;
+      blocks.push({
+        type: 'formula',
+        number: formulaNo,
+        latex: node.attrs.latex,
+        label: node.attrs.label,
+        note: node.attrs.note,
+      });
       return;
     }
 
@@ -355,6 +430,10 @@ export function extractProjectStateFromDoc(doc) {
       }
       return;
     }
+    if (node.type.name === 'formula_block' && (currentRole === 'section' || currentRole === 'abstract' || currentRole === 'ack')) {
+      buffer.push(`[公式] ${node.attrs.label || node.attrs.latex || '未命名公式'}${node.attrs.note ? `（${node.attrs.note}）` : ''}`);
+      return;
+    }
     if (node.type.name === 'figure' && (currentRole === 'section' || currentRole === 'abstract' || currentRole === 'ack')) {
       buffer.push(`[图片] ${node.attrs.caption || node.attrs.alt || '未命名图片'}${node.attrs.note ? `（${node.attrs.note}）` : ''}`);
       return;
@@ -377,6 +456,18 @@ export function replaceSelectionWithText(view, text) {
 export function insertCitationNode(view, citationId) {
   const { state } = view;
   const node = paperSchema.nodes.citation.create({ citationId });
+  view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+}
+
+export function insertFootnoteNode(view, attrs) {
+  const { state } = view;
+  const node = paperSchema.nodes.footnote.create(attrs);
+  view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+}
+
+export function insertFormulaNode(view, attrs) {
+  const { state } = view;
+  const node = paperSchema.nodes.formula_block.create(attrs);
   view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
 }
 
@@ -423,8 +514,22 @@ export function fullTextFromDoc(doc, citationsById) {
       lines.push(block.text);
       return;
     }
+    if (block.type === 'notes_heading') {
+      lines.push(block.text);
+      return;
+    }
+    if (block.type === 'note') {
+      lines.push(`[注${block.number}] ${block.text}`);
+      return;
+    }
     if (block.type === 'list') {
       block.items.forEach((item, index) => lines.push(`${block.ordered ? `${index + 1}.` : '-'} ${item}`));
+      return;
+    }
+    if (block.type === 'formula') {
+      lines.push(`式${block.number} ${block.label || '未命名公式'}`);
+      lines.push(block.latex || '');
+      if (block.note) lines.push(`说明：${block.note}`);
       return;
     }
     if (block.type === 'figure') {
