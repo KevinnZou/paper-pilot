@@ -177,43 +177,159 @@ function attachTitleAdopt(el, out, onAdopt) {
 function render(el) {
   const project = getProject();
   const design = normalizeResearchDesign(project.researchDesign, project);
+  const step1Done = !!((design.title || project.title || '').trim());
+  const step2Done = !!(design.researchQuestions.length || design.methods.length || design.dataSources.length);
+  const step3Done = !!((project.outline || []).length);
 
   el.innerHTML = `
-    <div class="workspace-columns">
-      <div class="workspace-column">
-        <div class="card workspace-card">
-          <h2><span class="mark"></span>研究想法与题目</h2>
-          <p class="desc">先把模糊想法落成题目候选，再把满意的题目设为项目主线。</p>
+    <div class="card topic-flow-card">
+      <div class="topic-flow">
+        <div class="topic-flow-step ${step1Done ? 'done' : 'current'}">
+          <span class="topic-flow-no">1</span>
+          <div>
+            <div class="topic-flow-title">定题</div>
+            <div class="topic-flow-meta">${step1Done ? escapeHtml(design.title || project.title) : '先把题目设成主线'}</div>
+          </div>
+        </div>
+        <div class="topic-flow-step ${step2Done ? 'done' : step1Done ? 'current' : ''}">
+          <span class="topic-flow-no">2</span>
+          <div>
+            <div class="topic-flow-title">定方案</div>
+            <div class="topic-flow-meta">${step2Done ? '研究问题 / 方法 / 数据已开始成型' : '补齐对象、方法、数据与可行性'}</div>
+          </div>
+        </div>
+        <div class="topic-flow-step ${step3Done ? 'done' : step2Done ? 'current' : ''}">
+          <span class="topic-flow-no">3</span>
+          <div>
+            <div class="topic-flow-title">出大纲</div>
+            <div class="topic-flow-meta">${step3Done ? `${project.outline.length} 章已采用` : '确认研究空白后生成论文结构'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="card topic-step-card">
+      <div class="topic-step-head">
+        <div>
+          <div class="topic-step-label">Step 1</div>
+          <h2><span class="mark"></span>先把题目定下来</h2>
+          <p class="desc">先写研究想法，再让 AI 给出题目候选，选一个作为论文主线。后面的方案和大纲都会围绕这个题目展开。</p>
+        </div>
+        <div class="topic-step-state">
+          <span class="chip ${step1Done ? 'done' : 'doing'}">${step1Done ? '已定题' : '进行中'}</span>
+        </div>
+      </div>
+      <div class="topic-step-grid">
+        <div class="topic-main-pane">
           <label class="field-label">研究想法</label>
           <textarea id="rd-idea" placeholder="你想研究什么问题？为什么值得做？">${escapeHtml(design.initialIdea)}</textarea>
-          <label class="field-label">关键词</label>
-          <input type="text" id="rd-keywords" placeholder="例如：小样本学习；医学图像；注意力机制" value="${escapeHtml((design.variables || []).join('；'))}">
-          <label class="field-label">约束条件</label>
-          <input type="text" id="rd-constraints" placeholder="例如：公开数据集、两个月完成、硕士论文" value="${escapeHtml(design.objectives?.[0] || '')}">
+          <div class="form-row">
+            <div>
+              <label class="field-label">关键词</label>
+              <input type="text" id="rd-keywords" placeholder="例如：小样本学习；医学图像；注意力机制" value="${escapeHtml((design.variables || []).join('；'))}">
+            </div>
+            <div>
+              <label class="field-label">约束条件</label>
+              <input type="text" id="rd-constraints" placeholder="例如：公开数据集、两个月完成、硕士论文" value="${escapeHtml(design.objectives?.[0] || '')}">
+            </div>
+          </div>
           <div class="result-actions" style="margin-top:16px">
             <button class="btn btn-ai-solid" id="rd-title-gen">生成题目候选</button>
             <button class="btn btn-ghost" id="rd-save-idea">保存研究想法</button>
-          </div>
-          <div class="result-box" id="rd-title-out"><span class="placeholder">题目候选将显示在这里</span></div>
-          <div class="result-actions">
             <button class="btn btn-ghost btn-sm" id="rd-title-copy" disabled>复制结果</button>
           </div>
+          <div class="result-box" id="rd-title-out"><span class="placeholder">题目候选将显示在这里</span></div>
           ${integrityNote()}
         </div>
 
-        <div class="card workspace-card">
-          <h2><span class="mark"></span>研究问题</h2>
-          <p class="desc">生成 3-5 个候选研究问题，并说明研究对象、核心变量、可回答性、数据要求和适用方法。</p>
-          <div class="result-actions">
-            <button class="btn btn-ai-solid" id="rd-question-gen">生成研究问题</button>
-            <button class="btn btn-ghost btn-sm" id="rd-question-use" ${design.researchQuestions.length ? '' : 'disabled'}>采用到研究设计</button>
+        <aside class="topic-side-pane">
+          <div class="topic-pane-block">
+            <h3>当前主线</h3>
+            <label class="field-label">论文题目</label>
+            <input type="text" id="rd-title" placeholder="例如：基于注意力机制的医学图像小样本分割研究" value="${escapeHtml(design.title || project.title)}">
+            <div class="form-row">
+              <div>
+                <label class="field-label">学位类型</label>
+                <select id="rd-degree">
+                  ${['本科论文', '硕士论文', '博士论文', '课程论文'].map(d => `<option${d === (project.degreeType || '硕士论文') ? ' selected' : ''}>${d}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="field-label">研究对象 / 样本</label>
+                <input type="text" id="rd-population" placeholder="例如：公开肺部 CT 数据集 / 某行业员工样本" value="${escapeHtml(design.population)}">
+              </div>
+            </div>
+            <div class="result-actions" style="margin-top:16px">
+              <button class="btn" id="rd-sync-title">同步为项目题目</button>
+            </div>
           </div>
-          <div class="result-box" id="rd-question-out">${renderQuestions(design.researchQuestions)}</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="card topic-step-card">
+      <div class="topic-step-head">
+        <div>
+          <div class="topic-step-label">Step 2</div>
+          <h2><span class="mark"></span>把研究方案补完整</h2>
+          <p class="desc">这里专门处理方法、数据和研究问题。先把主线字段补齐，再用 AI 做研究问题和可行性两项辅助判断。</p>
+        </div>
+        <div class="topic-step-state">
+          <span class="chip ${step2Done ? 'done' : step1Done ? 'doing' : ''}">${step2Done ? '已成型' : '待补充'}</span>
+        </div>
+      </div>
+      <div class="topic-step-grid">
+        <div class="topic-main-pane">
+          <label class="field-label">研究目标（每行一条）</label>
+          <textarea id="rd-objectives" placeholder="例如：&#10;梳理相关研究现状&#10;构建方法框架&#10;验证方法有效性">${escapeHtml(design.objectives.join('\n'))}</textarea>
+          <label class="field-label">变量 / 核心概念（每行一条）</label>
+          <textarea id="rd-variables" placeholder="例如：&#10;支持集规模&#10;分割精度&#10;空间注意力模块">${escapeHtml(design.variables.join('\n'))}</textarea>
+          <label class="field-label">研究方法（每行一条）</label>
+          <textarea id="rd-methods" placeholder="例如：&#10;文献分析法&#10;实验对比法&#10;问卷调查法">${escapeHtml(design.methods.join('\n'))}</textarea>
+          <label class="field-label">数据来源（每行一条）</label>
+          <textarea id="rd-data-sources" placeholder="例如：&#10;公开数据集&#10;企业年报&#10;访谈记录">${escapeHtml(design.dataSources.join('\n'))}</textarea>
+          <div class="result-actions" style="margin-top:16px">
+            <button class="btn" id="rd-save-design">保存研究设计</button>
+          </div>
         </div>
 
-        <div class="card workspace-card">
-          <h2><span class="mark"></span>研究空白与方案确认</h2>
-          <p class="desc">这里先形成你的研究空白与方案摘要。文献来源需要结合下方“快速文献扫描”核对，避免空白判断失真。</p>
+        <aside class="topic-side-pane topic-side-stack">
+          <div class="topic-pane-block">
+            <h3>研究问题</h3>
+            <p class="desc">先生成 3-5 个候选问题，再决定是否采用。</p>
+            <div class="result-actions">
+              <button class="btn btn-ai-solid" id="rd-question-gen">生成研究问题</button>
+              <button class="btn btn-ghost btn-sm" id="rd-question-use" ${design.researchQuestions.length ? '' : 'disabled'}>采用结果</button>
+            </div>
+            <div class="result-box" id="rd-question-out">${renderQuestions(design.researchQuestions)}</div>
+          </div>
+
+          <div class="topic-pane-block">
+            <h3>可行性检查</h3>
+            <p class="desc">检查数据、时间、方法难度和学位匹配度。</p>
+            <div class="result-actions">
+              <button class="btn btn-ai-solid" id="rd-feasibility-gen">进行检查</button>
+              <button class="btn btn-ghost btn-sm" id="rd-feasibility-use" ${(design.feasibility.score || design.feasibility.risks.length) ? '' : 'disabled'}>保存结果</button>
+            </div>
+            <div class="result-box" id="rd-feasibility-out">${renderFeasibility(design.feasibility)}</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="card topic-step-card">
+      <div class="topic-step-head">
+        <div>
+          <div class="topic-step-label">Step 3</div>
+          <h2><span class="mark"></span>确认研究空白，再生成大纲</h2>
+          <p class="desc">把研究空白、依据文献和假设收住，再生成五章大纲。这里就是研究设计页的最后一步。</p>
+        </div>
+        <div class="topic-step-state">
+          <span class="chip ${step3Done ? 'done' : step2Done ? 'doing' : ''}">${step3Done ? '已采用大纲' : '待生成'}</span>
+        </div>
+      </div>
+      <div class="topic-step-grid">
+        <div class="topic-main-pane">
           <label class="field-label">研究空白</label>
           <textarea id="rd-gap" placeholder="概括现有研究的不足、分歧或未覆盖之处">${escapeHtml(design.researchGap)}</textarea>
           <label class="field-label">空白依据文献（每行一条）</label>
@@ -226,71 +342,28 @@ function render(el) {
           </div>
           <div class="result-box" id="rd-snapshot">${renderSnapshot(design)}</div>
         </div>
-      </div>
 
-      <div class="workspace-column">
-        <div class="card workspace-card">
-          <h2><span class="mark"></span>研究主线</h2>
-          <p class="desc">把项目主线补齐为可执行的研究方案，后续大纲、文献推荐和写作都会用到这里的内容。</p>
-          <label class="field-label">论文题目</label>
-          <input type="text" id="rd-title" placeholder="例如：基于注意力机制的医学图像小样本分割研究" value="${escapeHtml(design.title || project.title)}">
-          <div class="form-row">
-            <div>
-              <label class="field-label">学位类型</label>
-              <select id="rd-degree">
-                ${['本科论文', '硕士论文', '博士论文', '课程论文'].map(d => `<option${d === (project.degreeType || '硕士论文') ? ' selected' : ''}>${d}</option>`).join('')}
-              </select>
+        <aside class="topic-side-pane">
+          <div class="topic-pane-block">
+            <h3>论文大纲</h3>
+            <p class="desc">大纲会优先参考研究问题、研究空白、方法和数据来源，生成后可直接采用到论文主线。</p>
+            <div class="result-actions" style="margin-top:4px">
+              <button class="btn btn-ai-solid" id="outline-gen">生成论文大纲</button>
+              <button class="btn btn-ghost btn-sm" id="outline-copy" disabled>复制</button>
+              <button class="btn" id="outline-adopt" disabled>采用此大纲</button>
             </div>
-            <div>
-              <label class="field-label">研究对象 / 样本</label>
-              <input type="text" id="rd-population" placeholder="例如：公开肺部 CT 数据集 / 某行业员工样本" value="${escapeHtml(design.population)}">
-            </div>
+            <div class="result-box" id="outline-out"><span class="placeholder">生成结果将显示在这里</span></div>
+            ${integrityNote()}
           </div>
-          <label class="field-label">研究目标（每行一条）</label>
-          <textarea id="rd-objectives" placeholder="例如：&#10;梳理相关研究现状&#10;构建方法框架&#10;验证方法有效性">${escapeHtml(design.objectives.join('\n'))}</textarea>
-          <label class="field-label">变量 / 核心概念（每行一条）</label>
-          <textarea id="rd-variables" placeholder="例如：&#10;支持集规模&#10;分割精度&#10;空间注意力模块">${escapeHtml(design.variables.join('\n'))}</textarea>
-          <label class="field-label">研究方法（每行一条）</label>
-          <textarea id="rd-methods" placeholder="例如：&#10;文献分析法&#10;实验对比法&#10;问卷调查法">${escapeHtml(design.methods.join('\n'))}</textarea>
-          <label class="field-label">数据来源（每行一条）</label>
-          <textarea id="rd-data-sources" placeholder="例如：&#10;公开数据集&#10;企业年报&#10;访谈记录">${escapeHtml(design.dataSources.join('\n'))}</textarea>
-          <div class="result-actions" style="margin-top:16px">
-            <button class="btn" id="rd-save-design">保存研究设计</button>
-            <button class="btn btn-ghost" id="rd-sync-title">同步为项目题目</button>
-          </div>
-        </div>
-
-        <div class="card workspace-card">
-          <h2><span class="mark"></span>可行性检查</h2>
-          <p class="desc">从数据可得性、样本获取、方法难度、时间、资源、题目范围、创新度和学位匹配度做一轮检查。</p>
-          <div class="result-actions">
-            <button class="btn btn-ai-solid" id="rd-feasibility-gen">进行可行性检查</button>
-            <button class="btn btn-ghost btn-sm" id="rd-feasibility-use" ${(design.feasibility.score || design.feasibility.risks.length) ? '' : 'disabled'}>保存检查结果</button>
-          </div>
-          <div class="result-box" id="rd-feasibility-out">${renderFeasibility(design.feasibility)}</div>
-        </div>
-
-        <div class="card workspace-card">
-          <h2><span class="mark"></span>论文大纲</h2>
-          <p class="desc">大纲会优先参考研究问题、研究空白、方法和数据来源，生成后可直接采用到论文主线。</p>
-          <div class="result-actions" style="margin-top:4px">
-            <button class="btn btn-ai-solid" id="outline-gen">生成论文大纲</button>
-            <button class="btn btn-ghost btn-sm" id="outline-copy" disabled>复制</button>
-          </div>
-          <div class="result-box" id="outline-out"><span class="placeholder">生成结果将显示在这里</span></div>
-          <div class="result-actions">
-            <button class="btn" id="outline-adopt" disabled>采用此大纲</button>
-          </div>
-          ${integrityNote()}
-        </div>
+        </aside>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
+    <section class="card topic-support-card">
       <h2><span class="mark"></span>快速文献扫描</h2>
-      <p class="desc">基于当前论文题目与已采用大纲做中英文文献扫描。研究空白与方法选择都建议回到真实文献核对后再定稿。</p>
+      <p class="desc">当你准备确认研究空白、方法或章节结构时，再回来做这一步核对，不需要一开始就同时处理。</p>
       <div id="topic-lit"></div>
-    </div>`;
+    </section>`;
 
   let pendingQuestions = design.researchQuestions;
   let pendingFeasibility = design.feasibility;
