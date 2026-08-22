@@ -241,42 +241,31 @@ function renderPlanSummary(design) {
 }
 
 function renderPlanSelection(design) {
+  const method = selectedMethod(design);
+  const data = selectedDataSource(design);
   return `
     <div class="topic-selection-stack">
-      <div class="topic-selection-row">
-        <div class="topic-selection-head">
-          <h3>研究方法</h3>
-          <p class="desc">从建议里挑一个你最容易落地的做法。</p>
+      <div class="topic-selection-grid">
+        <div class="topic-selection-row compact">
+          <div class="topic-selection-head compact">
+            <span class="topic-selection-label">研究方法</span>
+            <p class="desc">选一个最容易落地的做法。</p>
+          </div>
+          ${renderOptionPills(design.methodOptions, method, 'select-method', '生成后在这里选择一种更适合的研究方法。')}
         </div>
-        ${renderOptionPills(design.methodOptions, selectedMethod(design), 'select-method', '生成后在这里选择一种更适合的研究方法。')}
-      </div>
-      <div class="topic-selection-row">
-        <div class="topic-selection-head">
-          <h3>数据来源</h3>
-          <p class="desc">优先选你真实拿得到的数据来源，这样后面写作会顺很多。</p>
+        <div class="topic-selection-row compact">
+          <div class="topic-selection-head compact">
+            <span class="topic-selection-label">数据来源</span>
+            <p class="desc">优先选你真实拿得到的数据。</p>
+          </div>
+          ${renderOptionPills(design.dataOptions, data, 'select-data', '生成后在这里选择一种最可行的数据来源。')}
         </div>
-        ${renderOptionPills(design.dataOptions, selectedDataSource(design), 'select-data', '生成后在这里选择一种最可行的数据来源。')}
       </div>
-      ${design.objectiveOptions.length ? `
-        <div class="topic-selection-row subtle">
-          <div class="topic-selection-head">
-            <h3>这一组方案最终会导向的研究目标</h3>
-          </div>
-          <ul class="topic-plain-list">${design.objectiveOptions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-        </div>` : ''}
-      ${(design.researchGap || design.feasibility.score || design.feasibility.risks.length || design.feasibility.suggestions.length) ? `
-        <div class="topic-selection-row subtle">
-          <div class="topic-selection-head">
-            <h3>辅助判断</h3>
-            <p class="desc">这里只保留会影响你做决定的提醒，不再展开一整页分析。</p>
-          </div>
-          <div class="topic-compact-grid">
-            ${design.researchGap ? `<div class="topic-compact-card"><span>研究空白</span><p>${escapeHtml(design.researchGap)}</p></div>` : ''}
-            ${design.feasibility.score ? `<div class="topic-compact-card"><span>可行性评分</span><p><b>${escapeHtml(String(design.feasibility.score))}</b></p></div>` : ''}
-            ${design.feasibility.risks.length ? `<div class="topic-compact-card"><span>主要风险</span><ul class="topic-plain-list">${design.feasibility.risks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
-            ${design.feasibility.suggestions.length ? `<div class="topic-compact-card"><span>收敛建议</span><ul class="topic-plain-list">${design.feasibility.suggestions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}
-          </div>
-        </div>` : ''}
+      <div class="topic-selection-footer">
+        <span class="chip doing">已选方法：${escapeHtml(method || '未选择')}</span>
+        <span class="chip doing">已选数据：${escapeHtml(data || '未选择')}</span>
+        ${design.feasibility.score ? `<span class="chip">可行性 ${escapeHtml(String(design.feasibility.score))}</span>` : ''}
+      </div>
     </div>`;
 }
 
@@ -500,7 +489,7 @@ function render(el) {
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
             <h3>把方案收拢成一组</h3>
-            <p class="desc">这里就做选择，不再继续堆模块。选完这一组组合后，直接进入出大纲。</p>
+            <p class="desc">这里只做最后两项选择：方法怎么做、数据从哪来。选完后直接进入出大纲。</p>
           </div>
           ${renderPlanSelection(design)}
         </section>
