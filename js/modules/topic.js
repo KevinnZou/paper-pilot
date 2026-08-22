@@ -91,6 +91,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     gapSources: Array.isArray(design.gapSources) ? design.gapSources : [],
     objectives: Array.isArray(design.objectives) ? design.objectives : [],
     objectiveOptions: Array.isArray(design.objectiveOptions) ? design.objectiveOptions : [],
+    selectedObjectiveFocus: design.selectedObjectiveFocus || '',
     variables: Array.isArray(design.variables) ? design.variables : [],
     hypotheses: Array.isArray(design.hypotheses) ? design.hypotheses : [],
     methods: Array.isArray(design.methods) ? design.methods : [],
@@ -104,6 +105,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
       risks: Array.isArray(design.feasibility?.risks) ? design.feasibility.risks : [],
       suggestions: Array.isArray(design.feasibility?.suggestions) ? design.feasibility.suggestions : [],
     },
+    selectedRiskStrategy: design.selectedRiskStrategy || '',
     confirmedAt: design.confirmedAt || '',
   };
 }
@@ -250,53 +252,106 @@ function renderPlanSummary(design) {
     ${design.hypotheses.length ? `<div class="topic-mini-block"><h4>待验证判断</h4><ul>${design.hypotheses.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}`;
 }
 
-function renderPlanSelection(design) {
-  const method = selectedMethod(design);
-  const data = selectedDataSource(design);
-  const objective = selectedObjectiveFocus(design);
-  const strategy = selectedRiskStrategy(design);
+function planPrompts(design) {
+  return [
+    {
+      key: 'question',
+      title: '你这篇论文最想回答哪个主问题？',
+      desc: '先定主问题，后面的方法、数据和大纲都会围绕它展开。',
+      answered: !!design.selectedQuestionId,
+      summary: selectedQuestion(design)?.question || '',
+    },
+    {
+      key: 'method',
+      title: '你打算怎么研究这个问题？',
+      desc: '优先选你最容易真的做出来的方法。',
+      answered: !!selectedMethod(design),
+      summary: selectedMethod(design),
+    },
+    {
+      key: 'data',
+      title: '你最有把握拿到哪类数据？',
+      desc: '数据可获得性比“看起来高级”更重要。',
+      answered: !!selectedDataSource(design),
+      summary: selectedDataSource(design),
+    },
+    ...(design.objectiveOptions.length ? [{
+      key: 'objective',
+      title: '你更希望这篇论文最终强调什么？',
+      desc: '这一步是在确定写作侧重点，不是在补充新任务。',
+      answered: !!selectedObjectiveFocus(design),
+      summary: selectedObjectiveFocus(design),
+    }] : []),
+    ...(design.feasibility.suggestions.length ? [{
+      key: 'strategy',
+      title: '如果要收敛范围，你更接受哪种方式？',
+      desc: '选一个更顺手的收敛策略，后面出大纲会按这个方向走。',
+      answered: !!selectedRiskStrategy(design),
+      summary: selectedRiskStrategy(design),
+    }] : []),
+  ];
+}
+
+function currentPlanPrompt(design) {
+  const prompts = planPrompts(design);
+  const index = prompts.findIndex(item => !item.answered);
+  return { prompts, index: index === -1 ? prompts.length - 1 : index, current: prompts[index === -1 ? prompts.length - 1 : index] || null };
+}
+
+function renderPromptProgress(design) {
+  const { prompts, index } = currentPlanPrompt(design);
+  return `<div class="topic-prompt-progress">
+    ${prompts.map((item, idx) => `
+      <div class="topic-prompt-chip ${item.answered ? 'done' : (idx === index ? 'current' : '')}">
+        <span class="topic-prompt-no">${idx + 1}</span>
+        <span>${escapeHtml(item.key === 'question' ? '主问题' : item.key === 'method' ? '方法' : item.key === 'data' ? '数据' : item.key === 'objective' ? '侧重点' : '收敛')}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderQuestionOptions(design) {
+  return `<div class="topic-option-list">${design.questionCandidates.map((item, idx) => `
+    <button class="topic-option-card ${design.selectedQuestionId === item.id ? 'selected' : ''}" data-select-question="${escapeHtml(item.id)}" type="button">
+      <div class="topic-option-top">
+        <span class="chip ref-no">${idx + 1}</span>
+        ${design.selectedQuestionId === item.id ? '<span class="chip done">当前选择</span>' : ''}
+      </div>
+      <strong>${escapeHtml(item.question)}</strong>
+      <div class="topic-meta-pills">
+        ${item.object ? `<span class="topic-meta-pill">${escapeHtml(item.object)}</span>` : ''}
+        ${item.variable ? `<span class="topic-meta-pill">${escapeHtml(item.variable)}</span>` : ''}
+        ${item.method ? `<span class="topic-meta-pill">${escapeHtml(item.method)}</span>` : ''}
+        ${item.dataNeed ? `<span class="topic-meta-pill">${escapeHtml(item.dataNeed)}</span>` : ''}
+      </div>
+    </button>`).join('')}</div>`;
+}
+
+function renderTextOptions(options, selected, attr) {
+  return `<div class="topic-option-list compact">${options.map(item => `
+    <button class="topic-option-card compact ${selected === item ? 'selected' : ''}" data-${attr}="${escapeHtml(item)}" type="button">
+      <strong>${escapeHtml(item)}</strong>
+    </button>`).join('')}</div>`;
+}
+
+function renderPlanQuestionnaire(design) {
+  const { current } = currentPlanPrompt(design);
+  if (!current) return '';
+  let optionsHtml = '';
+  if (current.key === 'question') optionsHtml = renderQuestionOptions(design);
+  else if (current.key === 'method') optionsHtml = renderTextOptions(design.methodOptions, selectedMethod(design), 'select-method');
+  else if (current.key === 'data') optionsHtml = renderTextOptions(design.dataOptions, selectedDataSource(design), 'select-data');
+  else if (current.key === 'objective') optionsHtml = renderTextOptions(design.objectiveOptions, selectedObjectiveFocus(design), 'select-objective');
+  else if (current.key === 'strategy') optionsHtml = renderTextOptions(design.feasibility.suggestions, selectedRiskStrategy(design), 'select-strategy');
   return `
-    <div class="topic-selection-stack">
-      <div class="topic-selection-grid">
-        <div class="topic-selection-row compact">
-          <div class="topic-selection-head compact">
-            <span class="topic-selection-label">研究方法</span>
-            <p class="desc">选一个最容易落地的做法。</p>
-          </div>
-          ${renderOptionPills(design.methodOptions, method, 'select-method', '生成后在这里选择一种更适合的研究方法。')}
-        </div>
-        <div class="topic-selection-row compact">
-          <div class="topic-selection-head compact">
-            <span class="topic-selection-label">数据来源</span>
-            <p class="desc">优先选你真实拿得到的数据。</p>
-          </div>
-          ${renderOptionPills(design.dataOptions, data, 'select-data', '生成后在这里选择一种最可行的数据来源。')}
-        </div>
+    ${renderPromptProgress(design)}
+    <section class="topic-prompt-card">
+      <div class="topic-prompt-head">
+        <span class="topic-prompt-kicker">当前问题</span>
+        <h3>${escapeHtml(current.title)}</h3>
+        <p class="desc">${escapeHtml(current.desc)}</p>
       </div>
-      ${design.objectiveOptions.length ? `
-        <div class="topic-selection-row compact">
-          <div class="topic-selection-head compact">
-            <span class="topic-selection-label">写作侧重点</span>
-            <p class="desc">如果都合理，就选你更想写、更容易展开的一条。</p>
-          </div>
-          ${renderOptionPills(design.objectiveOptions, objective, 'select-objective', '生成后在这里选择本篇论文更想强调的目标。')}
-        </div>` : ''}
-      ${design.feasibility.suggestions.length ? `
-        <div class="topic-selection-row compact">
-          <div class="topic-selection-head compact">
-            <span class="topic-selection-label">收敛方式</span>
-            <p class="desc">从提醒里选一个，系统后面会按这个方向出大纲。</p>
-          </div>
-          ${renderOptionPills(design.feasibility.suggestions, strategy, 'select-strategy', '生成后在这里选择更适合的收敛方式。')}
-        </div>` : ''}
-      <div class="topic-selection-footer">
-        <span class="chip doing">已选方法：${escapeHtml(method || '未选择')}</span>
-        <span class="chip doing">已选数据：${escapeHtml(data || '未选择')}</span>
-        ${objective ? `<span class="chip">侧重点：${escapeHtml(objective)}</span>` : ''}
-        ${strategy ? `<span class="chip">收敛方式：${escapeHtml(strategy)}</span>` : ''}
-        ${design.feasibility.score ? `<span class="chip">可行性 ${escapeHtml(String(design.feasibility.score))}</span>` : ''}
-      </div>
-    </div>`;
+      ${optionsHtml}
+    </section>`;
 }
 
 function renderOutlinePreview(text) {
@@ -509,21 +564,11 @@ function render(el) {
         ${hasPlanSuggestions ? `
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
-            <h3>研究问题候选</h3>
-            <p class="desc">先在问题候选里选一个最顺手的切入点，再决定方法和数据来源。</p>
+            <h3>像答问卷一样把方案定下来</h3>
+            <p class="desc">每次只回答一个问题。点一个答案就进入下一问，不需要再点确认。</p>
           </div>
-          <div id="rd-question-out">${renderQuestionCards(design)}</div>
+          ${renderPlanQuestionnaire(design)}
           ${feedbackBlock('rd-plan-feedback', '例如：问题太宏观，想更偏管理效能；方法不要实验法，想偏案例或访谈', '结合这些意见重生成方案')}
-        </section>
-        <section class="topic-candidate-section">
-          <div class="topic-candidate-head">
-            <h3>把方案收拢成一组</h3>
-            <p class="desc">先把这一组方案选完整，再单独确认进入下一步。生成和确认不放在一起。</p>
-          </div>
-          ${renderPlanSelection(design)}
-          <div class="topic-confirm-bar">
-            <button class="btn" id="rd-plan-save">确认这组方案，进入大纲</button>
-          </div>
         </section>
         ` : '<div class="topic-empty">先点击上方「生成研究方案建议」，系统再展示研究问题、方法、数据来源和可行性判断。</div>'}
       </section>`;
@@ -674,6 +719,29 @@ function render(el) {
   }
 
   if (step === 2) {
+    function maybeAdvancePlanFlow(nextDesign) {
+      const current = normalizeResearchDesign(nextDesign, getProject());
+      const { prompts } = currentPlanPrompt(current);
+      const done = prompts.every(item => item.answered);
+      if (!done) {
+        render(el);
+        return;
+      }
+      const question = selectedQuestion(current);
+      const method = selectedMethod(current);
+      const data = selectedDataSource(current);
+      const objective = selectedObjectiveFocus(current);
+      saveDesignPatch({
+        researchQuestions: question ? [question] : current.researchQuestions,
+        methods: method ? [method] : current.methods,
+        dataSources: data ? [data] : current.dataSources,
+        objectives: objective ? [objective] : (current.objectiveOptions.length ? current.objectiveOptions : current.objectives),
+        currentStep: 3,
+      });
+      toast('研究方案已确定，正在生成大纲', 'ok');
+      render(el);
+    }
+
     function mockPlan(current, feedback = '') {
       const baseTitle = current.title || getProject().title || '未命名论文';
       const practical = /采购|标准|规范|管理|数字化|企业|流程/.test(`${baseTitle} ${feedback}`);
@@ -790,50 +858,24 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
 
     el.querySelectorAll('[data-select-question]').forEach(btn =>
       btn.addEventListener('click', () => {
-        saveDesignPatch({ selectedQuestionId: btn.dataset.selectQuestion, currentStep: 2 });
-        render(el);
+        maybeAdvancePlanFlow(saveDesignPatch({ selectedQuestionId: btn.dataset.selectQuestion, currentStep: 2 }));
       }));
     el.querySelectorAll('[data-select-method]').forEach(btn =>
       btn.addEventListener('click', () => {
-        saveDesignPatch({ selectedMethod: btn.dataset.selectMethod, currentStep: 2 });
-        render(el);
+        maybeAdvancePlanFlow(saveDesignPatch({ selectedMethod: btn.dataset.selectMethod, currentStep: 2 }));
       }));
     el.querySelectorAll('[data-select-data]').forEach(btn =>
       btn.addEventListener('click', () => {
-        saveDesignPatch({ selectedDataSource: btn.dataset.selectData, currentStep: 2 });
-        render(el);
+        maybeAdvancePlanFlow(saveDesignPatch({ selectedDataSource: btn.dataset.selectData, currentStep: 2 }));
       }));
     el.querySelectorAll('[data-select-objective]').forEach(btn =>
       btn.addEventListener('click', () => {
-        saveDesignPatch({ selectedObjectiveFocus: btn.dataset.selectObjective, currentStep: 2 });
-        render(el);
+        maybeAdvancePlanFlow(saveDesignPatch({ selectedObjectiveFocus: btn.dataset.selectObjective, currentStep: 2 }));
       }));
     el.querySelectorAll('[data-select-strategy]').forEach(btn =>
       btn.addEventListener('click', () => {
-        saveDesignPatch({ selectedRiskStrategy: btn.dataset.selectStrategy, currentStep: 2 });
-        render(el);
+        maybeAdvancePlanFlow(saveDesignPatch({ selectedRiskStrategy: btn.dataset.selectStrategy, currentStep: 2 }));
       }));
-
-    el.querySelector('#rd-plan-save')?.addEventListener('click', () => {
-      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
-      const question = selectedQuestion(current);
-      const method = selectedMethod(current);
-      const data = selectedDataSource(current);
-      const objective = selectedObjectiveFocus(current);
-      if (!question || !method || !data) {
-        toast('请先各选一个研究问题、方法和数据来源', 'err');
-        return;
-      }
-      saveDesignPatch({
-        researchQuestions: [question],
-        methods: [method],
-        dataSources: [data],
-        objectives: objective ? [objective] : (current.objectiveOptions.length ? current.objectiveOptions : current.objectives),
-        currentStep: 3,
-      });
-      toast('研究方案已确定，继续生成大纲', 'ok');
-      render(el);
-    });
   }
 
   if (step === 3) {
@@ -884,6 +926,9 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
     }
 
     el.querySelector('#outline-gen').addEventListener('click', () => generateOutline());
+    if (!(getProject().outline || []).length && !String(outlineEditor?.value || '').trim()) {
+      generateOutline();
+    }
 
     outlineEditor?.addEventListener('input', () => {
       const value = outlineEditor.value;
