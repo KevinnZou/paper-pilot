@@ -279,14 +279,6 @@
       <tr><td>版本控制</td><td>git 本地仓库（main 分支）</td><td><span class="tag next">需上线</span></td></tr>
     </table>
 
-    <h3><span class="no">2.3</span>现状差距（本方案要解决）</h3>
-    <ol>
-      <li><strong>无自动化发布流水线</strong>：目前仅本地 git，无 CI/CD、无托管环境、无域名与 HTTPS 规划；</li>
-      <li><strong>压力测试空白</strong>：AI 并发、检索限流、localStorage 容量边界、大文档渲染均无量化验证数据；</li>
-      <li><strong>容灾手段单一</strong>：仅有手动导出/导入备份，缺自动提醒、损坏自愈与演练流程；</li>
-      <li><strong>监控缺失</strong>：无前端错误采集、无外部服务可用性监测；</li>
-      <li><strong>存储演进预案</strong>：localStorage 5 MB 上限对长论文存在理论瓶颈，需给出 IndexedDB 演进预案。</li>
-    </ol>
   </div>
 
   <!-- ================= 3 总体架构 ================= -->
@@ -356,8 +348,8 @@
         <text x="718" y="363" font-size="11.5" text-anchor="middle" fill="#1F2937">导出备份 JSON（用户自存）</text>
 
         <!-- ===== 外部服务 ===== -->
-        <rect x="28" y="416" width="784" height="190" rx="8" fill="#FBF4E6" stroke="#E8D5A8"/>
-        <text x="44" y="598" font-size="14" font-weight="700" fill="#8A5C14">外部服务（浏览器 HTTPS 直连，无中间服务器）</text>
+        <rect x="28" y="416" width="784" height="206" rx="8" fill="#FBF4E6" stroke="#E8D5A8"/>
+        <text x="44" y="608" font-size="14" font-weight="700" fill="#8A5C14">外部服务（浏览器 HTTPS 直连，无中间服务器）</text>
         <rect x="44" y="456" width="230" height="130" rx="6" fill="#fff" stroke="#B7791F"/>
         <text x="159" y="478" font-size="12" font-weight="700" text-anchor="middle" fill="#1F2937">大模型服务商（多选一）</text>
         <text x="159" y="498" font-size="10.5" text-anchor="middle" fill="#6B7A8A">DeepSeek · OpenAI · Moonshot</text>
