@@ -10,7 +10,6 @@ const CARDS = [
   { id: 'writing', title: '写作工作台', desc: '一份完整论文文档：目录定位、AI 动作、规范引用' },
   { id: 'citation', title: '文献与证据', desc: '智能推荐中英文文献，核对理由后勾选入库' },
   { id: 'planner', title: '计划与进度', desc: '今日任务、本周任务、时间轴与写作记录' },
-  { id: 'checkExport', title: '检查与导出', desc: '结构、引用、格式检查，以及 DOCX / PDF / Markdown 导出' },
 ];
 
 const PROGRESS_WEIGHT = { '已完成': 1, '进行中': 0.5, '未开始': 0 };
@@ -216,28 +215,30 @@ export default {
       </div>`;
 
     const nextActionHtml = `
-      <div class="card">
+      <div class="card focus-card">
         <h2><span class="mark"></span>今天该做什么</h2>
-        <div class="item" style="padding:0;border:none;background:transparent">
-          <div class="item-main">
-            <div class="item-title">${escapeHtml(nextAction.title)}</div>
-            <div class="item-meta">${escapeHtml(nextAction.goal)}</div>
-            <div class="item-meta" style="margin-top:8px">预计 ${escapeHtml(nextAction.eta)}</div>
-            <ul style="margin:10px 0 0 18px;padding:0">
-              ${nextAction.bullets.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
-            </ul>
+        <div class="focus-layout">
+          <div class="focus-main">
+            <div class="focus-title">${escapeHtml(nextAction.title)}</div>
+            <div class="focus-goal">${escapeHtml(nextAction.goal)}</div>
           </div>
+          <div class="focus-side">
+            <div class="focus-eta">预计 ${escapeHtml(nextAction.eta)}</div>
+          </div>
+        </div>
+        <div class="focus-checks">
+          ${nextAction.bullets.map(item => `<div class="focus-check">${escapeHtml(item)}</div>`).join('')}
         </div>
         <div class="hero-action-row" style="margin-top:14px">
           <button class="btn btn-lg" data-nav="${nextAction.nav}" ${nextAction.nav === 'writing' && nextChapter ? `data-write="${escapeHtml(nextChapter)}"` : ''}>${escapeHtml(nextAction.cta)}</button>
-          ${p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : ''}
+          ${p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : '<button class="btn btn-ghost" data-nav="checkExport">检查整体状态</button>'}
         </div>
       </div>`;
 
     const journeyHtml = `
       <div class="card journey-card">
         <h2><span class="mark"></span>写作之旅　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
-        <p class="desc">按顺序把研究设计、写作和计划串起来；点击任意一步可直接前往</p>
+        <p class="desc">把主线状态压成一条进度条，方便快速确认卡点。</p>
         <div class="journey">
           ${steps.map((s, i) => `
             <button class="journey-step ${s.done ? 'done' : i === currentIdx ? 'current' : ''}" data-nav="${s.nav}" title="${escapeHtml(s.label)}${s.done ? '（已完成）' : i === currentIdx ? '（当前步骤）' : ''}">
@@ -277,19 +278,47 @@ export default {
             </div>`}
         </div>
 
-        <div class="card">
-          <h2><span class="mark"></span>写作打卡</h2>
-          <p class="desc">累计打卡 <b>${checkins.length}</b> 天${streak ? ` · 连续 <b>${streak}</b> 天` : ''}</p>
+        <div class="card side-summary-card">
+          <h2><span class="mark"></span>近期状态</h2>
+          <p class="desc">把最近节奏和整体检查入口放在一起，避免首页过碎。</p>
+          <div class="item-list side-summary-list">
+            <div class="item">
+              <div class="item-main">
+                <div class="item-title">打卡记录</div>
+                <div class="item-meta">累计 ${checkins.length} 天${streak ? ` · 连续 ${streak} 天` : ''}</div>
+              </div>
+            </div>
+            <div class="item">
+              <div class="item-main">
+                <div class="item-title">最近编辑</div>
+                <div class="item-meta">${lastText ? escapeHtml(lastText) : '还没有打卡记录'}</div>
+              </div>
+            </div>
+            <div class="item">
+              <div class="item-main">
+                <div class="item-title">整体验收</div>
+                <div class="item-meta">结构、引用、格式和导出都在一个入口里。</div>
+              </div>
+            </div>
+          </div>
           ${calGridHtml(checkins)}
-          ${lastText
-            ? `<p class="desc">最近打卡：${escapeHtml(lastText)}</p>`
-            : '<p class="desc">还没有打卡记录，开始第一次打卡吧</p>'}
-          <button class="btn btn-ghost" data-nav="planner">去打卡</button>
+          <div class="hero-action-row">
+            <button class="btn btn-ghost" data-nav="planner">去打卡</button>
+            <button class="btn btn-ghost" data-nav="checkExport">去检查与导出</button>
+          </div>
         </div>
       </div>`;
 
     const entranceHtml = `
-      <div class="dash-grid">
+      <div class="card tool-band">
+        <div class="hero-top">
+          <div>
+            <h2><span class="mark"></span>工作区入口</h2>
+            <p class="desc">把高频操作集中在这里，避免在首页到处找入口。</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" data-nav="checkExport">检查与导出</button>
+        </div>
+        <div class="dash-grid">
         ${CARDS.map(c => `
           <button class="dash-card" data-nav="${c.id}" title="${escapeHtml(c.desc)}">
             <span class="icon">${ICONS[c.id] || ''}</span>
@@ -298,12 +327,13 @@ export default {
               <span class="d-desc">${escapeHtml(c.desc)}</span>
             </span>
           </button>`).join('')}
+        </div>
       </div>`;
 
     // 版面顺序按阶段：入门中（未定题/未用大纲）旅程在上引导上手；已进入写作后旅程沉底
     el.innerHTML = writingPhase
-      ? `${heroHtml}${nextActionHtml}${entranceHtml}${progressHtml}${journeyHtml}`
-      : `${heroHtml}${nextActionHtml}${journeyHtml}${entranceHtml}${progressHtml}`;
+      ? `${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}${entranceHtml}`
+      : `${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${entranceHtml}${progressHtml}`;
 
     // 章节直写
     el.querySelectorAll('[data-write]').forEach(b =>

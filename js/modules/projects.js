@@ -31,7 +31,7 @@ export default {
         <div class="hero-top">
           <div>
             <h2><span class="mark"></span>我的论文项目</h2>
-            <p class="desc">V4 从这里开始：每篇论文都是一个独立项目，题目、草稿、文献、打卡、版本历史全部隔离保存。</p>
+            <p class="desc">每篇论文都是一个独立项目。题目、研究设计、文献、草稿、计划和导出状态都会在这里汇总。</p>
           </div>
           <button class="btn btn-lg" id="pc-new">创建论文项目</button>
         </div>
@@ -60,7 +60,7 @@ export default {
                   <div><span>最近编辑</span><b>${fmtDate(project.updatedAt)}</b></div>
                   <div><span>已完成章节</span><b>${stats.doneCount}/${stats.chapterCount || 0}</b></div>
                 </div>
-                <div class="result-actions">
+                <div class="result-actions project-actions">
                   <button class="btn" data-open="${project.id}">继续写作</button>
                   <button class="btn btn-ghost" data-settings="${project.id}">项目设置</button>
                   <button class="btn btn-ghost btn-sm" data-dup="${project.id}">复制项目</button>
@@ -79,10 +79,10 @@ export default {
 
       <div class="modal-backdrop" id="pc-create-modal" hidden>
         <div class="modal-panel">
-          <div class="hero-top" style="align-items:flex-start">
+          <div class="hero-top modal-head" style="align-items:flex-start">
             <div>
               <h2><span class="mark"></span>创建论文项目</h2>
-              <p class="desc">先填最基本的信息，创建后再进入项目设置继续补充。</p>
+              <p class="desc">先建立一条论文主线。题目是必填项，学位类型和截止日期可以一起带上，后面继续细化研究设计。</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="pc-modal-close" type="button">关闭</button>
           </div>

@@ -178,9 +178,9 @@ export default {
     };
 
     el.innerHTML = `
-      <div class="card">
+      <div class="card check-summary-card">
         <h2><span class="mark"></span>检查概览</h2>
-        <p class="desc">先做一轮结构、逻辑、引用和格式自查，再导出到 Word / PDF / Markdown。</p>
+        <p class="desc">先把最影响提交质量的问题挑出来，再决定是否导出。</p>
         <div class="hero-stats">
           <div class="stat"><span class="stat-num">${summary.structure}</span><span class="stat-label">结构问题</span></div>
           <div class="stat"><span class="stat-num">${summary.logic}</span><span class="stat-label">逻辑问题</span></div>
@@ -189,7 +189,7 @@ export default {
         </div>
       </div>
 
-      <div class="grid-2">
+      <div class="grid-2 check-layout">
         <div class="card">
           <h2><span class="mark"></span>检查结果</h2>
           <p class="desc">${issues.length ? `共发现 ${issues.length} 个值得处理的问题，点击可直接跳转。` : '当前没有明显问题，已经具备导出基础。'}</p>
@@ -198,9 +198,9 @@ export default {
           </div>
         </div>
 
-        <div class="card">
+        <div class="card side-summary-card">
           <h2><span class="mark"></span>导出与预览</h2>
-          <p class="desc">支持导出 Markdown、Word 文档，并通过打印预览另存 PDF。</p>
+          <p class="desc">先导出可继续编辑的 Word，再用排版预览去看 PDF 效果。</p>
           <div class="result-actions" style="margin-top:8px">
             <button class="btn" id="ce-docx">导出 DOCX</button>
             <button class="btn btn-ghost" id="ce-md">导出 Markdown</button>
@@ -217,7 +217,7 @@ export default {
         </div>
       </div>
 
-      <div class="card">
+      <div class="card preview-card">
         <h2><span class="mark"></span>排版预览</h2>
         <div class="result-box filled" style="max-height:520px;overflow:auto">${previewHtml}</div>
       </div>`;

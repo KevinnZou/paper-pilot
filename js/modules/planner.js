@@ -188,22 +188,22 @@ function render(el) {
   const calHtml = calGridHtml(checkins.map(c => c.date));
 
   el.innerHTML = `
-    <div class="grid-2">
-      <div class="card">
+    <div class="grid-2 planner-focus-grid">
+      <div class="card focus-card">
         <h2><span class="mark"></span>今日任务</h2>
         <p class="desc">默认先看今天最该推进什么。${overdueTasks.length ? `当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '目前没有逾期任务。'}</p>
         ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
         ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
       </div>
 
-      <div class="card">
+      <div class="card side-summary-card">
         <h2><span class="mark"></span>本周任务</h2>
         <p class="desc">本周阶段：<b>${escapeHtml(currentStageText(stages))}</b>${daysLeft != null ? ` · 距截止 ${daysLeft >= 0 ? `<b>${daysLeft}</b> 天` : `已超期 <b>${-daysLeft}</b> 天`}` : ''}</p>
         ${renderTaskList(weekTasks, plan, '本周自动任务还不多，可以补充一个手动任务。')}
       </div>
     </div>
 
-    <div class="grid-2">
+    <div class="grid-2 planner-support-grid">
       <div class="card">
         <h2><span class="mark"></span>手动补充任务</h2>
         <p class="desc">可把导师反馈、补文献、补数据、改某一章这些任务手动挂进来。</p>
@@ -229,7 +229,7 @@ function render(el) {
 
       <div class="card">
         <h2><span class="mark"></span>计划与时间轴</h2>
-        <p class="desc">甘特图保留为辅助视图，真正的执行入口现在在今日任务和本周任务。</p>
+        <p class="desc">时间轴保留为辅助视图，真正的执行入口放在今日任务和本周任务。</p>
         <div class="form-row">
           <div>
             <label class="field-label">计划模板</label>
@@ -249,7 +249,7 @@ function render(el) {
       </div>
     </div>
 
-    <div class="card">
+    <div class="card planner-checkin-card">
       <h2><span class="mark"></span>每日打卡</h2>
       <p class="desc">累计 <b>${checkins.length}</b> 天 · 连续 <b>${streak}</b> 天${daysLeft !== null ? (daysLeft >= 0 ? ` · 距截止还有 <b>${daysLeft}</b> 天` : ` · 已过截止 <b>${-daysLeft}</b> 天`) : ''}</p>
       ${calHtml}
