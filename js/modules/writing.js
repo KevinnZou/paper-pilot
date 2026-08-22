@@ -467,6 +467,95 @@ function todoId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+function templateGroupsForSection(section) {
+  const title = String(section?.chapter || '');
+  if (/绪论|引言/.test(title)) {
+    return [
+      {
+        title: '研究背景段',
+        items: [
+          '随着____的持续推进，____已逐渐成为____领域中不可回避的核心议题。然而，现有实践在____方面仍存在明显不足，这直接影响了____的实际效果。',
+          '从行业发展来看，____正在经历由____向____的转变。在这一过程中，如何兼顾____与____，成为当前研究与实践共同关注的问题。',
+        ],
+      },
+      {
+        title: '研究意义段',
+        items: [
+          '本研究的理论意义在于：在梳理既有研究的基础上，进一步从____视角补充对____问题的解释框架。其现实意义则体现在：为____场景中的____优化提供可操作的分析依据。',
+        ],
+      },
+    ];
+  }
+  if (/方法|设计|方案/.test(title)) {
+    return [
+      {
+        title: '方法说明',
+        items: [
+          '基于本文的研究问题与资料条件，本文采用____作为主要研究方法，并结合____进行交叉验证。之所以选择该方法，主要是因为其能够较好回应____这一分析目标。',
+          '在具体实施过程中，研究首先对____进行整理，其次从____维度展开分析，最后结合____对研究结论进行校验。',
+        ],
+      },
+      {
+        title: '样本与数据来源',
+        items: [
+          '本文所使用的数据主要来源于____。为保证分析的针对性，本文将____作为核心样本，并围绕____展开分层整理。',
+        ],
+      },
+    ];
+  }
+  if (/结果|分析|实证|案例/.test(title)) {
+    return [
+      {
+        title: '分析段起手',
+        items: [
+          '从上述结果可以看出，____并非孤立现象，而是与____之间存在较为明确的关联关系。',
+          '进一步结合____可以发现，当前问题主要集中体现在以下几个方面。',
+        ],
+      },
+      {
+        title: '解释与比较',
+        items: [
+          '造成这一结果的原因，既与____有关，也受到____因素的影响。与既有研究相比，本文的发现进一步说明了____。',
+          '将本研究结果与____进行对照后可以发现，两者在____方面具有一致性，但在____层面仍存在差异。',
+        ],
+      },
+    ];
+  }
+  if (/结论|总结|展望/.test(title)) {
+    return [
+      {
+        title: '结论收束',
+        items: [
+          '综合全文分析可以认为，____是影响____的关键因素，而____则决定了相关策略能否真正落地。',
+          '围绕研究问题，本文的主要结论可以概括为以下三点：第一，____；第二，____；第三，____。',
+        ],
+      },
+      {
+        title: '不足与展望',
+        items: [
+          '需要说明的是，受限于____，本文在____方面仍存在一定不足。后续研究可进一步围绕____展开更深入的验证与拓展。',
+        ],
+      },
+    ];
+  }
+  return [
+    {
+      title: '通用分析句',
+      items: [
+        '从这一现象出发，可以进一步追问：____究竟通过何种机制影响了____。',
+        '换言之，当前问题的关键不在于是否存在____，而在于如何在____条件下实现____。',
+      ],
+    },
+    {
+      title: '过渡句',
+      items: [
+        '在明确上述背景后，下文将进一步围绕____展开具体分析。',
+        '基于前文讨论，下一部分将从____角度对该问题进行展开。',
+      ],
+    },
+  ];
+}
+
 export default {
   id: 'writing',
   icon: '✍️',
@@ -552,6 +641,7 @@ export default {
               <button class="wb-side-tab active" type="button" data-side-tab="assistant">写作助手</button>
               <button class="wb-side-tab" type="button" data-side-tab="citation">引用</button>
               <button class="wb-side-tab" type="button" data-side-tab="evidence">证据</button>
+              <button class="wb-side-tab" type="button" data-side-tab="templates">模板</button>
               <button class="wb-side-tab" type="button" data-side-tab="todos">待修改</button>
               <button class="wb-side-tab" type="button" data-side-tab="versions">版本</button>
             </div>
@@ -571,6 +661,13 @@ export default {
                 <p class="desc">优先看和当前章节直接相关的证据卡。</p>
               </div>
               <div id="wb-evidence"></div>
+            </div>
+            <div class="wb-side-pane" data-side-pane="templates">
+              <div class="wb-side-pane-head">
+                <h3><span class="mark"></span>章节模板</h3>
+                <p class="desc">按当前章节类型给你起手段、过渡句和分析骨架。</p>
+              </div>
+              <div id="wb-templates"></div>
             </div>
             <div class="wb-side-pane" data-side-pane="todos">
               <div class="wb-side-pane-head">
@@ -618,6 +715,7 @@ export default {
     const chapterCard = el.querySelector('#wb-chapter-card');
     const sideTabs = [...el.querySelectorAll('[data-side-tab]')];
     const sidePanes = [...el.querySelectorAll('[data-side-pane]')];
+    const templatesBox = el.querySelector('#wb-templates');
     const todosBox = el.querySelector('#wb-todos');
     const versionsBox = el.querySelector('#wb-versions');
     const assetModal = el.querySelector('#wb-asset-modal');
@@ -941,6 +1039,37 @@ export default {
     function renderEvidencePanel() {
       const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
       evidenceBox.innerHTML = relatedEvidenceHtml(section, citations);
+    }
+
+    function insertTemplateText(text) {
+      if (!String(text || '').trim()) return;
+      const content = `${String(text).trim()}\n\n`;
+      viewState.view.dispatch(viewState.view.state.tr.insertText(content, viewState.view.state.selection.from, viewState.view.state.selection.to).scrollIntoView());
+      viewState.view.focus();
+      toast('模板已插入正文', 'ok', 1500);
+    }
+
+    function renderTemplatesPanel() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      const groups = templateGroupsForSection(section);
+      templatesBox.innerHTML = `
+        <div class="wb-template-callout">
+          <b>${escapeHtml(section?.chapter || '当前章节')}</b>
+          <span>点一下就能把模板插入到当前光标位置。</span>
+        </div>
+        ${groups.map(group => `
+          <div class="wb-template-group">
+            <div class="wb-template-group-head">${escapeHtml(group.title)}</div>
+            <div class="wb-template-list">
+              ${group.items.map((item, idx) => `
+                <button class="wb-template-item" type="button" data-template="${escapeHtml(item)}">
+                  <span class="wb-template-no">${idx + 1}</span>
+                  <span class="wb-template-text">${escapeHtml(item)}</span>
+                </button>`).join('')}
+            </div>
+          </div>`).join('')}`;
+      templatesBox.querySelectorAll('[data-template]').forEach(btn =>
+        btn.addEventListener('click', () => insertTemplateText(btn.dataset.template)));
     }
 
     function sectionWorkbenchEntry(section) {
@@ -1416,6 +1545,7 @@ export default {
       const note = el.querySelector('#wb-cur-note');
       if (note) note.textContent = `${wordCount(viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n'))} 字 · 自动保存`;
       renderEvidencePanel();
+      renderTemplatesPanel();
       renderTodosPanel();
       renderChapterCard();
       renderVersionsPanel();
@@ -1431,6 +1561,7 @@ export default {
         renderOutline();
         renderCitationPicker();
         renderEvidencePanel();
+        renderTemplatesPanel();
         renderTodosPanel();
         renderChapterCard();
         renderVersionsPanel();
@@ -1515,6 +1646,7 @@ export default {
     renderOutline();
     renderCitationPicker();
     renderEvidencePanel();
+    renderTemplatesPanel();
     renderTodosPanel();
     renderChapterCard();
     renderVersionsPanel();
