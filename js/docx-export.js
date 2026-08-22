@@ -216,11 +216,13 @@ function buildDocxParts(project, doc, citations) {
         imageIndex += 1;
       }
       blocks.push(paragraph(caption, 'Caption'));
+      if (block.note) blocks.push(paragraph(`说明：${block.note}`, 'BodyQuote'));
       return;
     }
     if (block.type === 'table') {
       if (block.rows?.length) blocks.push(tableXml(block.rows));
       blocks.push(paragraph(`表${block.number} ${block.caption || '未命名表格'}`, 'Caption'));
+      if (block.note) blocks.push(paragraph(`说明：${block.note}`, 'BodyQuote'));
     }
   });
 

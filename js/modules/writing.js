@@ -125,6 +125,7 @@ function buildPreviewHtml(doc, citations) {
       return `<figure class="pp-figure">
         <img src="${block.src}" alt="${escapeHtml(block.alt || caption)}">
         <figcaption>图${block.number}　${escapeHtml(caption)}</figcaption>
+        ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
     }
     if (block.type === 'table') {
@@ -136,6 +137,7 @@ function buildPreviewHtml(doc, citations) {
           <tbody>${body.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell || '')}</td>`).join('')}</tr>`).join('')}</tbody>
         </table>
         <figcaption>表${block.number}　${escapeHtml(block.caption || '未命名表格')}</figcaption>
+        ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
     }
     return '';
@@ -162,6 +164,7 @@ function openPrintPreview(doc, citations) {
     .pp-figure, .pp-table-wrap { margin: 18px 0; }
     .pp-figure img { max-width: 100%; display: block; margin: 0 auto; border: 1px solid #DDD7CA; }
     .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
+    .pp-note { margin: 6px 0 0; text-indent: 0; font-size: 13px; color: #5A6570; }
     .pp-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
     .pp-table th, .pp-table td { border: 1px solid #CFC9BB; padding: 8px 10px; text-align: left; vertical-align: top; }
     .pp-table th { background: #F5F1EA; }
@@ -195,6 +198,7 @@ function figureViewFactory(openEditor) {
       img.src = node.attrs.src || '';
       img.alt = node.attrs.alt || node.attrs.caption || '图片';
       caption.textContent = node.attrs.caption || node.attrs.alt || '未命名图片';
+      caption.title = node.attrs.note || '';
       editBtn.textContent = '编辑图片';
       editBtn.type = 'button';
       editBtn.className = 'pm-asset-edit';
@@ -234,6 +238,7 @@ function tableViewFactory(openEditor) {
       editBtn.className = 'pm-asset-edit';
       caption.className = 'pm-table-caption';
       caption.textContent = node.attrs.caption || '未命名表格';
+      caption.title = node.attrs.note || '';
       const rows = JSON.parse(node.attrs.rows || '[]');
       table.innerHTML = rows.map((row, rowIndex) => `<tr>${row.map(cell => rowIndex === 0 ? `<th>${escapeHtml(cell || '')}</th>` : `<td>${escapeHtml(cell || '')}</td>`).join('')}</tr>`).join('');
     };
@@ -259,7 +264,7 @@ function tableViewFactory(openEditor) {
 function renderSuggestionBox(box, state) {
   if (!state.pending) {
     box.innerHTML = `
-      <h3><span class="mark"></span>AI Suggestion Mode</h3>
+      <h3><span class="mark"></span>AI 写作助手</h3>
       <p class="desc">选中文字后再触发 AI。生成结果会先作为建议展示在这里，只有点击「接受」才会写回正文。</p>
       ${integrityNote()}`;
     return;
@@ -307,7 +312,7 @@ export default {
   id: 'writing',
   icon: '✍️',
   title: '论文写作',
-  subtitle: '结构化编辑器、AI Suggestion Mode、动态引用编号',
+  subtitle: '结构化写作、AI 写作助手、动态引用编号',
   projectScoped: true,
 
   render(el) {
@@ -447,6 +452,8 @@ export default {
               <input type="text" id="wb-image-caption" value="${escapeHtml(payload?.caption || '')}" placeholder="例如：图像分割模型整体结构图">
               <label class="field-label">图片说明（可选）</label>
               <input type="text" id="wb-image-alt" value="${escapeHtml(payload?.alt || '')}" placeholder="给导出和无障碍阅读使用">
+              <label class="field-label">来源说明（可选）</label>
+              <textarea id="wb-image-note" placeholder="例如：资料来源为国家统计局 2025 年公开数据，作者整理。">${escapeHtml(payload?.note || '')}</textarea>
             </div>
           </div>
           <div class="citation-inline-actions" style="margin-top:16px">
@@ -462,12 +469,16 @@ export default {
         assetForm.innerHTML = `
           <label class="field-label">表题</label>
           <input type="text" id="wb-table-caption" value="${escapeHtml(payload?.caption || '')}" placeholder="例如：样本数据统计表">
+          <label class="field-label">表格说明（可选）</label>
+          <textarea id="wb-table-note" placeholder="例如：样本共 42 份，数据来源为企业访谈与内部台账整理。">${escapeHtml(payload?.note || '')}</textarea>
           <div class="wb-table-grid" id="wb-table-grid">
             ${rows.map((row, rowIndex) => `<div class="wb-table-row">${row.map((cell, cellIndex) => `<input type="text" class="wb-table-cell" data-row="${rowIndex}" data-col="${cellIndex}" value="${escapeHtml(cell)}" placeholder="${rowIndex === 0 ? `表头 ${cellIndex + 1}` : `内容 ${rowIndex}-${cellIndex + 1}`}">`).join('')}</div>`).join('')}
           </div>
           <div class="citation-inline-actions" style="margin-top:16px">
             <button class="btn" type="button" id="wb-table-add-row">增加一行</button>
             <button class="btn btn-ghost" type="button" id="wb-table-add-col">增加一列</button>
+            <button class="btn btn-ghost" type="button" id="wb-table-remove-row">删除一行</button>
+            <button class="btn btn-ghost" type="button" id="wb-table-remove-col">删除一列</button>
           </div>
           <div class="citation-inline-actions" style="margin-top:16px">
             <button class="btn" type="button" id="wb-asset-save">保存表格</button>
@@ -477,11 +488,33 @@ export default {
         assetForm.querySelector('#wb-table-add-row')?.addEventListener('click', () => {
           const current = collectTableRowsFromForm();
           current.push(Array.from({ length: current[0]?.length || 3 }, () => ''));
-          openAssetModal('table', { ...assetDraft, rows: current });
+          openAssetModal('table', { ...assetDraft, caption: assetForm.querySelector('#wb-table-caption')?.value.trim() || '', note: assetForm.querySelector('#wb-table-note')?.value.trim() || '', rows: current });
         });
         assetForm.querySelector('#wb-table-add-col')?.addEventListener('click', () => {
           const current = collectTableRowsFromForm().map(row => [...row, '']);
-          openAssetModal('table', { ...assetDraft, rows: current });
+          openAssetModal('table', { ...assetDraft, caption: assetForm.querySelector('#wb-table-caption')?.value.trim() || '', note: assetForm.querySelector('#wb-table-note')?.value.trim() || '', rows: current });
+        });
+        assetForm.querySelector('#wb-table-remove-row')?.addEventListener('click', () => {
+          const current = collectTableRowsFromForm();
+          if (current.length <= 1) {
+            toast('至少保留一行', 'err');
+            return;
+          }
+          current.pop();
+          openAssetModal('table', { ...assetDraft, caption: assetForm.querySelector('#wb-table-caption')?.value.trim() || '', note: assetForm.querySelector('#wb-table-note')?.value.trim() || '', rows: current });
+        });
+        assetForm.querySelector('#wb-table-remove-col')?.addEventListener('click', () => {
+          const current = collectTableRowsFromForm();
+          if ((current[0]?.length || 0) <= 1) {
+            toast('至少保留一列', 'err');
+            return;
+          }
+          openAssetModal('table', {
+            ...assetDraft,
+            caption: assetForm.querySelector('#wb-table-caption')?.value.trim() || '',
+            note: assetForm.querySelector('#wb-table-note')?.value.trim() || '',
+            rows: current.map(row => row.slice(0, -1)),
+          });
         });
       }
       assetForm.querySelector('#wb-asset-cancel')?.addEventListener('click', closeAssetModal);
@@ -525,11 +558,12 @@ export default {
       if (kind === 'image') {
         const caption = assetForm.querySelector('#wb-image-caption')?.value.trim() || '';
         const alt = assetForm.querySelector('#wb-image-alt')?.value.trim() || '';
+        const note = assetForm.querySelector('#wb-image-note')?.value.trim() || '';
         if (!assetDraft?.src) {
           toast('请先选择图片', 'err');
           return;
         }
-        const attrs = { src: assetDraft.src, alt, caption, width: assetDraft.width || 0, height: assetDraft.height || 0 };
+        const attrs = { src: assetDraft.src, alt, caption, note, width: assetDraft.width || 0, height: assetDraft.height || 0 };
         const node = paperSchema.nodes.figure.create(attrs);
         if (assetDraft.pos != null) replaceNodeAtPos(assetDraft.pos, node);
         else insertFigureNode(viewState.view, attrs);
@@ -538,12 +572,13 @@ export default {
         return;
       }
       const caption = assetForm.querySelector('#wb-table-caption')?.value.trim() || '';
+      const note = assetForm.querySelector('#wb-table-note')?.value.trim() || '';
       const rows = collectTableRowsFromForm().map(row => row.map(cell => cell || ''));
       if (!rows.length || !rows[0]?.length) {
         toast('请至少保留一行一列', 'err');
         return;
       }
-      const attrs = { caption, rows: JSON.stringify(rows) };
+      const attrs = { caption, note, rows: JSON.stringify(rows) };
       const node = paperSchema.nodes.table_block.create(attrs);
       if (assetDraft.pos != null) replaceNodeAtPos(assetDraft.pos, node);
       else insertTableNode(viewState.view, attrs);

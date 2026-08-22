@@ -61,6 +61,7 @@ const baseNodes = {
       src: { default: '' },
       alt: { default: '' },
       caption: { default: '' },
+      note: { default: '' },
       width: { default: 0 },
       height: { default: 0 },
     },
@@ -70,6 +71,7 @@ const baseNodes = {
         src: dom.getAttribute('data-figure-src') || '',
         alt: dom.getAttribute('data-figure-alt') || '',
         caption: dom.getAttribute('data-figure-caption') || '',
+        note: dom.getAttribute('data-figure-note') || '',
         width: Number(dom.getAttribute('data-figure-width') || 0),
         height: Number(dom.getAttribute('data-figure-height') || 0),
       }),
@@ -79,6 +81,7 @@ const baseNodes = {
         'data-figure-src': node.attrs.src,
         'data-figure-alt': node.attrs.alt,
         'data-figure-caption': node.attrs.caption,
+        'data-figure-note': node.attrs.note,
         'data-figure-width': node.attrs.width || 0,
         'data-figure-height': node.attrs.height || 0,
         class: 'pm-figure',
@@ -91,18 +94,21 @@ const baseNodes = {
     selectable: true,
     attrs: {
       caption: { default: '' },
+      note: { default: '' },
       rows: { default: '[]' },
     },
     parseDOM: [{
       tag: 'div[data-table-rows]',
       getAttrs: dom => ({
         caption: dom.getAttribute('data-table-caption') || '',
+        note: dom.getAttribute('data-table-note') || '',
         rows: dom.getAttribute('data-table-rows') || '[]',
       }),
     }],
     toDOM(node) {
       return ['div', {
         'data-table-caption': node.attrs.caption,
+        'data-table-note': node.attrs.note,
         'data-table-rows': node.attrs.rows,
         class: 'pm-table-block',
       }];
@@ -268,6 +274,7 @@ export function buildRenderableBlocks(doc, citationsById) {
         src: node.attrs.src,
         alt: node.attrs.alt,
         caption: node.attrs.caption,
+        note: node.attrs.note,
         width: Number(node.attrs.width || 0),
         height: Number(node.attrs.height || 0),
       });
@@ -280,6 +287,7 @@ export function buildRenderableBlocks(doc, citationsById) {
         type: 'table',
         number: tableNo,
         caption: node.attrs.caption,
+        note: node.attrs.note,
         rows: parseTableRows(node.attrs.rows),
       });
     }
@@ -348,11 +356,11 @@ export function extractProjectStateFromDoc(doc) {
       return;
     }
     if (node.type.name === 'figure' && (currentRole === 'section' || currentRole === 'abstract' || currentRole === 'ack')) {
-      buffer.push(`[图片] ${node.attrs.caption || node.attrs.alt || '未命名图片'}`);
+      buffer.push(`[图片] ${node.attrs.caption || node.attrs.alt || '未命名图片'}${node.attrs.note ? `（${node.attrs.note}）` : ''}`);
       return;
     }
     if (node.type.name === 'table_block' && (currentRole === 'section' || currentRole === 'abstract' || currentRole === 'ack')) {
-      buffer.push(`[表格] ${node.attrs.caption || '未命名表格'}`);
+      buffer.push(`[表格] ${node.attrs.caption || '未命名表格'}${node.attrs.note ? `（${node.attrs.note}）` : ''}`);
     }
   });
   flush();
@@ -421,11 +429,13 @@ export function fullTextFromDoc(doc, citationsById) {
     }
     if (block.type === 'figure') {
       lines.push(`图${block.number} ${block.caption || block.alt || '未命名图片'}`);
+      if (block.note) lines.push(`说明：${block.note}`);
       return;
     }
     if (block.type === 'table') {
       lines.push(`表${block.number} ${block.caption || '未命名表格'}`);
       block.rows.forEach(row => lines.push(`| ${row.join(' | ')} |`));
+      if (block.note) lines.push(`说明：${block.note}`);
       return;
     }
     if (block.type === 'reference') lines.push(block.text);

@@ -42,6 +42,7 @@ function openPrintPreview(title, html) {
       .pp-figure, .pp-table-wrap { margin: 18px 0; }
       .pp-figure img { max-width: 100%; display: block; margin: 0 auto; border: 1px solid #DDD7CA; }
       .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
+      .pp-note { margin: 6px 0 0; text-indent: 0; font-size: 13px; color: #5A6570; }
       .pp-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
       .pp-table th, .pp-table td { border: 1px solid #CFC9BB; padding: 8px 10px; text-align: left; vertical-align: top; }
       .pp-table th { background: #F5F1EA; }
@@ -68,6 +69,7 @@ function buildPreviewHtml(project, doc, citations) {
       return `<figure class="pp-figure">
         <img src="${block.src}" alt="${escapeHtml(block.alt || caption)}">
         <figcaption>图${block.number}　${escapeHtml(caption)}</figcaption>
+        ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
     }
     if (block.type === 'table') {
@@ -79,6 +81,7 @@ function buildPreviewHtml(project, doc, citations) {
           <tbody>${body.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell || '')}</td>`).join('')}</tr>`).join('')}</tbody>
         </table>
         <figcaption>表${block.number}　${escapeHtml(block.caption || '未命名表格')}</figcaption>
+        ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
     }
     return '';
@@ -89,6 +92,7 @@ function collectIssues(project, doc, citations) {
   const state = extractProjectStateFromDoc(doc);
   const usage = collectCitationUsage(doc);
   const order = buildCitationNumberMap(doc);
+  const renderable = buildRenderableBlocks(doc, citationMap(citations));
   const evidence = getEvidence();
   const plan = getPlan();
   const issues = [];
@@ -160,6 +164,16 @@ function collectIssues(project, doc, citations) {
 
   if (!order.size) {
     issues.push({ level: 'low', group: '引用检查', text: '正文暂时没有任何正式引用编号，若已开始写作建议尽快补充文献支撑。', nav: 'writing' });
+  }
+
+  const uncapturedFigures = renderable.filter(block => block.type === 'figure' && !block.caption?.trim());
+  if (uncapturedFigures.length) {
+    issues.push({ level: 'medium', group: '格式检查', text: `有 ${uncapturedFigures.length} 张图片还没有图题，导出前建议补齐。`, nav: 'writing' });
+  }
+
+  const uncapturedTables = renderable.filter(block => block.type === 'table' && !block.caption?.trim());
+  if (uncapturedTables.length) {
+    issues.push({ level: 'medium', group: '格式检查', text: `有 ${uncapturedTables.length} 个表格还没有表题，导出前建议补齐。`, nav: 'writing' });
   }
 
   return issues;
