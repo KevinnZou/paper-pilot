@@ -20,11 +20,11 @@ import { ensureCitationIds, citationMap } from '../citation-utils.js';
 const SYSTEM = '你是一位资深论文写作导师，帮助中国高校学生完成论文写作。遵守学术诚信：不代替用户完成整篇论文，只提供局部改写、结构建议和章节草稿辅助。回答直接给出结果，不要客套话和多余解释。';
 
 const AI_ACTIONS = [
-  { id: 'academic', label: '学术表达', prompt: t => `请把下面这段话改写成更规范、更克制的学术表达，只输出改写后的文字。\n\n${t}`, mode: 'selection' },
-  { id: 'argument', label: '补充论证', prompt: t => `请在不改变原意的前提下，为下面这段内容补充论证和分析层次，只输出修改后的文字。\n\n${t}`, mode: 'selection' },
-  { id: 'reframe', label: '重构表达', prompt: t => `请保留原意，重构下面这段文字的表达方式，使其更清晰、更有层次，只输出改写后的文字。\n\n${t}`, mode: 'selection' },
-  { id: 'continue', label: '基于上下文续写', prompt: t => `请基于下面这段论文上下文续写 250-400 字，保持论题和风格一致，只输出续写内容。\n\n${t}`, mode: 'cursor' },
-  { id: 'logic', label: '本章逻辑检查', prompt: t => `请从导师视角检查下面这段章节内容的逻辑结构，指出论证跳跃、只有描述没有分析、缺少证据支持的位置。请用简短分点输出。 \n\n${t}`, mode: 'review' },
+  { id: 'academic', label: '改得更正式', prompt: t => `请把下面这段话改写成更规范、更克制的学术表达，只输出改写后的文字。\n\n${t}`, mode: 'selection' },
+  { id: 'argument', label: '补强论证', prompt: t => `请在不改变原意的前提下，为下面这段内容补充论证和分析层次，只输出修改后的文字。\n\n${t}`, mode: 'selection' },
+  { id: 'reframe', label: '重写这段', prompt: t => `请保留原意，重构下面这段文字的表达方式，使其更清晰、更有层次，只输出改写后的文字。\n\n${t}`, mode: 'selection' },
+  { id: 'continue', label: '继续写下去', prompt: t => `请基于下面这段论文上下文续写 250-400 字，保持论题和风格一致，只输出续写内容。\n\n${t}`, mode: 'cursor' },
+  { id: 'logic', label: '检查这一章', prompt: t => `请从导师视角检查下面这段章节内容的逻辑结构，指出论证跳跃、只有描述没有分析、缺少证据支持的位置。请用简短分点输出。 \n\n${t}`, mode: 'review' },
 ];
 
 if (!window.__tmWritingAbort) {
@@ -256,7 +256,7 @@ export default {
                 <details class="wb-toolbar-more">
                   <summary>工具</summary>
                   <div class="wb-toolbar-more-panel">
-                    <button class="btn btn-ai btn-sm" data-ai="logic">逻辑检查</button>
+                    <button class="btn btn-ai btn-sm" data-ai="logic">检查这一章</button>
                     <button class="btn btn-ghost btn-sm" id="wb-undo">↶ 撤销</button>
                     <button class="btn btn-ghost btn-sm" id="wb-redo">↷ 重做</button>
                     <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
@@ -267,7 +267,7 @@ export default {
             </div>
             <div class="wb-toolbar wb-toolbar-primary">
               ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="btn ${item.id === 'academic' ? 'btn-ai-solid' : 'btn-ai'} btn-sm" data-ai="${item.id}">${item.label}</button>`).join('')}
-              <button class="btn btn-ghost btn-sm" id="wb-draft">生成本章草稿</button>
+              <button class="btn btn-ghost btn-sm" id="wb-draft">生成本章初稿</button>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
             <div class="wb-meta">
