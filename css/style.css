@@ -1063,7 +1063,12 @@ kbd {
   overflow: hidden;
   padding: 0;
 }
-.wb-right { border-left: 1px solid var(--line); }
+.wb-right {
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 .wb-center { padding: 20px 18px 20px 20px; min-width: 0; }
 .wb-left-expanded {
   padding: 20px 16px;
@@ -1084,6 +1089,102 @@ kbd {
 .workbench.outline-collapsed .wb-left-collapsed { display: flex; flex-direction: column; }
 .wb-left h3, .wb-right h3 { font-size: 13px; margin: 0 0 8px; font-family: var(--font-serif); letter-spacing: .5px; }
 .wb-left .desc, .wb-right .desc { font-size: 12px; color: var(--ink-soft); }
+.wb-side-card,
+.wb-side-pane {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 14px;
+}
+.wb-side-card-head,
+.wb-side-pane-head {
+  margin-bottom: 10px;
+}
+.wb-side-card-title {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.wb-side-card-chip {
+  display: inline-flex;
+  min-height: 28px;
+  padding: 0 10px;
+  align-items: center;
+  border-radius: 999px;
+  background: #F3F0E8;
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.wb-side-card-chip.doing {
+  background: #FFF2D8;
+  color: #9A6111;
+}
+.wb-side-card-chip.done {
+  background: #E6F6EF;
+  color: #2F7A55;
+}
+.wb-side-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.wb-side-metric {
+  padding: 10px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  text-align: center;
+}
+.wb-side-metric span {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+.wb-side-metric b {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--ink);
+}
+.wb-side-nav {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.wb-side-nav .btn {
+  flex: 1;
+}
+.wb-side-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #F5F1EA;
+}
+.wb-side-tab {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.wb-side-tab.active {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+.wb-side-pane {
+  display: none;
+}
+.wb-side-pane.active {
+  display: block;
+}
 .wb-side-head {
   display: flex;
   justify-content: space-between;

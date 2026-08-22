@@ -380,6 +380,11 @@ function relatedEvidenceHtml(section, citations) {
     </div>`).join('');
 }
 
+function relatedEvidenceItems(section) {
+  return getEvidence().filter(item =>
+    !section?.sectionId || !item.linkedSectionIds?.length || item.linkedSectionIds.includes(section.sectionId));
+}
+
 function normalizeCitations() {
   const current = getCitations();
   const { list, changed } = ensureCitationIds(current);
@@ -446,7 +451,7 @@ export default {
     const citations = normalizeCitations();
     const doc = docFromJSON({ ...project, citations });
     const viewState = { pending: null, rerun: null, view: null, currentChapter: project.currentChapter || project.outline?.[0]?.chapter || '' };
-    const panelState = { outlineCollapsed: false };
+    const panelState = { outlineCollapsed: false, activeRightTab: 'assistant' };
 
     el.innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
@@ -512,12 +517,29 @@ export default {
           </section>
 
           <aside class="wb-right">
-            <div id="wb-suggestion"></div>
-            <h3 style="margin-top:24px"><span class="mark"></span>插入引用</h3>
-            <div id="wb-citations"></div>
-            <p class="hint">编辑器内部保存的是 citation id，显示编号会按正文首次出现顺序自动重排。</p>
-            <h3 style="margin-top:24px"><span class="mark"></span>相关证据</h3>
-            <div id="wb-evidence"></div>
+            <div class="wb-side-card" id="wb-chapter-card"></div>
+            <div class="wb-side-tabs">
+              <button class="wb-side-tab active" type="button" data-side-tab="assistant">写作助手</button>
+              <button class="wb-side-tab" type="button" data-side-tab="citation">引用</button>
+              <button class="wb-side-tab" type="button" data-side-tab="evidence">证据</button>
+            </div>
+            <div class="wb-side-pane active" data-side-pane="assistant">
+              <div id="wb-suggestion"></div>
+            </div>
+            <div class="wb-side-pane" data-side-pane="citation">
+              <div class="wb-side-pane-head">
+                <h3><span class="mark"></span>插入引用</h3>
+                <p class="desc">编号会按正文首次出现顺序自动重排。</p>
+              </div>
+              <div id="wb-citations"></div>
+            </div>
+            <div class="wb-side-pane" data-side-pane="evidence">
+              <div class="wb-side-pane-head">
+                <h3><span class="mark"></span>相关证据</h3>
+                <p class="desc">优先看和当前章节直接相关的证据卡。</p>
+              </div>
+              <div id="wb-evidence"></div>
+            </div>
           </aside>
         </div>
         <input type="file" id="wb-image-file" accept="image/png,image/jpeg" hidden>
@@ -547,6 +569,9 @@ export default {
     const outlineRailTrigger = el.querySelector('#wb-outline-rail-trigger');
     const outlineRailCount = el.querySelector('#wb-outline-rail-count');
     const outlineRailDots = el.querySelector('#wb-outline-rail-dots');
+    const chapterCard = el.querySelector('#wb-chapter-card');
+    const sideTabs = [...el.querySelectorAll('[data-side-tab]')];
+    const sidePanes = [...el.querySelectorAll('[data-side-pane]')];
     const assetModal = el.querySelector('#wb-asset-modal');
     const assetForm = el.querySelector('#wb-asset-form');
     const assetTitle = el.querySelector('#wb-asset-title');
@@ -870,6 +895,65 @@ export default {
       evidenceBox.innerHTML = relatedEvidenceHtml(section, citations);
     }
 
+    function switchRightTab(tab) {
+      panelState.activeRightTab = tab;
+      sideTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.sideTab === tab));
+      sidePanes.forEach(pane => pane.classList.toggle('active', pane.dataset.sidePane === tab));
+    }
+
+    function jumpToSection(sectionId) {
+      const section = topLevelSections(viewState.view.state.doc).find(x => x.sectionId === sectionId);
+      if (!section) return;
+      viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, section.headingFrom)).scrollIntoView());
+      viewState.view.focus();
+    }
+
+    function renderChapterCard() {
+      const sections = topLevelSections(viewState.view.state.doc);
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from) || sections[0];
+      if (!chapterCard) return;
+      if (!section) {
+        chapterCard.innerHTML = `
+          <div class="wb-side-card-head">
+            <h3><span class="mark"></span>当前章节</h3>
+            <p class="desc">先选中一个章节再开始写。</p>
+          </div>`;
+        return;
+      }
+      const chapterText = viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n').trim();
+      const citationIds = new Set();
+      viewState.view.state.doc.nodesBetween(section.bodyFrom, section.bodyTo, node => {
+        if (node.type.name === 'citation') citationIds.add(node.attrs.citationId);
+      });
+      const status = getProject().chapterProgress?.[section.chapter] || '未开始';
+      const evidenceItems = relatedEvidenceItems(section);
+      const index = sections.findIndex(item => item.sectionId === section.sectionId);
+      const prev = sections[index - 1];
+      const next = sections[index + 1];
+      chapterCard.innerHTML = `
+        <div class="wb-side-card-head">
+          <h3><span class="mark"></span>当前章节</h3>
+          <p class="desc">先把这一章写顺，再切到下一章。</p>
+        </div>
+        <div class="wb-side-card-title">${escapeHtml(section.chapter)}</div>
+        <div class="wb-side-card-chip ${status === '已完成' ? 'done' : status === '进行中' ? 'doing' : ''}">${escapeHtml(status)}</div>
+        <div class="wb-side-metrics">
+          <div class="wb-side-metric"><span>字数</span><b>${wordCount(chapterText)}</b></div>
+          <div class="wb-side-metric"><span>引用</span><b>${citationIds.size}</b></div>
+          <div class="wb-side-metric"><span>证据</span><b>${evidenceItems.length}</b></div>
+        </div>
+        <div class="wb-side-nav">
+          <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${prev?.sectionId || ''}" ${prev ? '' : 'disabled'}>上一章</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${next?.sectionId || ''}" ${next ? '' : 'disabled'}>下一章</button>
+        </div>`;
+      chapterCard.querySelectorAll('[data-jump-section]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!btn.dataset.jumpSection) return;
+          jumpToSection(btn.dataset.jumpSection);
+        });
+      });
+    }
+
     function syncCurrentChapter() {
       const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
       if (!section) return;
@@ -877,7 +961,10 @@ export default {
       setCurrentChapter(section.chapter);
       const title = el.querySelector('#wb-cur-title');
       if (title) title.innerHTML = `正在写：<b>${escapeHtml(section.chapter)}</b>`;
+      const note = el.querySelector('#wb-cur-note');
+      if (note) note.textContent = `${wordCount(viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n'))} 字 · 自动保存`;
       renderEvidencePanel();
+      renderChapterCard();
     }
 
     function persistNow() {
@@ -890,6 +977,7 @@ export default {
         renderOutline();
         renderCitationPicker();
         renderEvidencePanel();
+        renderChapterCard();
         return true;
       } catch (error) {
         console.error('save writing project failed', error);
@@ -968,11 +1056,14 @@ export default {
     renderOutline();
     renderCitationPicker();
     renderEvidencePanel();
+    renderChapterCard();
     renderSuggestionBox(suggestionBox, viewState);
     syncOutlineCollapse();
     setSaveStatus('idle', '已载入');
     persistNow();
+    switchRightTab(panelState.activeRightTab);
 
+    sideTabs.forEach(btn => btn.addEventListener('click', () => switchRightTab(btn.dataset.sideTab)));
     el.querySelector('#wb-format')?.addEventListener('click', formatCurrentSection);
     el.querySelector('#wb-insert-formula')?.addEventListener('click', () => openAssetModal('formula'));
     el.querySelector('#wb-insert-note')?.addEventListener('click', () => openAssetModal('footnote'));
@@ -1038,6 +1129,7 @@ export default {
         viewState.rerun = () => runSuggestion(action, sourceText, replaceFrom, replaceTo, sourceLabel);
         renderSuggestionBox(suggestionBox, viewState);
         bindSuggestionActions();
+        switchRightTab('assistant');
       } catch (e) {
         if (e?.code !== 'aborted') toast(e.message, 'err', 3600);
       } finally {
@@ -1125,6 +1217,7 @@ export default {
         viewState.rerun = () => el.querySelector('#wb-draft').click();
         renderSuggestionBox(suggestionBox, viewState);
         bindSuggestionActions();
+        switchRightTab('assistant');
       } catch (e) {
         if (e?.code !== 'aborted') toast(e.message, 'err', 3600);
       } finally {
