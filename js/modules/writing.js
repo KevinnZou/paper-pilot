@@ -10,7 +10,10 @@ import {
   docFromJSON,
   extractProjectStateFromDoc,
   buildCitationNumberMap,
+  buildRenderableBlocks,
   insertCitationNode,
+  insertFigureNode,
+  insertTableNode,
   replaceSelectionWithText,
   collectCitationUsage,
   fullTextFromDoc,
@@ -106,24 +109,37 @@ function currentSectionText(view) {
 }
 
 function buildPreviewHtml(doc, citations) {
-  const text = fullTextFromDoc(doc, citationMap(citations));
-  const lines = text.split('\n');
-  const html = [];
-  let mode = '';
-  lines.forEach(line => {
-    if (!line.trim()) return;
-    if (line === '摘要' || line === '关键词' || line === '参考文献' || line === '致谢' || /^第/.test(line) || /^\d+\./.test(line)) {
-      html.push(`<h2 class="sec">${escapeHtml(line)}</h2>`);
-      mode = line === '参考文献' ? 'refs' : 'body';
-      return;
+  const blocks = buildRenderableBlocks(doc, citationMap(citations));
+  return blocks.map(block => {
+    if (block.type === 'title') return `<h1 class="title">${escapeHtml(block.text)}</h1>`;
+    if (block.type === 'heading') return `<h2 class="sec">${escapeHtml(block.text)}</h2>`;
+    if (block.type === 'paragraph') return `<p>${escapeHtml(block.text)}</p>`;
+    if (block.type === 'blockquote') return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
+    if (block.type === 'reference') return `<p class="ref">${escapeHtml(block.text)}</p>`;
+    if (block.type === 'list') {
+      const tag = block.ordered ? 'ol' : 'ul';
+      return `<${tag}>${block.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</${tag}>`;
     }
-    if (!html.length) {
-      html.push(`<h1 class="title">${escapeHtml(line)}</h1>`);
-      return;
+    if (block.type === 'figure') {
+      const caption = block.caption || block.alt || '未命名图片';
+      return `<figure class="pp-figure">
+        <img src="${block.src}" alt="${escapeHtml(block.alt || caption)}">
+        <figcaption>图${block.number}　${escapeHtml(caption)}</figcaption>
+      </figure>`;
     }
-    html.push(mode === 'refs' ? `<p class="ref">${escapeHtml(line)}</p>` : `<p>${escapeHtml(line)}</p>`);
-  });
-  return html.join('');
+    if (block.type === 'table') {
+      const head = block.rows[0] || [];
+      const body = block.rows.slice(1);
+      return `<figure class="pp-table-wrap">
+        <table class="pp-table">
+          ${head.length ? `<thead><tr>${head.map(cell => `<th>${escapeHtml(cell || '—')}</th>`).join('')}</tr></thead>` : ''}
+          <tbody>${body.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell || '')}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+        <figcaption>表${block.number}　${escapeHtml(block.caption || '未命名表格')}</figcaption>
+      </figure>`;
+    }
+    return '';
+  }).join('');
 }
 
 function openPrintPreview(doc, citations) {
@@ -141,6 +157,14 @@ function openPrintPreview(doc, citations) {
     .sec::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #C03B2D; margin-right: 9px; }
     p { text-indent: 2em; margin: 6px 0; font-size: 15px; }
     p.ref { text-indent: -2em; padding-left: 2em; font-size: 12.5px; line-height: 1.8; color: #4A5560; }
+    blockquote { margin: 12px 0; padding: 8px 16px; border-left: 3px solid #C03B2D; background: #FBF7F0; }
+    ul, ol { margin: 10px 0 14px 32px; }
+    .pp-figure, .pp-table-wrap { margin: 18px 0; }
+    .pp-figure img { max-width: 100%; display: block; margin: 0 auto; border: 1px solid #DDD7CA; }
+    .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
+    .pp-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
+    .pp-table th, .pp-table td { border: 1px solid #CFC9BB; padding: 8px 10px; text-align: left; vertical-align: top; }
+    .pp-table th { background: #F5F1EA; }
     .tip { position: fixed; top: 14px; right: 16px; background: #2F4F66; color: #fff; padding: 8px 14px; border-radius: 5px; font-size: 13px; }
     @media print { .tip { display:none; } body { background:#fff; margin: 0; } }
   </style></head><body><div class="tip">Ctrl/Cmd+P 打印或另存 PDF</div>${html}</body></html>`);
@@ -157,6 +181,79 @@ function citationViewFactory(getLabel) {
       return true;
     },
   });
+}
+
+function figureViewFactory(openEditor) {
+  return (node, view, getPos) => {
+    const dom = document.createElement('figure');
+    const img = document.createElement('img');
+    const caption = document.createElement('figcaption');
+    const toolbar = document.createElement('div');
+    const editBtn = document.createElement('button');
+    const sync = () => {
+      dom.className = 'pm-figure-card';
+      img.src = node.attrs.src || '';
+      img.alt = node.attrs.alt || node.attrs.caption || '图片';
+      caption.textContent = node.attrs.caption || node.attrs.alt || '未命名图片';
+      editBtn.textContent = '编辑图片';
+      editBtn.type = 'button';
+      editBtn.className = 'pm-asset-edit';
+      toolbar.className = 'pm-asset-toolbar';
+    };
+    editBtn.addEventListener('click', evt => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      openEditor({ ...node.attrs, pos: getPos() });
+    });
+    toolbar.appendChild(editBtn);
+    dom.append(toolbar, img, caption);
+    sync();
+    return {
+      dom,
+      update(nextNode) {
+        node = nextNode;
+        sync();
+        return true;
+      },
+    };
+  };
+}
+
+function tableViewFactory(openEditor) {
+  return (node, view, getPos) => {
+    const dom = document.createElement('div');
+    const toolbar = document.createElement('div');
+    const editBtn = document.createElement('button');
+    const table = document.createElement('table');
+    const caption = document.createElement('div');
+    const sync = () => {
+      dom.className = 'pm-table-card';
+      toolbar.className = 'pm-asset-toolbar';
+      editBtn.textContent = '编辑表格';
+      editBtn.type = 'button';
+      editBtn.className = 'pm-asset-edit';
+      caption.className = 'pm-table-caption';
+      caption.textContent = node.attrs.caption || '未命名表格';
+      const rows = JSON.parse(node.attrs.rows || '[]');
+      table.innerHTML = rows.map((row, rowIndex) => `<tr>${row.map(cell => rowIndex === 0 ? `<th>${escapeHtml(cell || '')}</th>` : `<td>${escapeHtml(cell || '')}</td>`).join('')}</tr>`).join('');
+    };
+    editBtn.addEventListener('click', evt => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      openEditor({ caption: node.attrs.caption, rows: JSON.parse(node.attrs.rows || '[]'), pos: getPos() });
+    });
+    toolbar.appendChild(editBtn);
+    dom.append(toolbar, table, caption);
+    sync();
+    return {
+      dom,
+      update(nextNode) {
+        node = nextNode;
+        sync();
+        return true;
+      },
+    };
+  };
 }
 
 function renderSuggestionBox(box, state) {
@@ -257,6 +354,8 @@ export default {
                   <summary>工具</summary>
                   <div class="wb-toolbar-more-panel">
                     <button class="btn btn-ai btn-sm" data-ai="logic">逻辑检查</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-insert-image">插入图片</button>
+                    <button class="btn btn-ghost btn-sm" id="wb-insert-table">插入表格</button>
                     <button class="btn btn-ghost btn-sm" id="wb-undo">↶ 撤销</button>
                     <button class="btn btn-ghost btn-sm" id="wb-redo">↷ 重做</button>
                     <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
@@ -287,6 +386,19 @@ export default {
             <div id="wb-evidence"></div>
           </aside>
         </div>
+        <input type="file" id="wb-image-file" accept="image/png,image/jpeg" hidden>
+        <div class="modal-backdrop" id="wb-asset-modal" hidden>
+          <div class="modal-panel wb-asset-modal">
+            <div class="citation-modal-head">
+              <div>
+                <h3 id="wb-asset-title">插入图片</h3>
+                <p class="desc" id="wb-asset-desc">给图片补上图题，排版预览和导出时会按论文结构带上编号。</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" id="wb-asset-close-top">关闭</button>
+            </div>
+            <div id="wb-asset-form"></div>
+          </div>
+        </div>
       </div>`;
 
     const suggestionBox = el.querySelector('#wb-suggestion');
@@ -301,7 +413,143 @@ export default {
     const outlineRailTrigger = el.querySelector('#wb-outline-rail-trigger');
     const outlineRailCount = el.querySelector('#wb-outline-rail-count');
     const outlineRailDots = el.querySelector('#wb-outline-rail-dots');
+    const assetModal = el.querySelector('#wb-asset-modal');
+    const assetForm = el.querySelector('#wb-asset-form');
+    const assetTitle = el.querySelector('#wb-asset-title');
+    const assetDesc = el.querySelector('#wb-asset-desc');
+    const imageInput = el.querySelector('#wb-image-file');
     let saveTimer = null;
+    let assetDraft = null;
+
+    function closeAssetModal() {
+      if (!assetModal) return;
+      assetModal.hidden = true;
+      document.body.style.overflow = '';
+      assetDraft = null;
+      if (imageInput) imageInput.value = '';
+    }
+
+    function openAssetModal(kind, payload = null) {
+      assetDraft = { kind, ...(payload || {}) };
+      assetModal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      if (kind === 'image') {
+        assetTitle.textContent = payload?.pos != null ? '编辑图片' : '插入图片';
+        assetDesc.textContent = '支持 PNG、JPG。建议补上图题，后续排版预览和导出会自动编号。';
+        assetForm.innerHTML = `
+          <div class="wb-asset-grid">
+            <div class="wb-asset-preview-shell">
+              <div class="wb-asset-preview" id="wb-image-preview">${payload?.src ? `<img src="${payload.src}" alt="${escapeHtml(payload.alt || payload.caption || '图片')}">` : '<span class="placeholder">选择图片后会在这里预览</span>'}</div>
+              <button class="btn btn-ghost btn-sm" type="button" id="wb-image-choose">${payload?.src ? '更换图片' : '选择图片'}</button>
+            </div>
+            <div>
+              <label class="field-label">图题</label>
+              <input type="text" id="wb-image-caption" value="${escapeHtml(payload?.caption || '')}" placeholder="例如：图像分割模型整体结构图">
+              <label class="field-label">图片说明（可选）</label>
+              <input type="text" id="wb-image-alt" value="${escapeHtml(payload?.alt || '')}" placeholder="给导出和无障碍阅读使用">
+            </div>
+          </div>
+          <div class="citation-inline-actions" style="margin-top:16px">
+            <button class="btn" type="button" id="wb-asset-save">保存图片</button>
+            <button class="btn btn-ghost" type="button" id="wb-asset-cancel">取消</button>
+          </div>`;
+        assetForm.querySelector('#wb-image-choose')?.addEventListener('click', () => imageInput?.click());
+        assetForm.querySelector('#wb-image-caption')?.focus();
+      } else {
+        const rows = payload?.rows?.length ? payload.rows : Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => ''));
+        assetTitle.textContent = payload?.pos != null ? '编辑表格' : '插入表格';
+        assetDesc.textContent = '表头写在第一行。保存后会按论文表格样式进入编辑器、预览和导出。';
+        assetForm.innerHTML = `
+          <label class="field-label">表题</label>
+          <input type="text" id="wb-table-caption" value="${escapeHtml(payload?.caption || '')}" placeholder="例如：样本数据统计表">
+          <div class="wb-table-grid" id="wb-table-grid">
+            ${rows.map((row, rowIndex) => `<div class="wb-table-row">${row.map((cell, cellIndex) => `<input type="text" class="wb-table-cell" data-row="${rowIndex}" data-col="${cellIndex}" value="${escapeHtml(cell)}" placeholder="${rowIndex === 0 ? `表头 ${cellIndex + 1}` : `内容 ${rowIndex}-${cellIndex + 1}`}">`).join('')}</div>`).join('')}
+          </div>
+          <div class="citation-inline-actions" style="margin-top:16px">
+            <button class="btn" type="button" id="wb-table-add-row">增加一行</button>
+            <button class="btn btn-ghost" type="button" id="wb-table-add-col">增加一列</button>
+          </div>
+          <div class="citation-inline-actions" style="margin-top:16px">
+            <button class="btn" type="button" id="wb-asset-save">保存表格</button>
+            <button class="btn btn-ghost" type="button" id="wb-asset-cancel">取消</button>
+          </div>`;
+        assetForm.querySelector('#wb-table-caption')?.focus();
+        assetForm.querySelector('#wb-table-add-row')?.addEventListener('click', () => {
+          const current = collectTableRowsFromForm();
+          current.push(Array.from({ length: current[0]?.length || 3 }, () => ''));
+          openAssetModal('table', { ...assetDraft, rows: current });
+        });
+        assetForm.querySelector('#wb-table-add-col')?.addEventListener('click', () => {
+          const current = collectTableRowsFromForm().map(row => [...row, '']);
+          openAssetModal('table', { ...assetDraft, rows: current });
+        });
+      }
+      assetForm.querySelector('#wb-asset-cancel')?.addEventListener('click', closeAssetModal);
+      assetForm.querySelector('#wb-asset-save')?.addEventListener('click', () => saveAsset(kind));
+    }
+
+    function collectTableRowsFromForm() {
+      const cells = [...assetForm.querySelectorAll('.wb-table-cell')];
+      const rows = [];
+      cells.forEach(cell => {
+        const rowIndex = Number(cell.dataset.row);
+        if (!rows[rowIndex]) rows[rowIndex] = [];
+        rows[rowIndex][Number(cell.dataset.col)] = cell.value.trim();
+      });
+      return rows.filter(row => row && row.length);
+    }
+
+    async function readImageMeta(file) {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('图片读取失败，请重试'));
+        reader.readAsDataURL(file);
+      });
+      const size = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror = () => reject(new Error('图片加载失败，请换一张试试'));
+        img.src = dataUrl;
+      });
+      return { dataUrl, ...size };
+    }
+
+    function replaceNodeAtPos(pos, node) {
+      const target = viewState.view.state.doc.nodeAt(pos);
+      if (!target) return;
+      viewState.view.dispatch(viewState.view.state.tr.replaceWith(pos, pos + target.nodeSize, node).scrollIntoView());
+    }
+
+    function saveAsset(kind) {
+      if (kind === 'image') {
+        const caption = assetForm.querySelector('#wb-image-caption')?.value.trim() || '';
+        const alt = assetForm.querySelector('#wb-image-alt')?.value.trim() || '';
+        if (!assetDraft?.src) {
+          toast('请先选择图片', 'err');
+          return;
+        }
+        const attrs = { src: assetDraft.src, alt, caption, width: assetDraft.width || 0, height: assetDraft.height || 0 };
+        const node = paperSchema.nodes.figure.create(attrs);
+        if (assetDraft.pos != null) replaceNodeAtPos(assetDraft.pos, node);
+        else insertFigureNode(viewState.view, attrs);
+        closeAssetModal();
+        toast('图片已插入', 'ok');
+        return;
+      }
+      const caption = assetForm.querySelector('#wb-table-caption')?.value.trim() || '';
+      const rows = collectTableRowsFromForm().map(row => row.map(cell => cell || ''));
+      if (!rows.length || !rows[0]?.length) {
+        toast('请至少保留一行一列', 'err');
+        return;
+      }
+      const attrs = { caption, rows: JSON.stringify(rows) };
+      const node = paperSchema.nodes.table_block.create(attrs);
+      if (assetDraft.pos != null) replaceNodeAtPos(assetDraft.pos, node);
+      else insertTableNode(viewState.view, attrs);
+      closeAssetModal();
+      toast('表格已插入', 'ok');
+    }
 
     function syncOutlineCollapse() {
       workbench.classList.toggle('outline-collapsed', panelState.outlineCollapsed);
@@ -444,6 +692,8 @@ export default {
       state: editorState,
       nodeViews: {
         citation: citationViewFactory(getCitationNumber),
+        figure: figureViewFactory(payload => openAssetModal('image', payload)),
+        table_block: tableViewFactory(payload => openAssetModal('table', payload)),
       },
       dispatchTransaction(tr) {
         const nextState = viewState.view.state.apply(tr);
@@ -463,6 +713,25 @@ export default {
     syncOutlineCollapse();
     setSaveStatus('idle', '已载入');
     persistNow();
+
+    el.querySelector('#wb-insert-image')?.addEventListener('click', () => openAssetModal('image'));
+    el.querySelector('#wb-insert-table')?.addEventListener('click', () => openAssetModal('table'));
+    el.querySelector('#wb-asset-close-top')?.addEventListener('click', closeAssetModal);
+    assetModal?.addEventListener('click', evt => {
+      if (evt.target === assetModal) closeAssetModal();
+    });
+    imageInput?.addEventListener('change', async () => {
+      const file = imageInput.files?.[0];
+      if (!file) return;
+      try {
+        const meta = await readImageMeta(file);
+        assetDraft = { ...(assetDraft || {}), src: meta.dataUrl, width: meta.width, height: meta.height };
+        const preview = assetForm.querySelector('#wb-image-preview');
+        if (preview) preview.innerHTML = `<img src="${meta.dataUrl}" alt="${escapeHtml(file.name)}">`;
+      } catch (error) {
+        toast(error.message, 'err', 3200);
+      }
+    });
 
     outlineToggle?.addEventListener('click', () => {
       panelState.outlineCollapsed = !panelState.outlineCollapsed;

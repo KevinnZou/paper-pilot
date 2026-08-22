@@ -1,4 +1,4 @@
-import { extractProjectStateFromDoc, buildCitationNumberMap } from './document-model.js';
+import { buildRenderableBlocks } from './document-model.js';
 import { citationMap } from './citation-utils.js';
 
 function xmlEscape(value) {
@@ -63,7 +63,7 @@ function buildZip(files) {
 
   files.forEach(file => {
     const nameBytes = encoder.encode(file.name);
-    const dataBytes = encoder.encode(file.content);
+    const dataBytes = typeof file.content === 'string' ? encoder.encode(file.content) : file.content;
     const crc = crc32(dataBytes);
     const localHeader = new Uint8Array([
       0x50, 0x4b, 0x03, 0x04,
@@ -118,37 +118,113 @@ function buildZip(files) {
   return concatArrays([localDir, centralDir, end]);
 }
 
-function buildDocumentXml(project, doc, citations) {
-  const state = extractProjectStateFromDoc(doc);
-  const numbers = buildCitationNumberMap(doc);
+function dataUrlToBytes(dataUrl) {
+  const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
+  if (!match) return null;
+  const mime = match[1];
+  const raw = atob(match[2]);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+  return { mime, bytes };
+}
+
+function imageDrawingXml(relId, widthPx, heightPx) {
+  const maxWidth = 520;
+  const baseWidth = widthPx || 480;
+  const baseHeight = heightPx || 300;
+  const ratio = Math.min(1, maxWidth / baseWidth);
+  const width = Math.max(220, Math.round(baseWidth * ratio));
+  const height = Math.max(140, Math.round(baseHeight * ratio));
+  const cx = width * 9525;
+  const cy = height * 9525;
+  return `<w:p>
+    <w:pPr><w:jc w:val="center"/></w:pPr>
+    <w:r>
+      <w:drawing>
+        <wp:inline distT="0" distB="0" distL="0" distR="0">
+          <wp:extent cx="${cx}" cy="${cy}"/>
+          <wp:docPr id="1" name="Picture"/>
+          <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+            <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+              <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                <pic:nvPicPr>
+                  <pic:cNvPr id="0" name="Picture"/>
+                  <pic:cNvPicPr/>
+                </pic:nvPicPr>
+                <pic:blipFill>
+                  <a:blip r:embed="${relId}"/>
+                  <a:stretch><a:fillRect/></a:stretch>
+                </pic:blipFill>
+                <pic:spPr>
+                  <a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>
+                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                </pic:spPr>
+              </pic:pic>
+            </a:graphicData>
+          </a:graphic>
+        </wp:inline>
+      </w:drawing>
+    </w:r>
+  </w:p>`;
+}
+
+function tableXml(rows) {
+  return `<w:tbl>
+    <w:tblPr>
+      <w:tblW w:w="0" w:type="auto"/>
+      <w:tblBorders>
+        <w:top w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
+        <w:left w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
+        <w:bottom w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
+        <w:right w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
+        <w:insideH w:val="single" w:sz="6" w:space="0" w:color="D4CEC0"/>
+        <w:insideV w:val="single" w:sz="6" w:space="0" w:color="D4CEC0"/>
+      </w:tblBorders>
+    </w:tblPr>
+    ${rows.map((row, rowIndex) => `<w:tr>${row.map(cell => `<w:tc><w:tcPr>${rowIndex === 0 ? '<w:shd w:fill="F4EFE4"/>' : ''}</w:tcPr>${paragraph(cell || '', rowIndex === 0 ? 'TableHead' : 'TableCell')}</w:tc>`).join('')}</w:tr>`).join('')}
+  </w:tbl>`;
+}
+
+function buildDocxParts(project, doc, citations) {
   const byId = citationMap(citations);
-  const renderText = text => String(text || '').replace(/\[\[CIT:([a-zA-Z0-9-]+)\]\]/g, (_, id) => `[${numbers.get(id) || '?'}]`);
+  const renderable = buildRenderableBlocks(doc, byId);
   const blocks = [];
+  const media = [];
+  const relationships = ['<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'];
+  let imageIndex = 1;
 
-  if (state.title) blocks.push(paragraph(state.title, 'Title'));
-  blocks.push(paragraph('摘要', 'Heading1'));
-  (state.abstract || '').split(/\n+/).filter(Boolean).forEach(line => blocks.push(paragraph(renderText(line), 'BodyText')));
-  blocks.push(paragraph('关键词', 'Heading1'));
-  (state.keywords || '').split(/\n+/).filter(Boolean).forEach(line => blocks.push(paragraph(renderText(line), 'BodyText')));
-
-  state.outline.forEach(section => {
-    blocks.push(paragraph(section.chapter, 'Heading1'));
-    const raw = state.drafts[section.chapter]?.content || '';
-    raw.split(/\n+/).filter(Boolean).forEach(line => blocks.push(paragraph(renderText(line), 'BodyText')));
+  renderable.forEach(block => {
+    if (block.type === 'title') { blocks.push(paragraph(block.text, 'Title')); return; }
+    if (block.type === 'heading') { blocks.push(paragraph(block.text, 'Heading1')); return; }
+    if (block.type === 'paragraph') { blocks.push(paragraph(block.text, 'BodyText')); return; }
+    if (block.type === 'blockquote') { blocks.push(paragraph(block.text, 'BodyQuote')); return; }
+    if (block.type === 'reference') { blocks.push(paragraph(block.text, 'Reference')); return; }
+    if (block.type === 'list') {
+      block.items.forEach((item, index) => blocks.push(paragraph(`${block.ordered ? `${index + 1}. ` : '• '}${item}`, 'BodyText')));
+      return;
+    }
+    if (block.type === 'figure') {
+      const caption = `图${block.number} ${block.caption || block.alt || '未命名图片'}`;
+      const data = dataUrlToBytes(block.src);
+      if (data && /image\/(png|jpeg)/.test(data.mime)) {
+        const ext = data.mime === 'image/png' ? 'png' : 'jpg';
+        const relId = `rIdImg${imageIndex}`;
+        const filename = `media/image${imageIndex}.${ext}`;
+        media.push({ name: `word/${filename}`, content: data.bytes, mime: data.mime });
+        relationships.push(`<Relationship Id="${relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${filename}"/>`);
+        blocks.push(imageDrawingXml(relId, block.width, block.height));
+        imageIndex += 1;
+      }
+      blocks.push(paragraph(caption, 'Caption'));
+      return;
+    }
+    if (block.type === 'table') {
+      if (block.rows?.length) blocks.push(tableXml(block.rows));
+      blocks.push(paragraph(`表${block.number} ${block.caption || '未命名表格'}`, 'Caption'));
+    }
   });
 
-  blocks.push(paragraph('参考文献', 'Heading1'));
-  [...numbers.entries()]
-    .sort((a, b) => a[1] - b[1])
-    .forEach(([id, n]) => {
-      const citation = byId.get(id);
-      blocks.push(paragraph(`[${n}] ${citation?.formatted || citation?.title || '（缺失文献）'}`, 'Reference'));
-    });
-
-  blocks.push(paragraph('致谢', 'Heading1'));
-  (state.acknowledgments || '').split(/\n+/).filter(Boolean).forEach(line => blocks.push(paragraph(renderText(line), 'BodyText')));
-
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -173,6 +249,8 @@ function buildDocumentXml(project, doc, citations) {
       </w:sectPr>
     </w:body>
   </w:document>`;
+
+  return { documentXml, media, relationships };
 }
 
 function buildStylesXml() {
@@ -201,6 +279,28 @@ function buildStylesXml() {
       <w:pPr><w:ind w:firstLine="420"/><w:spacing w:line="480" w:lineRule="auto"/></w:pPr>
       <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="24"/></w:rPr>
     </w:style>
+    <w:style w:type="paragraph" w:styleId="BodyQuote">
+      <w:name w:val="Body Quote"/>
+      <w:basedOn w:val="BodyText"/>
+      <w:pPr><w:ind w:left="420"/><w:spacing w:line="420" w:lineRule="auto"/></w:pPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Caption">
+      <w:name w:val="Caption"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="120"/></w:pPr>
+      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="TableHead">
+      <w:name w:val="Table Head"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/></w:pPr>
+      <w:rPr><w:b/><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="TableCell">
+      <w:name w:val="Table Cell"/>
+      <w:basedOn w:val="Normal"/>
+      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+    </w:style>
     <w:style w:type="paragraph" w:styleId="Reference">
       <w:name w:val="Reference"/>
       <w:basedOn w:val="Normal"/>
@@ -211,6 +311,7 @@ function buildStylesXml() {
 }
 
 export function createDocxBlob(project, doc, citations) {
+  const { documentXml, media, relationships } = buildDocxParts(project, doc, citations);
   const files = [
     {
       name: '[Content_Types].xml',
@@ -218,6 +319,8 @@ export function createDocxBlob(project, doc, citations) {
       <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
         <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
         <Default Extension="xml" ContentType="application/xml"/>
+        ${media.some(file => file.mime === 'image/png') ? '<Default Extension="png" ContentType="image/png"/>' : ''}
+        ${media.some(file => file.mime === 'image/jpeg') ? '<Default Extension="jpg" ContentType="image/jpeg"/>' : ''}
         <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
         <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
         <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
@@ -237,10 +340,10 @@ export function createDocxBlob(project, doc, citations) {
       name: 'word/_rels/document.xml.rels',
       content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-        <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+        ${relationships.join('')}
       </Relationships>`,
     },
-    { name: 'word/document.xml', content: buildDocumentXml(project, doc, citations) },
+    { name: 'word/document.xml', content: documentXml },
     { name: 'word/styles.xml', content: buildStylesXml() },
     {
       name: 'docProps/core.xml',
@@ -262,7 +365,9 @@ export function createDocxBlob(project, doc, citations) {
         <Application>PaperPilot</Application>
       </Properties>`,
     },
+    ...media,
   ];
+
   return new Blob([buildZip(files)], {
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   });

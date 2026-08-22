@@ -1,6 +1,6 @@
 import { escapeHtml, toast } from '../ui.js';
 import { getProject, setCurrentChapter, getEvidence, getPlan } from '../project.js';
-import { docFromJSON, extractProjectStateFromDoc, collectCitationUsage, buildCitationNumberMap, fullTextFromDoc } from '../document-model.js';
+import { docFromJSON, extractProjectStateFromDoc, collectCitationUsage, buildCitationNumberMap, fullTextFromDoc, buildRenderableBlocks } from '../document-model.js';
 import { citationMap, ensureCitationIds } from '../citation-utils.js';
 import { createDocxBlob } from '../docx-export.js';
 
@@ -37,6 +37,14 @@ function openPrintPreview(title, html) {
       h2 { font-size:18px; margin: 28px 0 12px; border-bottom:1px solid #ddd; padding-bottom:6px; }
       p { text-indent: 2em; margin: 8px 0; }
       .ref { text-indent: -2em; padding-left: 2em; font-size: 13px; }
+      blockquote { margin: 12px 0; padding: 8px 16px; border-left: 3px solid #C03B2D; background: #FBF7F0; }
+      ul, ol { margin: 10px 0 14px 32px; }
+      .pp-figure, .pp-table-wrap { margin: 18px 0; }
+      .pp-figure img { max-width: 100%; display: block; margin: 0 auto; border: 1px solid #DDD7CA; }
+      .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
+      .pp-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
+      .pp-table th, .pp-table td { border: 1px solid #CFC9BB; padding: 8px 10px; text-align: left; vertical-align: top; }
+      .pp-table th { background: #F5F1EA; }
       .tip { position: fixed; top: 12px; right: 16px; background: #2F4F66; color:#fff; padding: 8px 12px; border-radius: 6px; font-size:12px; }
       @media print { .tip { display:none; } body { margin:0; } }
     </style></head><body><div class="tip">Ctrl/Cmd+P 可导出 PDF</div>${html}</body></html>`);
@@ -44,24 +52,37 @@ function openPrintPreview(title, html) {
 }
 
 function buildPreviewHtml(project, doc, citations) {
-  const text = fullTextFromDoc(doc, citationMap(citations));
-  const lines = text.split('\n');
-  const html = [];
-  let mode = 'body';
-  lines.forEach(line => {
-    if (!line.trim()) return;
-    if (!html.length) {
-      html.push(`<h1>${escapeHtml(line)}</h1>`);
-      return;
+  const blocks = buildRenderableBlocks(doc, citationMap(citations));
+  return blocks.map(block => {
+    if (block.type === 'title') return `<h1>${escapeHtml(block.text)}</h1>`;
+    if (block.type === 'heading') return `<h2>${escapeHtml(block.text)}</h2>`;
+    if (block.type === 'paragraph') return `<p>${escapeHtml(block.text)}</p>`;
+    if (block.type === 'blockquote') return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
+    if (block.type === 'reference') return `<p class="ref">${escapeHtml(block.text)}</p>`;
+    if (block.type === 'list') {
+      const tag = block.ordered ? 'ol' : 'ul';
+      return `<${tag}>${block.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</${tag}>`;
     }
-    if (line === '摘要' || line === '关键词' || line === '参考文献' || line === '致谢' || /^第/.test(line) || /^\d+\./.test(line)) {
-      html.push(`<h2>${escapeHtml(line)}</h2>`);
-      mode = line === '参考文献' ? 'refs' : 'body';
-      return;
+    if (block.type === 'figure') {
+      const caption = block.caption || block.alt || '未命名图片';
+      return `<figure class="pp-figure">
+        <img src="${block.src}" alt="${escapeHtml(block.alt || caption)}">
+        <figcaption>图${block.number}　${escapeHtml(caption)}</figcaption>
+      </figure>`;
     }
-    html.push(mode === 'refs' ? `<p class="ref">${escapeHtml(line)}</p>` : `<p>${escapeHtml(line)}</p>`);
-  });
-  return html.join('');
+    if (block.type === 'table') {
+      const head = block.rows[0] || [];
+      const body = block.rows.slice(1);
+      return `<figure class="pp-table-wrap">
+        <table class="pp-table">
+          ${head.length ? `<thead><tr>${head.map(cell => `<th>${escapeHtml(cell || '—')}</th>`).join('')}</tr></thead>` : ''}
+          <tbody>${body.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell || '')}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+        <figcaption>表${block.number}　${escapeHtml(block.caption || '未命名表格')}</figcaption>
+      </figure>`;
+    }
+    return '';
+  }).join('');
 }
 
 function collectIssues(project, doc, citations) {

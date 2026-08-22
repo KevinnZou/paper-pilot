@@ -53,6 +53,61 @@ const baseNodes = {
       return ['span', { 'data-citation-id': node.attrs.citationId, class: 'pm-citation' }, '[?]'];
     },
   },
+  figure: {
+    group: 'block',
+    atom: true,
+    selectable: true,
+    attrs: {
+      src: { default: '' },
+      alt: { default: '' },
+      caption: { default: '' },
+      width: { default: 0 },
+      height: { default: 0 },
+    },
+    parseDOM: [{
+      tag: 'figure[data-figure-src]',
+      getAttrs: dom => ({
+        src: dom.getAttribute('data-figure-src') || '',
+        alt: dom.getAttribute('data-figure-alt') || '',
+        caption: dom.getAttribute('data-figure-caption') || '',
+        width: Number(dom.getAttribute('data-figure-width') || 0),
+        height: Number(dom.getAttribute('data-figure-height') || 0),
+      }),
+    }],
+    toDOM(node) {
+      return ['figure', {
+        'data-figure-src': node.attrs.src,
+        'data-figure-alt': node.attrs.alt,
+        'data-figure-caption': node.attrs.caption,
+        'data-figure-width': node.attrs.width || 0,
+        'data-figure-height': node.attrs.height || 0,
+        class: 'pm-figure',
+      }];
+    },
+  },
+  table_block: {
+    group: 'block',
+    atom: true,
+    selectable: true,
+    attrs: {
+      caption: { default: '' },
+      rows: { default: '[]' },
+    },
+    parseDOM: [{
+      tag: 'div[data-table-rows]',
+      getAttrs: dom => ({
+        caption: dom.getAttribute('data-table-caption') || '',
+        rows: dom.getAttribute('data-table-rows') || '[]',
+      }),
+    }],
+    toDOM(node) {
+      return ['div', {
+        'data-table-caption': node.attrs.caption,
+        'data-table-rows': node.attrs.rows,
+        class: 'pm-table-block',
+      }];
+    },
+  },
 };
 
 export const paperSchema = new Schema({
@@ -131,6 +186,108 @@ function textWithCitations(node) {
   return out.trim();
 }
 
+function parseTableRows(rowsAttr) {
+  try {
+    const rows = typeof rowsAttr === 'string' ? JSON.parse(rowsAttr || '[]') : rowsAttr;
+    return Array.isArray(rows)
+      ? rows.map(row => Array.isArray(row) ? row.map(cell => String(cell ?? '')) : [])
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderInlineText(node, numberMap) {
+  let out = '';
+  node.forEach(child => {
+    if (child.isText) out += child.text;
+    else if (child.type.name === 'citation') out += `[${numberMap.get(child.attrs.citationId) || '?'}]`;
+  });
+  return out.trim();
+}
+
+export function buildRenderableBlocks(doc, citationsById) {
+  const numberMap = buildCitationNumberMap(doc);
+  const blocks = [];
+  let figureNo = 0;
+  let tableNo = 0;
+  let skipReferenceBody = false;
+  const refs = [...numberMap.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(([id, n]) => {
+      const item = citationsById.get(id);
+      return `[${n}] ${item?.formatted || item?.title || '（缺失文献）'}`;
+    });
+
+  doc.forEach(node => {
+    if (node.type.name === 'heading') {
+      skipReferenceBody = node.attrs.role === 'references';
+      blocks.push({
+        type: node.attrs.role === 'title' ? 'title' : 'heading',
+        role: node.attrs.role,
+        text: node.textContent.trim(),
+      });
+      if (node.attrs.role === 'references') {
+        refs.forEach(text => blocks.push({ type: 'reference', text }));
+      }
+      return;
+    }
+
+    if (skipReferenceBody) return;
+
+    if (node.type.name === 'paragraph') {
+      const text = renderInlineText(node, numberMap);
+      if (text) blocks.push({ type: 'paragraph', text });
+      return;
+    }
+
+    if (node.type.name === 'blockquote') {
+      const text = renderInlineText(node, numberMap);
+      if (text) blocks.push({ type: 'blockquote', text });
+      return;
+    }
+
+    if (node.type.name === 'ordered_list' || node.type.name === 'bullet_list') {
+      const items = [];
+      node.forEach(item => {
+        let text = '';
+        item.forEach(child => {
+          if (child.type.name === 'paragraph') text = renderInlineText(child, numberMap);
+        });
+        if (text) items.push(text);
+      });
+      if (items.length) blocks.push({ type: 'list', ordered: node.type.name === 'ordered_list', items });
+      return;
+    }
+
+    if (node.type.name === 'figure') {
+      figureNo += 1;
+      blocks.push({
+        type: 'figure',
+        number: figureNo,
+        src: node.attrs.src,
+        alt: node.attrs.alt,
+        caption: node.attrs.caption,
+        width: Number(node.attrs.width || 0),
+        height: Number(node.attrs.height || 0),
+      });
+      return;
+    }
+
+    if (node.type.name === 'table_block') {
+      tableNo += 1;
+      blocks.push({
+        type: 'table',
+        number: tableNo,
+        caption: node.attrs.caption,
+        rows: parseTableRows(node.attrs.rows),
+      });
+    }
+  });
+
+  return blocks;
+}
+
 export function buildCitationNumberMap(doc) {
   const map = new Map();
   let next = 1;
@@ -188,6 +345,14 @@ export function extractProjectStateFromDoc(doc) {
       if (currentRole === 'section' || currentRole === 'abstract' || currentRole === 'keywords' || currentRole === 'ack') {
         buffer.push(textWithCitations(node));
       }
+      return;
+    }
+    if (node.type.name === 'figure' && (currentRole === 'section' || currentRole === 'abstract' || currentRole === 'ack')) {
+      buffer.push(`[图片] ${node.attrs.caption || node.attrs.alt || '未命名图片'}`);
+      return;
+    }
+    if (node.type.name === 'table_block' && (currentRole === 'section' || currentRole === 'abstract' || currentRole === 'ack')) {
+      buffer.push(`[表格] ${node.attrs.caption || '未命名表格'}`);
     }
   });
   flush();
@@ -207,6 +372,18 @@ export function insertCitationNode(view, citationId) {
   view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
 }
 
+export function insertFigureNode(view, attrs) {
+  const { state } = view;
+  const node = paperSchema.nodes.figure.create(attrs);
+  view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+}
+
+export function insertTableNode(view, attrs) {
+  const { state } = view;
+  const node = paperSchema.nodes.table_block.create(attrs);
+  view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+}
+
 export function collectCitationUsage(doc) {
   const order = buildCitationNumberMap(doc);
   const usage = new Map();
@@ -223,22 +400,35 @@ export function collectCitationUsage(doc) {
 }
 
 export function fullTextFromDoc(doc, citationsById) {
-  const state = extractProjectStateFromDoc(doc);
-  const numberMap = buildCitationNumberMap(doc);
+  const blocks = buildRenderableBlocks(doc, citationsById);
   const lines = [];
-  if (state.title) lines.push(state.title, '');
-  lines.push('摘要', state.abstract || '', '', '关键词', state.keywords || '');
-  state.outline.forEach(section => {
-    const raw = state.drafts[section.chapter]?.content || '';
-    const rendered = raw.replace(/\[\[CIT:([a-zA-Z0-9-]+)\]\]/g, (_, id) => `[${numberMap.get(id) || '?'}]`);
-    lines.push('', section.chapter, rendered);
+  blocks.forEach(block => {
+    if (block.type === 'title') {
+      lines.push(block.text, '');
+      return;
+    }
+    if (block.type === 'heading') {
+      lines.push(block.text);
+      return;
+    }
+    if (block.type === 'paragraph' || block.type === 'blockquote') {
+      lines.push(block.text);
+      return;
+    }
+    if (block.type === 'list') {
+      block.items.forEach((item, index) => lines.push(`${block.ordered ? `${index + 1}.` : '-'} ${item}`));
+      return;
+    }
+    if (block.type === 'figure') {
+      lines.push(`图${block.number} ${block.caption || block.alt || '未命名图片'}`);
+      return;
+    }
+    if (block.type === 'table') {
+      lines.push(`表${block.number} ${block.caption || '未命名表格'}`);
+      block.rows.forEach(row => lines.push(`| ${row.join(' | ')} |`));
+      return;
+    }
+    if (block.type === 'reference') lines.push(block.text);
   });
-  const refs = [...numberMap.entries()]
-    .sort((a, b) => a[1] - b[1])
-    .map(([id, n]) => {
-      const item = citationsById.get(id);
-      return item ? `[${n}] ${item.formatted || item.title}` : `[${n}] （缺失文献）`;
-    });
-  lines.push('', '参考文献', refs.join('\n') || '（暂无引用）', '', '致谢', state.acknowledgments || '');
   return lines.join('\n');
 }
