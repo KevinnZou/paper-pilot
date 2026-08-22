@@ -4,7 +4,7 @@
 import { formatCitation } from './gbt7714.js';
 import { toast, escapeHtml, setLoading } from './ui.js';
 import { get, set } from './storage.js';
-import { chat } from './api.js';
+import { chat, shouldUseLiveAI } from './api.js';
 import { ensureCitationIds, normalizeCitationEntry } from './citation-utils.js';
 
 // 中断恢复：导航离开时取消进行中的检索与 AI 标注（避免结果写进已卸载的页面、浪费 token）
@@ -33,6 +33,56 @@ function stripTags(s) {
 
 function issueLabel(volume, issue, pages) {
   return [volume || '', issue ? `(${issue})` : '', pages || ''].filter(Boolean).join(' ');
+}
+
+function mockLiterature(query) {
+  return [
+    {
+      doi: '10.1000/mock-lit-1',
+      title: `${query}：组织管理与流程优化研究`,
+      author: '张伟, 李娜',
+      authors: '张伟, 李娜',
+      source: '管理学研究',
+      year: '2024',
+      volume: '12',
+      issue: '3',
+      pages: '45-58',
+      type: 'J',
+      abstract: '本文围绕数字化转型、流程标准化与组织协同展开，适合作为研究背景与理论铺垫。',
+      provider: 'Mock',
+      url: '',
+    },
+    {
+      doi: '10.1000/mock-lit-2',
+      title: `${query}：案例研究方法在企业数字化研究中的应用`,
+      author: '刘洋',
+      authors: '刘洋',
+      source: '研究方法论评论',
+      year: '2023',
+      volume: '9',
+      issue: '2',
+      pages: '12-26',
+      type: 'J',
+      abstract: '聚焦案例研究法和访谈法的结合方式，可支撑方法设计部分。',
+      provider: 'Mock',
+      url: '',
+    },
+    {
+      doi: '10.1000/mock-lit-3',
+      title: `${query}：人工智能赋能行业规范化的路径分析`,
+      author: '王敏, 陈晨',
+      authors: '王敏, 陈晨',
+      source: '产业经济观察',
+      year: '2025',
+      volume: '18',
+      issue: '1',
+      pages: '66-79',
+      type: 'J',
+      abstract: '讨论 AI 介入行业规范化与效率提升的关键路径，适合作为案例分析和讨论参考。',
+      provider: 'Mock',
+      url: '',
+    },
+  ];
 }
 
 /** 解析模型返回的 JSON：容忍代码围栏、前后说明文字、数组被包装在对象中的情况 */
@@ -198,6 +248,9 @@ async function searchZhIfCjk(query, rows, signal) {
 
 /** 双数据源自动切换：CrossRef 失败时降级到 OpenAlex */
 export async function searchLiterature(query, rows = 10, signal, offset = 0) {
+  if (!shouldUseLiveAI()) {
+    return mockLiterature(query).slice(offset, offset + rows);
+  }
   let lastErr;
   for (const [name, fn] of [['CrossRef', searchCrossRef], ['OpenAlex', searchOpenAlex]]) {
     try {
@@ -212,6 +265,12 @@ export async function searchLiterature(query, rows = 10, signal, offset = 0) {
 
 /** AI 检索策略：把论文题目+各章转化为英文学术检索词（中文语境匹配英文数据库的关键） */
 export async function buildQueries({ title, chapters = [] }, signal) {
+  if (!shouldUseLiveAI()) {
+    return [
+      { chapter: '论文题目', queries: ['AI-enabled governance', 'process standardization'] },
+      ...(chapters.slice(0, 2).map(chapter => ({ chapter, queries: ['case study methodology'] }))),
+    ];
+  }
   const reply = await chat([
     { role: 'system', content: '你是学术文献检索专家。把论文题目与各章主题转化为适合在 CrossRef/OpenAlex 等英文学术数据库检索的关键词短语（2-5 个英文单词，学术术语，不要整句）。只输出严格 JSON。' },
     { role: 'user', content: `论文题目：《${title}》\n章节列表：\n${chapters.map((c, i) => `${i + 1}. ${c}`).join('\n') || '（无章节大纲）'}\n\n输出 JSON 数组：[{"chapter":"章节名","queries":["英文关键词短语1","英文关键词短语2"]}]，题目与每章各生成 1-2 个查询，总共不超过 8 个查询。` },
@@ -226,6 +285,17 @@ export async function buildQueries({ title, chapters = [] }, signal) {
 
 /** AI 推荐理由：为每条候选标注"可印证/支撑论文的哪个点"并匹配最适配章节 */
 export async function annotateCandidates(items, { title, chapters = [] }, signal) {
+  if (!shouldUseLiveAI()) {
+    return items.map((r, i) => ({
+      ...r,
+      reason: i === 0
+        ? '可用于铺垫研究背景与行业现状'
+        : i === 1
+          ? '可支撑研究方法与案例设计'
+          : '可用于案例分析或讨论部分',
+      chapter: chapters[i] || chapters[0] || '第1章 绪论',
+    }));
+  }
   const listText = items.map((r, i) =>
     `${i}. 标题：${r.title}\n   出处：${[r.source, r.year].filter(Boolean).join(', ')}\n   摘要：${(r.abstract || '无').slice(0, 150)}`).join('\n');
   const reply = await chat([

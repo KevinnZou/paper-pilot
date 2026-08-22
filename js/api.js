@@ -24,6 +24,131 @@ export function shouldUseLiveAI() {
   return !!getConfig().enableLiveAI;
 }
 
+function mockCitationParse() {
+  return JSON.stringify([
+    {
+      authors: '张伟, 李娜',
+      title: '大语言模型在教育领域的应用研究',
+      source: '现代教育技术',
+      year: '2024',
+      volume: '34',
+      issue: '3',
+      pages: '45-52',
+      doi: '10.1000/mock-1',
+      url: '',
+      institution: '',
+      publisher: '',
+      place: '',
+      type: 'J',
+    },
+    {
+      authors: '刘洋',
+      title: '基于深度学习的医学图像分割方法研究',
+      source: '清华大学',
+      year: '2023',
+      volume: '',
+      issue: '',
+      pages: '',
+      doi: '',
+      url: '',
+      institution: '清华大学',
+      publisher: '',
+      place: '北京',
+      type: 'D',
+    },
+  ]);
+}
+
+function mockSearchQueries() {
+  return JSON.stringify([
+    { chapter: '论文题目', queries: ['AI-enabled standardization', 'digital transformation governance'] },
+    { chapter: '研究设计', queries: ['case study methodology', 'process optimization management'] },
+  ]);
+}
+
+function mockAnnotations() {
+  return JSON.stringify([
+    { i: 0, reason: '可用于界定研究背景与行业现状', chapter: '第1章 绪论' },
+    { i: 1, reason: '可支撑研究方法与案例设计', chapter: '第3章 研究设计' },
+    { i: 2, reason: '可用于对比分析与讨论部分', chapter: '第4章 实证/案例分析' },
+  ]);
+}
+
+function mockTopicTitles() {
+  return JSON.stringify([
+    { title: '装修行业数字化转型中的 AI 赋能路径与规范化效应研究', feasibility: '适合结合企业访谈与流程制度材料展开。', innovation: '聚焦规范化效应而不是泛泛谈技术应用。' },
+    { title: 'AI 驱动下装修企业标准化管理机制优化研究', feasibility: '题目边界较清晰，适合硕士论文体量。', innovation: '把研究重点落到管理机制而非工具层。' },
+    { title: '基于 AI 赋能的装修企业采购规范化路径研究', feasibility: '采购流程通常更容易获取样本和制度文本。', innovation: '以采购规范化作为具体切口，便于形成实证结构。' },
+    { title: 'AI 介入装修行业流程标准化的作用机制与实践路径研究', feasibility: '适合多案例比较与访谈结合。', innovation: '同时覆盖作用机制与实践路径两个层面。' },
+  ]);
+}
+
+function mockTopicPlan() {
+  return JSON.stringify({
+    questions: [
+      { id: 'rq-1', question: 'AI 介入后，装修企业标准化流程的执行效率是否会显著提升？', object: '中小型装修企业流程', variable: '标准执行效率', dataNeed: '流程前后对比与访谈', method: '案例研究法' },
+      { id: 'rq-2', question: '装修行业数字化转型中，AI 对采购规范化的关键影响路径是什么？', object: '采购与供应链环节', variable: '采购规范化程度', dataNeed: '企业访谈与制度文本', method: '访谈研究法' },
+      { id: 'rq-3', question: 'AI 赋能标准化管理后，企业内部协同成本会如何变化？', object: '企业协同流程', variable: '协同成本', dataNeed: '管理者访谈与流程记录', method: '多案例比较法' },
+    ],
+    methods: ['案例研究法', '访谈研究法', '多案例比较法'],
+    dataSources: ['企业访谈记录', '内部流程制度文本', '采购与执行台账'],
+    objectives: ['梳理 AI 赋能装修行业标准化的主要路径', '识别采购与流程规范化中的关键作用点', '提出可落地的管理优化建议'],
+    researchGap: '现有研究更多讨论 AI 工具本身或单点应用，对装修行业如何通过 AI 推动标准化与规范化管理、并形成可复制流程的研究仍然不足。',
+    hypotheses: ['AI 赋能会提升标准流程执行一致性', '采购规范化是数字化转型中最先显效的环节'],
+    feasibility: {
+      score: '8.6 / 10',
+      risks: ['企业一手资料获取需要提前沟通', '案例过少会削弱结论说服力'],
+      suggestions: ['优先锁定 2-3 家企业做访谈', '把研究问题收敛到标准化流程或采购规范化其中一条主线'],
+    },
+  });
+}
+
+function mockTopicOutline() {
+  return `第1章 绪论
+  1.1 研究背景
+  1.2 研究意义
+  1.3 研究思路与结构安排
+第2章 理论基础与文献综述
+  2.1 核心概念界定
+  2.2 理论基础
+  2.3 国内外研究现状
+第3章 研究设计
+  3.1 研究问题与分析框架
+  3.2 研究方法
+  3.3 数据来源与样本说明
+第4章 AI 赋能装修行业规范化的案例分析
+  4.1 现状与问题识别
+  4.2 关键影响机制分析
+  4.3 优化路径与实施条件
+第5章 结论与建议
+  5.1 研究结论
+  5.2 管理建议
+  5.3 不足与展望`;
+}
+
+function mockWritingSuggestion(prompt) {
+  if (/逻辑结构|论证跳跃/.test(prompt)) {
+    return '1. 第二段从现状直接跳到结论，中间缺少机制解释。\n2. 对“效率提升”的判断还没有具体证据支撑。\n3. 建议补一段案例或数据说明，再进入管理建议。';
+  }
+  if (/续写/.test(prompt)) {
+    return '进一步来看，AI 技术并不是简单替代人工，而是通过流程标准化、数据沉淀与节点协同三方面重塑企业管理方式。对于装修行业而言，这种重塑首先体现在采购、质检与项目交付等高频环节，其次才会逐步扩展到组织协同与经营决策层面。';
+  }
+  return '测试模式下的示例改写结果：整体表达会更收敛、论证更完整，同时尽量保持原文意思不变。';
+}
+
+function mockGenericReply(messages) {
+  const prompt = messages?.[messages.length - 1]?.content || '';
+  if (/只回复两个字：正常/.test(prompt)) return '正常';
+  if (/解析为 GB\/T 7714 条目|引用信息/.test(prompt)) return mockCitationParse();
+  if (/检索词|英文关键词短语|CrossRef\/OpenAlex/.test(prompt)) return mockSearchQueries();
+  if (/推荐理由|最适合关联的章节/.test(prompt)) return mockAnnotations();
+  if (/题目候选|中文论文题目候选/.test(prompt)) return mockTopicTitles();
+  if (/低输入.*研究方案建议包|questions:\s*\[\{id, question/.test(prompt)) return mockTopicPlan();
+  if (/生成规范的中文论文大纲|输出五章结构/.test(prompt)) return mockTopicOutline();
+  if (/论文写作导师|学术表达|补充论证|重构表达|续写|逻辑结构/.test(prompt)) return mockWritingSuggestion(prompt);
+  return '测试模式回复：当前功能已切换到本地测试数据，不会消耗真实 API。';
+}
+
 export class ApiError extends Error {
   constructor(code, message) {
     super(message);
@@ -38,6 +163,10 @@ export class ApiError extends Error {
  * @returns {Promise<string>} 模型回复文本
  */
 export async function chat(messages, { temperature = 0.7, signal, timeoutMs = 180000 } = {}) {
+  if (!shouldUseLiveAI()) {
+    if (signal?.aborted) throw new ApiError('aborted', '请求已取消');
+    return mockGenericReply(messages);
+  }
   const cfg = getConfig();
   if (!cfg.apiKey) throw new ApiError('no_key', '请先在「设置」中填写 API Key');
 
