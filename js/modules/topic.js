@@ -84,7 +84,8 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     population: design.population || '',
     titleCandidates: normalizeTitleCandidates(design.titleCandidates),
     selectedTitleId: design.selectedTitleId || '',
-    planGenerated: !!design.planGenerated,
+    planStatus: design.planStatus || 'idle',
+    planError: design.planError || '',
     planCursor: Number.isFinite(Number(design.planCursor)) ? Number(design.planCursor) : 0,
     researchQuestions: Array.isArray(design.researchQuestions) ? design.researchQuestions : [],
     questionCandidates: normalizeQuestionCandidates(design.questionCandidates),
@@ -94,6 +95,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     objectives: Array.isArray(design.objectives) ? design.objectives : [],
     objectiveOptions: Array.isArray(design.objectiveOptions) ? design.objectiveOptions : [],
     selectedObjectiveFocus: design.selectedObjectiveFocus || '',
+    customPromptValues: (design.customPromptValues && typeof design.customPromptValues === 'object') ? design.customPromptValues : {},
     variables: Array.isArray(design.variables) ? design.variables : [],
     hypotheses: Array.isArray(design.hypotheses) ? design.hypotheses : [],
     methods: Array.isArray(design.methods) ? design.methods : [],
@@ -126,6 +128,10 @@ function saveDesignPatch(patch) {
   const title = patch.title ?? current.title ?? project.title;
   saveProject({ researchDesign: next, ...(title ? { title } : {}) });
   return next;
+}
+
+function customPromptValue(design, key) {
+  return (design.customPromptValues && typeof design.customPromptValues === 'object' && design.customPromptValues[key]) || '';
 }
 
 function planReady(design) {
@@ -262,6 +268,7 @@ function planPrompts(design) {
       desc: '先定主问题，后面的方法、数据和大纲都会围绕它展开。',
       answered: !!design.selectedQuestionId,
       summary: selectedQuestion(design)?.question || '',
+      customPlaceholder: '例如：AI 如何提升装修企业标准化流程的执行效率？',
     },
     {
       key: 'method',
@@ -269,6 +276,7 @@ function planPrompts(design) {
       desc: '优先选你最容易真的做出来的方法。',
       answered: !!design.selectedMethod,
       summary: design.selectedMethod,
+      customPlaceholder: '例如：文本分析法 / 扎根理论 / 问卷调查',
     },
     {
       key: 'data',
@@ -276,6 +284,7 @@ function planPrompts(design) {
       desc: '数据可获得性比“看起来高级”更重要。',
       answered: !!design.selectedDataSource,
       summary: design.selectedDataSource,
+      customPlaceholder: '例如：行业报告、企业内部数据、访谈纪要',
     },
     ...(design.objectiveOptions.length ? [{
       key: 'objective',
@@ -283,6 +292,7 @@ function planPrompts(design) {
       desc: '这一步是在确定写作侧重点，不是在补充新任务。',
       answered: !!design.selectedObjectiveFocus,
       summary: design.selectedObjectiveFocus,
+      customPlaceholder: '例如：更强调管理机制优化 / 更强调采购规范化',
     }] : []),
     ...(design.feasibility.suggestions.length ? [{
       key: 'strategy',
@@ -290,6 +300,7 @@ function planPrompts(design) {
       desc: '选一个更顺手的收敛策略，后面出大纲会按这个方向走。',
       answered: !!design.selectedRiskStrategy,
       summary: design.selectedRiskStrategy,
+      customPlaceholder: '例如：只聚焦采购环节 / 只做两家案例企业',
     }] : []),
   ];
 }
@@ -348,6 +359,7 @@ function renderPlanQuestionnaire(design) {
   else if (current.key === 'data') optionsHtml = renderTextOptions(design.dataOptions, selectedDataSource(design), 'select-data');
   else if (current.key === 'objective') optionsHtml = renderTextOptions(design.objectiveOptions, selectedObjectiveFocus(design), 'select-objective');
   else if (current.key === 'strategy') optionsHtml = renderTextOptions(design.feasibility.suggestions, selectedRiskStrategy(design), 'select-strategy');
+  const customValue = customPromptValue(design, current.key);
   return `
     ${renderPromptProgress(design)}
     <section class="topic-prompt-card">
@@ -357,6 +369,13 @@ function renderPlanQuestionnaire(design) {
         <p class="desc">${escapeHtml(current.desc)}</p>
       </div>
       ${optionsHtml}
+      <div class="topic-custom-answer">
+        <label class="field-label" for="rd-custom-${escapeHtml(current.key)}">或者直接写你自己的答案</label>
+        <div class="topic-custom-row">
+          <input id="rd-custom-${escapeHtml(current.key)}" type="text" value="${escapeHtml(customValue)}" placeholder="${escapeHtml(current.customPlaceholder || '输入你的自定义答案')}">
+          <button class="btn btn-ghost btn-sm" data-custom-submit="${escapeHtml(current.key)}">使用这个答案</button>
+        </div>
+      </div>
       <div class="topic-prompt-actions">
         ${index > 0 ? '<button class="btn btn-ghost btn-sm" id="rd-plan-prev">上一题</button>' : '<span></span>'}
         ${isLast ? `<button class="btn btn-sm" id="rd-plan-finish" ${canConfirm ? '' : 'disabled'}>确认进入大纲</button>` : ''}
@@ -551,7 +570,7 @@ function render(el) {
         ${integrityNote()}
       </section>`;
   } else if (step === 2) {
-    const hasPlanSuggestions = !!(design.planGenerated && design.questionCandidates.length);
+    const hasPlanSuggestions = design.planStatus === 'ready' && design.questionCandidates.length;
     body = `
       <section class="card topic-wizard-card">
         <div class="topic-wizard-head">
@@ -568,19 +587,21 @@ function render(el) {
           <span class="chip done">当前题目</span>
           <strong>${escapeHtml(design.title || project.title)}</strong>
         </div>
-        <div class="result-actions topic-step-actions" style="margin:0 0 16px">
-          <button class="btn btn-ai-solid" id="rd-plan-gen">生成研究方案建议</button>
-        </div>
+        ${design.planStatus === 'loading' ? '<div class="topic-empty">正在根据已选题目生成研究方案建议…</div>' : ''}
+        ${design.planStatus === 'error' ? `<div class="topic-empty">❌ ${escapeHtml(design.planError || '研究方案生成失败')}<div class="result-actions" style="margin-top:12px"><button class="btn btn-ai-solid" id="rd-plan-retry">重新生成研究方案</button></div></div>` : ''}
         ${hasPlanSuggestions ? `
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
             <h3>像答问卷一样把方案定下来</h3>
             <p class="desc">每次只回答一个问题。点一个答案就进入下一问，不需要再点确认。</p>
           </div>
+          <div class="result-actions topic-step-actions" style="margin:0 0 12px">
+            <button class="btn btn-ghost btn-sm" id="rd-plan-retry">重新生成这一轮方案</button>
+          </div>
           ${renderPlanQuestionnaire(design)}
           ${feedbackBlock('rd-plan-feedback', '例如：问题太宏观，想更偏管理效能；方法不要实验法，想偏案例或访谈', '结合这些意见重生成方案')}
         </section>
-        ` : '<div class="topic-empty">先点击上方「生成研究方案建议」，系统再展示研究问题、方法、数据来源和可行性判断。</div>'}
+        ` : (design.planStatus === 'idle' ? '<div class="topic-empty">正在准备研究方案问卷…</div>' : '')}
       </section>`;
   } else {
     body = `
@@ -717,7 +738,8 @@ function render(el) {
         saveDesignPatch({
           title: selected.title,
           selectedTitleId: selected.id,
-          planGenerated: false,
+          planStatus: 'idle',
+          planError: '',
           planCursor: 0,
           researchQuestions: [],
           questionCandidates: [],
@@ -735,6 +757,7 @@ function render(el) {
           selectedDataSource: '',
           feasibility: { score: '', risks: [], suggestions: [] },
           selectedRiskStrategy: '',
+          customPromptValues: {},
           currentStep: 2,
         });
         updateBasics({
@@ -747,6 +770,77 @@ function render(el) {
   }
 
   if (step === 2) {
+    async function generatePlan(feedback = '') {
+      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
+      const btn = el.querySelector('#rd-plan-gen') || el.querySelector('#rd-plan-retry');
+      if (btn) setLoading(btn, true, '生成中…');
+      saveDesignPatch({ planStatus: 'loading', planError: '', currentStep: 2 });
+      render(el);
+      try {
+        let parsed;
+        if (shouldUseLiveAI()) {
+          const reply = await chat([
+          { role: 'system', content: `${SYSTEM} 只输出严格 JSON 对象。` },
+          { role: 'user', content: `请基于下面的论文题目生成一个“低输入”的研究方案建议包。输出 JSON 对象，字段包括：
+questions: [{id, question, object, variable, dataNeed, method}]
+methods: [3个方法选项]
+dataSources: [3个数据来源选项]
+objectives: [3个研究目标]
+researchGap: 1段研究空白
+hypotheses: [2-3条待验证判断]
+feasibility: {score, risks[], suggestions[]}
+
+论文题目：${current.title || getProject().title}
+研究想法：${current.initialIdea || '未提供'}
+关键词：${current.keywords || '未提供'}
+约束：${current.constraints || '无'}
+研究对象：${current.population || '未提供'}
+学位类型：${getProject().degreeType || '硕士论文'}
+${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。` : ''}` },
+          ], { temperature: 0.35, signal: topicSignal() });
+          parsed = parseJson(reply);
+        } else {
+          parsed = mockPlan(current, feedback);
+        }
+        const questions = normalizeQuestionCandidates(parsed.questions || []);
+        const methodOptions = normalizeOptionStrings(parsed.methods || []);
+        const dataOptions = normalizeOptionStrings(parsed.dataSources || []);
+        if (!questions.length) throw new Error('AI 未返回有效研究问题');
+        saveDesignPatch({
+          planStatus: 'ready',
+          planError: '',
+          questionCandidates: questions,
+          planCursor: 0,
+          selectedQuestionId: '',
+          methodOptions,
+          selectedMethod: '',
+          dataOptions,
+          selectedDataSource: '',
+          objectiveOptions: Array.isArray(parsed.objectives) ? parsed.objectives.filter(Boolean) : [],
+          selectedObjectiveFocus: '',
+          researchGap: parsed.researchGap || current.researchGap,
+          hypotheses: Array.isArray(parsed.hypotheses) ? parsed.hypotheses.filter(Boolean) : current.hypotheses,
+          feasibility: {
+            score: parsed.feasibility?.score || '',
+            risks: Array.isArray(parsed.feasibility?.risks) ? parsed.feasibility.risks : [],
+            suggestions: Array.isArray(parsed.feasibility?.suggestions) ? parsed.feasibility.suggestions : [],
+          },
+          selectedRiskStrategy: '',
+          customPromptValues: {},
+          currentStep: 2,
+        });
+        toast('研究方案候选已生成，继续按问卷往下选即可', 'ok');
+        render(el);
+      } catch (e) {
+        if (isAbort(e)) return;
+        saveDesignPatch({ planStatus: 'error', planError: e.message, currentStep: 2 });
+        toast(e.message, 'err', 3600);
+        render(el);
+      } finally {
+        if (btn) setLoading(btn, false);
+      }
+    }
+
     function maybeAdvancePlanFlow(nextDesign) {
       const current = normalizeResearchDesign(nextDesign, getProject());
       const { prompts, index } = currentPlanPrompt(current);
@@ -777,6 +871,36 @@ function render(el) {
       });
       toast('研究方案已确定，正在生成大纲', 'ok');
       render(el);
+    }
+
+    function applyCustomPromptValue(key) {
+      const input = el.querySelector(`#rd-custom-${key}`);
+      const value = input?.value.trim();
+      if (!value) {
+        toast('先写一个自定义答案', 'err');
+        return;
+      }
+      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
+      const nextCustom = {
+        ...(current.customPromptValues || {}),
+        [key]: value,
+      };
+      let patch = { customPromptValues: nextCustom, currentStep: 2 };
+      if (key === 'question') {
+        const customId = 'rq-custom';
+        const existing = current.questionCandidates.filter(item => item.id !== customId);
+        patch.questionCandidates = [{ id: customId, question: value, object: '自定义主问题', variable: '', dataNeed: '', method: '' }, ...existing];
+        patch.selectedQuestionId = customId;
+      } else if (key === 'method') {
+        patch.selectedMethod = value;
+      } else if (key === 'data') {
+        patch.selectedDataSource = value;
+      } else if (key === 'objective') {
+        patch.selectedObjectiveFocus = value;
+      } else if (key === 'strategy') {
+        patch.selectedRiskStrategy = value;
+      }
+      maybeAdvancePlanFlow(saveDesignPatch(patch));
     }
 
     function mockPlan(current, feedback = '') {
@@ -819,77 +943,8 @@ function render(el) {
       };
     }
 
-    async function generatePlan(feedback = '') {
-      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
-      const btn = el.querySelector('#rd-plan-gen');
-      setLoading(btn, true, '生成中…');
-      const host = el.querySelector('.topic-candidate-section');
-      if (host) {
-        host.insertAdjacentHTML('beforeend', '<div id="rd-plan-loading" class="topic-empty">AI 正在生成研究问题与方案建议…</div>');
-      }
-      try {
-        let parsed;
-        if (shouldUseLiveAI()) {
-          const reply = await chat([
-          { role: 'system', content: `${SYSTEM} 只输出严格 JSON 对象。` },
-          { role: 'user', content: `请基于下面的论文题目生成一个“低输入”的研究方案建议包。输出 JSON 对象，字段包括：
-questions: [{id, question, object, variable, dataNeed, method}]
-methods: [3个方法选项]
-dataSources: [3个数据来源选项]
-objectives: [3个研究目标]
-researchGap: 1段研究空白
-hypotheses: [2-3条待验证判断]
-feasibility: {score, risks[], suggestions[]}
-
-论文题目：${current.title || getProject().title}
-研究想法：${current.initialIdea || '未提供'}
-关键词：${current.keywords || '未提供'}
-约束：${current.constraints || '无'}
-研究对象：${current.population || '未提供'}
-学位类型：${getProject().degreeType || '硕士论文'}
-${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。` : ''}` },
-          ], { temperature: 0.35, signal: topicSignal() });
-          parsed = parseJson(reply);
-        } else {
-          parsed = mockPlan(current, feedback);
-        }
-        const questions = normalizeQuestionCandidates(parsed.questions || []);
-        const methodOptions = normalizeOptionStrings(parsed.methods || []);
-        const dataOptions = normalizeOptionStrings(parsed.dataSources || []);
-        if (!questions.length) throw new Error('AI 未返回有效研究问题');
-        saveDesignPatch({
-          planGenerated: true,
-          questionCandidates: questions,
-          planCursor: 0,
-          selectedQuestionId: '',
-          methodOptions,
-          selectedMethod: '',
-          dataOptions,
-          selectedDataSource: '',
-          objectiveOptions: Array.isArray(parsed.objectives) ? parsed.objectives.filter(Boolean) : [],
-          selectedObjectiveFocus: '',
-          researchGap: parsed.researchGap || current.researchGap,
-          hypotheses: Array.isArray(parsed.hypotheses) ? parsed.hypotheses.filter(Boolean) : current.hypotheses,
-          feasibility: {
-            score: parsed.feasibility?.score || '',
-            risks: Array.isArray(parsed.feasibility?.risks) ? parsed.feasibility.risks : [],
-            suggestions: Array.isArray(parsed.feasibility?.suggestions) ? parsed.feasibility.suggestions : [],
-          },
-          selectedRiskStrategy: '',
-          currentStep: 2,
-        });
-        toast('研究方案候选已生成，选一个最合适的组合即可', 'ok');
-        render(el);
-      } catch (e) {
-        if (isAbort(e)) return;
-        toast(e.message, 'err', 3600);
-      } finally {
-        el.querySelector('#rd-plan-loading')?.remove();
-        setLoading(btn, false);
-      }
-    }
-
-    el.querySelector('#rd-plan-gen').addEventListener('click', () => generatePlan());
+    el.querySelector('#rd-plan-gen')?.addEventListener('click', () => generatePlan());
+    el.querySelector('#rd-plan-retry')?.addEventListener('click', () => generatePlan());
     el.querySelector('#rd-plan-feedback-submit')?.addEventListener('click', () => {
       const feedback = el.querySelector('#rd-plan-feedback')?.value.trim();
       if (!feedback) {
@@ -898,6 +953,10 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       }
       generatePlan(feedback);
     });
+    if (design.planStatus === 'idle') {
+      generatePlan();
+      return;
+    }
 
     el.querySelectorAll('[data-select-question]').forEach(btn =>
       btn.addEventListener('click', () => {
@@ -925,6 +984,8 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       render(el);
     });
     el.querySelector('#rd-plan-finish')?.addEventListener('click', () => finishPlanFlow());
+    el.querySelectorAll('[data-custom-submit]').forEach(btn =>
+      btn.addEventListener('click', () => applyCustomPromptValue(btn.dataset.customSubmit)));
   }
 
   if (step === 3) {

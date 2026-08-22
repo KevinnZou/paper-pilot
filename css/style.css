@@ -557,6 +557,17 @@ body {
   gap: 8px;
   margin-bottom: 8px;
 }
+.topic-custom-answer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.topic-custom-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
 .topic-prompt-actions {
   margin-top: 14px;
   padding-top: 10px;
@@ -1375,6 +1386,7 @@ kbd {
   .topic-secondary-panel { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 18px; }
   .topic-choice-list { grid-template-columns: 1fr; }
   .topic-summary-grid { grid-template-columns: 1fr; }
+  .topic-custom-row { grid-template-columns: 1fr; }
   .topic-compact-grid { grid-template-columns: 1fr; }
   .topic-step-grid { grid-template-columns: 1fr; gap: 18px; }
   .topic-side-pane { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 18px; }
