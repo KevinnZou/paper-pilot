@@ -331,17 +331,23 @@ function dedupe(groups) {
 /** 在容器内渲染「查找文献」组件 */
 export function renderLitSearch(container, { defaultQuery = '', batchFrom = null, compact = false, onDone } = {}) {
   container.innerHTML = `
-    <div style="display:flex;gap:8px">
-      <input type="text" id="lit-q" placeholder="输入检索词（论文题目、关键词、章节主题…）" value="${escapeHtml(defaultQuery)}" style="flex:1">
-      <button class="btn" id="lit-search">查找</button>
+    <div class="lit-search-shell">
+      <div class="lit-search-bar">
+        <input type="text" id="lit-q" placeholder="输入检索词（论文题目、关键词、章节主题…）" value="${escapeHtml(defaultQuery)}" style="flex:1">
+        <button class="btn" id="lit-search">查找</button>
+      </div>
+      ${batchFrom && (batchFrom.title || batchFrom.chapters?.length) ? `
+        <div class="lit-batch-callout">
+          <div>
+            <div class="lit-batch-title">快速生成一批候选</div>
+            <p class="hint">系统会根据当前题目和大纲自动生成检索词，再补上推荐理由，方便你直接筛选。</p>
+          </div>
+          <button class="btn btn-ai-solid" id="lit-batch">一键批量推荐</button>
+        </div>` : ''}
+      <p class="hint lit-search-note">数据来源：CrossRef / OpenAlex；先看推荐理由和题名，再按需打开原文核对。</p>
+      <div id="lit-results"></div>
     </div>
-    ${batchFrom && (batchFrom.title || batchFrom.chapters?.length) ? `
-      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ai-solid" id="lit-batch">基于论文题目 + 大纲批量推荐</button>
-        <span class="hint" style="margin:0">AI 生成检索策略 → 中英文文献检索 → AI 标注推荐理由（可印证/支撑哪个点）</span>
-      </div>` : ''}
-    <p class="hint">数据来源：CrossRef / OpenAlex 真实学术数据库（自动切换）；点「原文」核对全文、点「详情」看摘要</p>
-    <div id="lit-results"></div>`;
+  `;
 
   const q = container.querySelector('#lit-q');
   const btn = container.querySelector('#lit-search');
@@ -442,7 +448,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
   function renderResults(items) {
     currentItems = items;
     if (!items.length) {
-      results.innerHTML = '<p class="desc">未找到相关文献，换一批检索词或换个关键词试试</p>';
+      results.innerHTML = '<div class="empty-inline">未找到相关文献，换一个关键词，或者用题目里的更具体表述再试一次。</div>';
       return;
     }
     const libKeys = new Set(
@@ -452,17 +458,21 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
     const itemsHtml = litItemsHtml(items, libKeys);
 
     results.innerHTML = `
-      <div class="result-actions" style="margin:10px 0 6px">
-        <button class="btn btn-ghost btn-sm" id="lit-sel-all">全选</button>
-        <button class="btn btn-ghost btn-sm" id="lit-sel-none">清空</button>
-        <span class="hint mono" id="lit-count" style="margin:0">已选 0 条</span>
-        <span class="hint mono" style="margin:0" id="lit-total">共 ${items.length} 条 · 已按适配章节分组去重</span>
+      <div class="lit-results-head">
+        <div class="lit-results-stats">
+          <span class="hint mono" id="lit-count" style="margin:0">已选 0 条</span>
+          <span class="hint mono" style="margin:0" id="lit-total">共 ${items.length} 条 · 已按适配章节分组去重</span>
+        </div>
+        <div class="result-actions lit-result-actions">
+          <button class="btn btn-ghost btn-sm" id="lit-sel-all">全选</button>
+          <button class="btn btn-ghost btn-sm" id="lit-sel-none">清空</button>
+        </div>
       </div>
-      <div class="item-list">${itemsHtml}</div>
-      <div style="margin-top:10px">
+      <div class="item-list lit-result-list">${itemsHtml}</div>
+      <div class="lit-footer-actions">
         <button class="btn" id="lit-add">将已选文献加入文献库</button>
       </div>
-      ${moreState ? '<div style="margin-top:10px;text-align:center"><button class="btn btn-ghost btn-sm" id="lit-more">加载更多（同一检索词）</button></div>' : ''}`;
+      ${moreState ? '<div class="lit-more-row"><button class="btn btn-ghost btn-sm" id="lit-more">加载更多</button></div>' : ''}`;
 
     reloadCount();
     results.querySelector('#lit-sel-all').addEventListener('click', () => {
@@ -522,7 +532,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       renderResults(items);
       // 入库后引导下一步：去工作台插入引用
       const guide = document.createElement('div');
-      guide.style.cssText = 'margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+      guide.className = 'lit-guide-row';
       const seal = document.createElement('span');
       seal.className = 'seal';
       seal.textContent = `已入库 ${added} 条`;
@@ -543,13 +553,13 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
     const query = q.value.trim();
     if (!query) { toast('请输入检索词', 'err'); return; }
     setLoading(btn, true, '检索中…');
-    results.innerHTML = '<p class="desc">正在检索学术数据库…</p>';
+    results.innerHTML = '<p class="desc">正在检索文献候选…</p>';
     try {
       let items = await searchLiterature(query, compact ? 8 : 10, litSignal());
       const zhItems = await searchZhIfCjk(query, compact ? 5 : 6, litSignal());
       items = [...zhItems, ...items]; // 中文文献排前
       if (items.length && batchFrom?.title) {
-        results.innerHTML = '<p class="desc">🧠 AI 正在为每条候选标注推荐理由…</p>';
+        results.innerHTML = '<p class="desc">正在补充每条候选的推荐理由…</p>';
         items = await annotateCandidates(items, batchFrom, litSignal())
           .catch(e => { if (isAbort(e)) throw e; return items; });
       }
@@ -573,7 +583,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
     if (!rawQueries.length) { toast('请先设置论文题目或采用大纲', 'err'); return; }
 
     setLoading(batchBtn, true, 'AI 生成检索策略中…');
-    results.innerHTML = '<p class="desc">🧠 AI 正在把论文题目与大纲转化为英文学术检索词…</p>';
+    results.innerHTML = '<p class="desc">正在根据题目和大纲生成检索策略…</p>';
     let plan;
     try {
       plan = await buildQueries(ctx, litSignal());
@@ -586,7 +596,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
     const pairs = plan.flatMap(g => g.queries.map(query => ({ query, group: g.chapter }))).slice(0, 8);
 
     setLoading(batchBtn, true, '检索真实文献中…');
-    results.innerHTML = `<p class="desc">正在按 ${pairs.length} 组 AI 检索词检索英文文献 + 中文文献通道（OpenAlex）…</p>`;
+    results.innerHTML = `<p class="desc">正在按 ${pairs.length} 组检索词收集文献候选…</p>`;
     let items;
     try {
       const groups = await Promise.all(pairs.map(p =>
@@ -612,7 +622,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
 
     if (items.length && ctx.title) {
       setLoading(batchBtn, true, 'AI 标注推荐理由中…');
-      results.innerHTML = '<p class="desc">🧠 AI 正在为每条候选标注「可印证/支撑论文的哪个点」…</p>';
+      results.innerHTML = '<p class="desc">正在为候选补充推荐理由，方便你直接筛选…</p>';
       // 注意：此 await 在 runBatch 的 try/catch 之外，abort 必须就地接住——
       // rethrow 会变成 unhandled rejection 且 setLoading(false) 不执行（按钮卡加载态）
       try {

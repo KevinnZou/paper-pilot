@@ -1450,6 +1450,65 @@ kbd {
   color: var(--ink-soft);
   font-size: 13px;
 }
+.lit-search-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lit-search-bar {
+  display: flex;
+  gap: 8px;
+}
+.lit-batch-callout {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #F8F5EF;
+}
+.lit-batch-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.lit-search-note {
+  margin: 0;
+}
+.lit-results-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 6px;
+  flex-wrap: wrap;
+}
+.lit-results-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.lit-result-actions {
+  margin-top: 0;
+}
+.lit-result-list {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.lit-footer-actions,
+.lit-more-row,
+.lit-guide-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.lit-more-row {
+  justify-content: center;
+}
 
 .lit-item { align-items: flex-start; gap: 10px; }
 .lit-item input[type=checkbox] {
@@ -1457,14 +1516,14 @@ kbd {
 }
 .lit-cb { display: flex; gap: 10px; flex: 1; min-width: 0; cursor: pointer; align-items: flex-start; }
 .lit-main { flex: 1; min-width: 0; display: block; }
-.lit-title { font-weight: 600; font-size: 13.5px; line-height: 1.55; }
+.lit-title { font-weight: 600; font-size: 13.5px; line-height: 1.55; display: block; }
 .lit-reason {
   display: block;
-  margin-top: 6px; padding: 7px 11px; background: var(--amber-soft); border-left: 3px solid var(--amber);
+  margin-top: 7px; padding: 7px 11px; background: var(--amber-soft); border-left: 3px solid var(--amber);
   border-radius: 4px; font-size: 12px; color: #7A5C13; line-height: 1.65;
 }
 .lit-reason .rsn-label { font-family: var(--font-serif); font-weight: 700; color: var(--amber); margin-right: 5px; letter-spacing: .5px; }
-.lit-meta { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 3px; font-family: var(--font-mono); }
+.lit-meta { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 5px; font-family: var(--font-mono); line-height: 1.65; }
 .lit-meta .authors { font-family: var(--font-sans); }
 .lit-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .lit-group {
@@ -1667,6 +1726,8 @@ kbd {
   .citation-shell-head,
   .citation-section-head,
   .citation-panel-head,
+  .lit-batch-callout,
+  .lit-search-bar,
   .citation-row-head,
   .evidence-row-head {
     flex-direction: column;
@@ -1680,6 +1741,9 @@ kbd {
   }
   .citation-row-actions {
     justify-content: flex-start;
+  }
+  .lit-results-head {
+    align-items: flex-start;
   }
   .project-actions { grid-template-columns: 1fr; }
   .project-actions .btn:first-child,
