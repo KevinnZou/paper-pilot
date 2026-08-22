@@ -1021,6 +1021,37 @@ export default {
       toast(direction === 'up' ? '已上移当前章节' : '已下移当前章节', 'ok');
     }
 
+    function deleteCurrentSection() {
+      const doc = viewState.view.state.doc;
+      const sections = topLevelSections(doc);
+      const section = sectionForPos(doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先进入一个章节', 'err');
+        return;
+      }
+      if (sections.length <= 1) {
+        toast('至少保留一个章节，若要重做结构请先新增章节', 'err', 2600);
+        return;
+      }
+      const text = doc.textBetween(section.bodyFrom, section.bodyTo, '\n').trim();
+      const chars = wordCount(text);
+      const warning = chars
+        ? `「${section.chapter}」当前约有 ${chars} 字正文，删除后这一整章会一起移除。确认删除吗？`
+        : `确认删除章节「${section.chapter}」吗？`;
+      if (!window.confirm(warning)) return;
+
+      const prev = sections.find((item, idx) => sections[idx + 1]?.sectionId === section.sectionId) || null;
+      const next = sections.find((item, idx) => sections[idx - 1]?.sectionId === section.sectionId) || null;
+      let tr = viewState.view.state.tr.delete(section.headingFrom - 1, section.bodyTo);
+      const nextFocus = next?.sectionId || prev?.sectionId || '';
+      if (nextFocus) {
+        const moved = topLevelSections(tr.doc).find(item => item.sectionId === nextFocus);
+        if (moved) tr = tr.setSelection(TextSelection.create(tr.doc, moved.headingFrom));
+      }
+      viewState.view.dispatch(tr.scrollIntoView());
+      toast(`已删除章节「${section.chapter}」`, 'ok');
+    }
+
     function renderChapterCard() {
       const sections = topLevelSections(viewState.view.state.doc);
       const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from) || sections[0];
@@ -1065,6 +1096,7 @@ export default {
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="rename">改标题</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="before">前插一章</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="after">后加一章</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-section-action="delete">删除本章</button>
         </div>`;
       chapterCard.querySelectorAll('[data-jump-section]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1079,6 +1111,7 @@ export default {
           if (btn.dataset.sectionAction === 'rename') renameCurrentSection();
           if (btn.dataset.sectionAction === 'before') addSectionBeforeCurrent();
           if (btn.dataset.sectionAction === 'after') addSectionAfterCurrent();
+          if (btn.dataset.sectionAction === 'delete') deleteCurrentSection();
         });
       });
     }
