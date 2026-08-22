@@ -4,7 +4,7 @@ import { get, set } from '../storage.js';
 import { chat } from '../api.js';
 import { renderLitSearch } from '../litsearch.js';
 import { getProject } from '../project.js';
-import { ensureCitationIds, formatCitationEntry } from '../citation-utils.js';
+import { ensureCitationIds, normalizeCitationEntry, formatCitationEntry } from '../citation-utils.js';
 import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../document-model.js';
 
 // ---------- GB/T 7714 格式化：规则引擎抽至 gbt7714.js（供文献查找等模块复用） ----------
@@ -12,7 +12,7 @@ import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../do
 import { formatCitation } from '../gbt7714.js';
 export { formatCitation };
 
-const PARSE_SYSTEM = '你是参考文献解析助手。把用户粘贴的引用信息解析为 GB/T 7714 条目。只输出严格 JSON 数组，每项形如 {"author":"张三, 李四","title":"题名","source":"期刊名/学校/出版社","year":"2024","vol":"34(3): 45-52","type":"J"}，type 取值 J(期刊)/D(学位论文)/M(专著)/C(会议)，不确定的字段用空字符串。不要输出 JSON 以外的任何内容。';
+const PARSE_SYSTEM = '你是参考文献解析助手。把用户粘贴的引用信息解析为 GB/T 7714 条目。只输出严格 JSON 数组，每项形如 {"authors":"张三, 李四","title":"题名","source":"期刊名/学校/出版社","year":"2024","volume":"34","issue":"3","pages":"45-52","doi":"","url":"","institution":"","publisher":"","place":"","type":"J"}，type 取值 J(期刊)/D(学位论文)/M(专著)/C(会议)/R(报告)/S(标准)/P(专利)/N(报纸)/EB/OL(电子资源)，不确定的字段用空字符串。不要输出 JSON 以外的任何内容。';
 
 // 中断恢复：导航离开时取消进行中的 AI 解析（与写作/文献模块一致；幂等——任一模块先初始化即生效）
 if (!window.__tmAbort) {
@@ -43,9 +43,28 @@ function collectCitedNums() {
   return nums;
 }
 
+function citationContext(list = sortedList()) {
+  const project = getProject();
+  const byId = new Map();
+  const citedIds = new Set();
+  let usage = new Map();
+  let order = new Map();
+  if (project.documentV2) {
+    const doc = docFromJSON({ ...project, citations: list });
+    usage = collectCitationUsage(doc);
+    order = buildCitationNumberMap(doc);
+    usage.forEach((_, id) => citedIds.add(id));
+  }
+  list.forEach(item => byId.set(item.id, item));
+  return { usage, order, citedIds, byId };
+}
+
 function citedStatsHtml(citedNums, list) {
   if (!list.length) return '';
-  const cited = list.filter(c => citedNums.has(c.litNo)).length;
+  const project = getProject();
+  const cited = project.documentV2
+    ? citationContext(list).citedIds.size
+    : list.filter(c => citedNums.has(c.litNo)).length;
   const uncited = list.length - cited;
   return uncited > 0
     ? `<p class="cite-stats warn">已引用 <b>${cited}</b> / ${list.length} 条 · 未引用 <b>${uncited}</b> 条（GB/T 7714 参考文献应为正文实际引用项，建议补引或删除）</p>`
@@ -59,25 +78,28 @@ function matchKeyword(c, kw) {
   return hay.includes(kw);
 }
 
-function renderList(list, citedNums, keyword = '') {
+function renderList(list, citedNums, keyword = '', ctx = citationContext(list)) {
   if (!list.length) return '<div style="color:var(--ink-soft)">暂无文献，去上方「智能推荐与检索」收集吧</div>';
   const kw = keyword.trim().toLowerCase();
   const filtered = kw ? list.filter(c => matchKeyword(c, kw)) : list;
   if (!filtered.length) return `<div style="color:var(--ink-soft)">没有匹配「${escapeHtml(keyword.trim())}」的文献，试试标题 / 作者 / 出处关键词</div>`;
   return filtered.map(c => {
-    const cited = c.litNo != null && citedNums.has(c.litNo);
+    const currentNo = ctx.order.get(c.id);
+    const cited = !!currentNo || (c.litNo != null && citedNums.has(c.litNo));
+    const badge = currentNo ? `[${currentNo}]` : c.litNo != null ? `L${c.litNo}` : '未编';
     return `
     <div class="item">
       <div class="item-main">
-        <div class="item-title">${c.litNo != null ? `<span class="chip ref-no">[${c.litNo}]</span> ` : ''}${escapeHtml(c.title || '（无题名）')} <span class="chip">${escapeHtml(c.type || '?')}</span> ${
+        <div class="item-title">${badge ? `<span class="chip ref-no">${badge}</span> ` : ''}${escapeHtml(c.title || '（无题名）')} <span class="chip">${escapeHtml(c.type || '?')}</span> ${
       cited
         ? '<span class="chip done" title="正文中已引用该文献">已引用</span>'
         : '<span class="chip uncited" title="正文中未引用该文献">未引用</span>'}</div>
         <div class="item-meta gb">${escapeHtml(c.formatted || '')}</div>
+        <div class="item-meta">${escapeHtml([c.doi ? `DOI ${c.doi}` : '', c.url || ''].filter(Boolean).join(' · '))}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" data-cit-copy="${escapeHtml(c.formatted || '')}" title="复制 GB/T 7714 格式">📋</button>
-        <button class="btn btn-danger btn-sm" data-cit-del="${c.litNo}" title="删除该文献">🗑</button>
+        <button class="btn btn-danger btn-sm" data-cit-del="${escapeHtml(c.id)}" title="删除该文献">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -101,16 +123,19 @@ function nextLitNo(list) {
 }
 
 function sortedList() {
-  return get('citations', []).sort((a, b) => (a.litNo || 0) - (b.litNo || 0));
+  const list = ensureCitationIds(get('citations', [])).list.map(item =>
+    normalizeCitationEntry(item, getProject().referenceStandard));
+  return list.sort((a, b) => (a.litNo || 0) - (b.litNo || 0));
 }
 
 /** 局部刷新文献库列表（不整页重渲染，保留上方表单与结果） */
 function refreshLibrary(el) {
   const list = sortedList();
   const citedNums = collectCitedNums();
+  const ctx = citationContext(list);
   const box = el.querySelector('#cit-list');
   const kw = el.querySelector('#cit-search')?.value || '';
-  if (box) box.innerHTML = renderList(list, citedNums, kw);
+  if (box) box.innerHTML = renderList(list, citedNums, kw, ctx);
   const scount = el.querySelector('#cit-search-count');
   if (scount) {
     const matched = kw.trim() ? list.filter(c => matchKeyword(c, kw.trim().toLowerCase())).length : list.length;
@@ -133,7 +158,7 @@ function bindListActions(el) {
     b.addEventListener('click', () => {
       // 用稳定编号 litNo 定位（数组顺序会因 unshift 变化，索引定位会删错）
       const list = get('citations', []);
-      const idx = list.findIndex(x => x.litNo === Number(b.dataset.citDel));
+      const idx = list.findIndex(x => x.id === b.dataset.citDel);
       const item = idx >= 0 ? list[idx] : null;
       if (!item) return;
       // 防误操作 + 衔接检查：优先看结构化文档里的 citation id 使用情况
@@ -149,8 +174,9 @@ function bindListActions(el) {
           if (m) refs += m.length;
         });
       }
+      const currentNo = citationContext(list).order.get(item.id) || item.litNo || '?';
       const msg = refs
-        ? `「${(item.title || '').slice(0, 24)}」在正文中被引用 ${refs} 次，删除后这些 [${item.litNo}] 引用将失效且无法恢复。确定删除吗？`
+        ? `「${(item.title || '').slice(0, 24)}」在正文中被引用 ${refs} 次，删除后这些 [${currentNo}] 引用将失效且无法恢复。确定删除吗？`
         : `确定删除「${(item.title || '').slice(0, 24)}」吗？删除后无法恢复。`;
       if (!confirm(msg)) return;
       list.splice(idx, 1);
@@ -163,7 +189,7 @@ function bindListActions(el) {
 function render(el) {
   const list0 = get('citations', []);
   ensureNumbers(list0);
-  const list = get('citations', []).sort((a, b) => (a.litNo || 0) - (b.litNo || 0));
+  const list = sortedList();
   const citedNums = collectCitedNums();
   const prj = getProject();
 
@@ -189,13 +215,16 @@ function render(el) {
 
       <div class="card">
         <h2><span class="mark"></span>手动录入</h2>
-        <p class="desc">按字段录入，规则引擎实时生成 GB/T 7714 格式（期刊[J]、学位论文[D]、专著[M]、会议[C]）</p>
+        <p class="desc">按字段录入，规则引擎实时生成 GB/T 7714 格式。已切到更细的数据结构：卷、期、页、DOI、URL 分开保存。</p>
         <div class="form-row">
           <div>
             <label class="field-label">文献类型</label>
             <select id="cit-type">
               <option value="J">期刊 [J]</option><option value="D">学位论文 [D]</option>
               <option value="M">专著 [M]</option><option value="C">会议论文 [C]</option>
+              <option value="R">报告 [R]</option><option value="S">标准 [S]</option>
+              <option value="P">专利 [P]</option><option value="N">报纸 [N]</option>
+              <option value="EB/OL">电子资源 [EB/OL]</option>
             </select>
           </div>
           <div>
@@ -209,8 +238,21 @@ function render(el) {
         <input type="text" id="cit-title" placeholder="文章或书名">
         <label class="field-label">出处（期刊名 / 学校 / 出版社）</label>
         <input type="text" id="cit-source" placeholder="现代教育技术">
-        <label class="field-label">卷(期): 页码（期刊/会议）</label>
-        <input type="text" id="cit-vol" placeholder="34(3): 45-52">
+        <div class="form-row">
+          <div>
+            <label class="field-label">卷 / 期 / 页码</label>
+            <div class="form-row">
+              <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
+              <div><input type="text" id="cit-issue" placeholder="期 3"></div>
+            </div>
+            <input type="text" id="cit-pages" placeholder="页码 45-52" style="margin-top:8px">
+          </div>
+          <div>
+            <label class="field-label">DOI / URL</label>
+            <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
+            <input type="text" id="cit-url" placeholder="https://..." style="margin-top:8px">
+          </div>
+        </div>
         <div style="margin-top:16px">
           <button class="btn" id="cit-add">生成并保存</button>
         </div>
@@ -255,10 +297,14 @@ function render(el) {
     const entry = {
       type: el.querySelector('#cit-type').value,
       year: el.querySelector('#cit-year').value.trim(),
-      author: el.querySelector('#cit-author').value.trim(),
+      authors: el.querySelector('#cit-author').value.trim(),
       title: el.querySelector('#cit-title').value.trim(),
       source: el.querySelector('#cit-source').value.trim(),
-      vol: el.querySelector('#cit-vol').value.trim(),
+      volume: el.querySelector('#cit-volume').value.trim(),
+      issue: el.querySelector('#cit-issue').value.trim(),
+      pages: el.querySelector('#cit-pages').value.trim(),
+      doi: el.querySelector('#cit-doi').value.trim(),
+      url: el.querySelector('#cit-url').value.trim(),
     };
     if (!entry.title) {
       previewEl.innerHTML = '<span class="placeholder">填写题名后实时预览 GB/T 7714 格式</span>';
@@ -266,10 +312,10 @@ function render(el) {
       return;
     }
     previewEl.innerHTML =
-      `<span class="sample-tag">GB/T 7714 格式（规则引擎实时生成）</span>\n${escapeHtml(formatCitation(entry))}`;
+      `<span class="sample-tag">GB/T 7714 格式（规则引擎实时生成）</span>\n${escapeHtml(formatCitation(entry, prj.referenceStandard))}`;
     previewEl.classList.add('filled');
   }
-  ['#cit-type', '#cit-year', '#cit-author', '#cit-title', '#cit-source', '#cit-vol'].forEach(s => {
+  ['#cit-type', '#cit-year', '#cit-author', '#cit-title', '#cit-source', '#cit-volume', '#cit-issue', '#cit-pages', '#cit-doi', '#cit-url'].forEach(s => {
     el.querySelector(s).addEventListener('input', () => {
       clearTimeout(previewTimer);
       previewTimer = setTimeout(updatePreview, 300);
@@ -281,13 +327,17 @@ function render(el) {
     const entry = {
       type: el.querySelector('#cit-type').value,
       year: el.querySelector('#cit-year').value.trim(),
-      author: el.querySelector('#cit-author').value.trim(),
+      authors: el.querySelector('#cit-author').value.trim(),
       title: el.querySelector('#cit-title').value.trim(),
       source: el.querySelector('#cit-source').value.trim(),
-      vol: el.querySelector('#cit-vol').value.trim(),
+      volume: el.querySelector('#cit-volume').value.trim(),
+      issue: el.querySelector('#cit-issue').value.trim(),
+      pages: el.querySelector('#cit-pages').value.trim(),
+      doi: el.querySelector('#cit-doi').value.trim(),
+      url: el.querySelector('#cit-url').value.trim(),
     };
     if (!entry.title) { toast('请至少填写题名', 'err'); return; }
-    Object.assign(entry, formatCitationEntry({ ...entry, id: entry.id || crypto.randomUUID?.() }));
+    Object.assign(entry, formatCitationEntry({ ...entry, id: entry.id || crypto.randomUUID?.() }, prj.referenceStandard));
     updatePreview(); // 同步刷新预览（防抖未触发时立即点保存也能看到最新格式）
     const list = get('citations', []);
     if (!entry.id) entry.id = crypto.randomUUID?.() || `cit-${Date.now()}`;
@@ -297,7 +347,7 @@ function render(el) {
     toast(`已保存到文献库（编号 [${entry.litNo}]）`, 'ok');
     refreshLibrary(el); // 预览保留在页面上，不整页重渲染
     // 连续录入：清空输入字段，预览保留
-    ['#cit-title', '#cit-author', '#cit-year', '#cit-source', '#cit-vol'].forEach(s => {
+    ['#cit-title', '#cit-author', '#cit-year', '#cit-source', '#cit-volume', '#cit-issue', '#cit-pages', '#cit-doi', '#cit-url'].forEach(s => {
       const inp = el.querySelector(s);
       if (inp) inp.value = '';
     });
@@ -359,10 +409,7 @@ function render(el) {
       }
       objs.forEach(e => {
         e.id = e.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        e.formatted = formatCitation({
-          type: e.type, year: e.year, author: e.author,
-          title: e.title, source: e.source, vol: e.vol,
-        });
+        Object.assign(e, normalizeCitationEntry(e, prj.referenceStandard));
         e.litNo = nextLitNo(list);
         list.unshift(e);
       });

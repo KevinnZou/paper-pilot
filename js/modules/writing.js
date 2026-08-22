@@ -285,10 +285,16 @@ export default {
     function renderCitationPicker() {
       const map = buildCitationNumberMap(viewState.view.state.doc);
       const usage = collectCitationUsage(viewState.view.state.doc);
+      const pickerItems = [...citations].sort((a, b) => {
+        const aNo = map.get(a.id) || Number.POSITIVE_INFINITY;
+        const bNo = map.get(b.id) || Number.POSITIVE_INFINITY;
+        if (aNo !== bNo) return aNo - bNo;
+        return (a.litNo || 0) - (b.litNo || 0);
+      });
       citationBox.innerHTML = citations.length ? `
         <div style="display:flex;gap:6px">
           <select id="wb-cit-select" style="flex:1">
-            ${citations.map(item => {
+            ${pickerItems.map(item => {
               const currentNo = map.get(item.id);
               const info = usage.get(item.id);
               const suffix = currentNo ? ` · 当前 [${currentNo}] ×${info?.count || 1}` : ' · 未引用';

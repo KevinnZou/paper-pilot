@@ -5,7 +5,7 @@ import { formatCitation } from './gbt7714.js';
 import { toast, escapeHtml, setLoading } from './ui.js';
 import { get, set } from './storage.js';
 import { chat } from './api.js';
-import { ensureCitationIds } from './citation-utils.js';
+import { ensureCitationIds, normalizeCitationEntry } from './citation-utils.js';
 
 // 中断恢复：导航离开时取消进行中的检索与 AI 标注（避免结果写进已卸载的页面、浪费 token）
 // tm:navigate 由 document.dispatchEvent 触发且不冒泡，监听必须挂在 document；模块只加载一次，每次导航后换新 controller
@@ -29,6 +29,10 @@ function fetchFail(name) {
 
 function stripTags(s) {
   return String(s).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function issueLabel(volume, issue, pages) {
+  return [volume || '', issue ? `(${issue})` : '', pages || ''].filter(Boolean).join(' ');
 }
 
 /** 解析模型返回的 JSON：容忍代码围栏、前后说明文字、数组被包装在对象中的情况 */
@@ -75,17 +79,20 @@ async function searchCrossRef(query, rows, signal, offset = 0) {
       .map(a => [a.family, a.given].filter(Boolean).join(' ').trim())
       .filter(Boolean);
     const year = item.issued?.['date-parts']?.[0]?.[0];
-    const vol = [item.volume || '', item.issue ? `(${item.issue})` : '', item.page || ''].join(' ').trim();
     return {
       doi: item.DOI || '',
       title: (item.title || [''])[0],
       author: authors.join(', '),
+      authors: authors.join(', '),
       source: (item['container-title'] || [''])[0],
       year: year ? String(year) : '',
-      vol,
+      volume: item.volume || '',
+      issue: item.issue || '',
+      pages: item.page || '',
       type: 'J',
       abstract: stripTags(item.abstract || ''),
       provider: 'CrossRef',
+      url: item.URL || '',
     };
   }).filter(r => r.title);
 }
@@ -114,17 +121,21 @@ async function searchOpenAlex(query, rows, signal, offset = 0) {
       .map(a => a.author?.display_name)
       .filter(Boolean);
     const b = w.biblio || {};
-    const vol = [b.volume || '', b.issue ? `(${b.issue})` : '', [b.first_page, b.last_page].filter(Boolean).join('-')].join(' ').trim();
+    const pages = [b.first_page, b.last_page].filter(Boolean).join('-');
     return {
       doi: (w.doi || '').replace('https://doi.org/', ''),
       title: w.display_name || '',
       author: authors.join(', '),
+      authors: authors.join(', '),
       source: w.primary_location?.source?.display_name || '',
       year: w.publication_year ? String(w.publication_year) : '',
-      vol,
+      volume: b.volume || '',
+      issue: b.issue || '',
+      pages,
       type: 'J',
       abstract: '',
       provider: 'OpenAlex',
+      url: w.primary_location?.landing_page_url || w.primary_location?.pdf_url || '',
     };
   }).filter(r => r.title);
 }
@@ -154,18 +165,22 @@ async function searchOpenAlexZh(query, rows, signal) {
       .map(a => a.author?.display_name)
       .filter(Boolean);
     const b = w.biblio || {};
-    const vol = [b.volume || '', b.issue ? `(${b.issue})` : '', [b.first_page, b.last_page].filter(Boolean).join('-')].join(' ').trim();
+    const pages = [b.first_page, b.last_page].filter(Boolean).join('-');
     return {
       doi: (w.doi || '').replace('https://doi.org/', ''),
       title: w.display_name || '',
       author: authors.join(', '),
+      authors: authors.join(', '),
       source: w.primary_location?.source?.display_name || '',
       year: w.publication_year ? String(w.publication_year) : '',
-      vol,
+      volume: b.volume || '',
+      issue: b.issue || '',
+      pages,
       type: 'J',
       abstract: '',
       provider: 'OpenAlex',
       lang: 'zh',
+      url: w.primary_location?.landing_page_url || w.primary_location?.pdf_url || '',
     };
   }).filter(r => r.title);
 }
@@ -303,7 +318,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
             <span class="lit-main">
               <span class="lit-title">${escapeHtml(r.title)}${inLib ? ' <span class="seal" style="font-size:11px;vertical-align:2px">已入库</span>' : ''}</span>
               ${r.reason ? `<span class="lit-reason"><span class="rsn-label">推荐理由</span>${escapeHtml(r.reason)}</span>` : ''}
-              <span class="lit-meta"><span class="authors">${escapeHtml([r.author, r.source].filter(Boolean).join(' · '))}</span> · <span class="mono">${escapeHtml([r.year, r.vol].filter(Boolean).join(' '))}</span> · <span class="chip">${escapeHtml(r.provider || '')}</span>${r.lang === 'zh' ? ' <span class="chip">中文</span>' : ''}</span>
+              <span class="lit-meta"><span class="authors">${escapeHtml([r.author || r.authors, r.source].filter(Boolean).join(' · '))}</span> · <span class="mono">${escapeHtml([r.year, issueLabel(r.volume, r.issue, r.pages)].filter(Boolean).join(' '))}</span> · <span class="chip">${escapeHtml(r.provider || '')}</span>${r.lang === 'zh' ? ' <span class="chip">中文</span>' : ''}</span>
             </span>
           </label>
           <div class="lit-actions">
@@ -314,6 +329,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
         <div class="lit-detail" id="lit-detail-${i}" style="display:none">
           <div class="gb" style="margin-bottom:6px">${escapeHtml(formatCitation(r))}</div>
           ${r.doi ? `<div class="mono">DOI: ${escapeHtml(r.doi)}</div>` : ''}
+          ${r.url ? `<div class="mono" style="margin-top:4px">URL: ${escapeHtml(r.url)}</div>` : ''}
           <div style="margin-top:6px">摘要：${abs}</div>
           <div style="margin-top:8px"><a href="${link}" target="_blank" rel="noopener">打开原文页面 →</a></div>
         </div>`;
@@ -422,10 +438,12 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
         const key = itemKey(r);
         if (seen.has(key) || libKeysNow.has(key)) { skipped++; return; }
         seen.add(key);
-        r.id = r.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        r.formatted = formatCitation(r);
-        r.litNo = ++next;
-        list.unshift(r);
+        const entry = normalizeCitationEntry({
+          ...r,
+          id: r.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        });
+        entry.litNo = ++next;
+        list.unshift(entry);
         added++;
       });
       set('citations', list);

@@ -18,9 +18,42 @@ export function citationMap(list = []) {
   return new Map(list.map(item => [item.id, item]));
 }
 
-export function formatCitationEntry(entry) {
+function splitLegacyVol(vol = '') {
+  const raw = String(vol || '').trim();
+  if (!raw) return {};
+  const match = /^([^()：:,;\s]+)?(?:\(([^)]+)\))?(?::?\s*(.+))?$/.exec(raw);
+  if (!match) return { pages: raw };
   return {
+    volume: match[1] || '',
+    issue: match[2] || '',
+    pages: match[3] || '',
+  };
+}
+
+export function normalizeCitationEntry(entry = {}, standard = 'GB/T 7714-2025') {
+  const legacy = splitLegacyVol(entry.vol);
+  const next = {
     ...entry,
-    formatted: formatCitation(entry),
+    id: entry.id || makeId(),
+    authors: entry.authors || entry.author || '',
+    volume: entry.volume || legacy.volume || '',
+    issue: entry.issue || legacy.issue || '',
+    pages: entry.pages || legacy.pages || '',
+    doi: entry.doi || '',
+    url: entry.url || '',
+    accessDate: entry.accessDate || '',
+    publisher: entry.publisher || '',
+    place: entry.place || '',
+    institution: entry.institution || '',
+    patentNo: entry.patentNo || '',
+    standardNo: entry.standardNo || '',
+  };
+  next.formatted = formatCitation(next, standard);
+  return next;
+}
+
+export function formatCitationEntry(entry, standard) {
+  return {
+    ...normalizeCitationEntry(entry, standard),
   };
 }
