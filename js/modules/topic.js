@@ -154,6 +154,14 @@ function selectedDataSource(design) {
   return design.selectedDataSource || design.dataSources[0] || '';
 }
 
+function selectedObjectiveFocus(design) {
+  return design.selectedObjectiveFocus || design.objectiveOptions[0] || '';
+}
+
+function selectedRiskStrategy(design) {
+  return design.selectedRiskStrategy || design.feasibility.suggestions[0] || '';
+}
+
 function renderTitleCards(design) {
   if (!design.titleCandidates.length) {
     return '<div class="topic-empty">生成后会在这里出现 4-5 个候选题目，每个都能直接设为主线。</div>';
@@ -243,6 +251,8 @@ function renderPlanSummary(design) {
 function renderPlanSelection(design) {
   const method = selectedMethod(design);
   const data = selectedDataSource(design);
+  const objective = selectedObjectiveFocus(design);
+  const strategy = selectedRiskStrategy(design);
   return `
     <div class="topic-selection-stack">
       <div class="topic-selection-grid">
@@ -261,9 +271,27 @@ function renderPlanSelection(design) {
           ${renderOptionPills(design.dataOptions, data, 'select-data', '生成后在这里选择一种最可行的数据来源。')}
         </div>
       </div>
+      ${design.objectiveOptions.length ? `
+        <div class="topic-selection-row compact">
+          <div class="topic-selection-head compact">
+            <span class="topic-selection-label">写作侧重点</span>
+            <p class="desc">如果都合理，就选你更想写、更容易展开的一条。</p>
+          </div>
+          ${renderOptionPills(design.objectiveOptions, objective, 'select-objective', '生成后在这里选择本篇论文更想强调的目标。')}
+        </div>` : ''}
+      ${design.feasibility.suggestions.length ? `
+        <div class="topic-selection-row compact">
+          <div class="topic-selection-head compact">
+            <span class="topic-selection-label">收敛方式</span>
+            <p class="desc">从提醒里选一个，系统后面会按这个方向出大纲。</p>
+          </div>
+          ${renderOptionPills(design.feasibility.suggestions, strategy, 'select-strategy', '生成后在这里选择更适合的收敛方式。')}
+        </div>` : ''}
       <div class="topic-selection-footer">
         <span class="chip doing">已选方法：${escapeHtml(method || '未选择')}</span>
         <span class="chip doing">已选数据：${escapeHtml(data || '未选择')}</span>
+        ${objective ? `<span class="chip">侧重点：${escapeHtml(objective)}</span>` : ''}
+        ${strategy ? `<span class="chip">收敛方式：${escapeHtml(strategy)}</span>` : ''}
         ${design.feasibility.score ? `<span class="chip">可行性 ${escapeHtml(String(design.feasibility.score))}</span>` : ''}
       </div>
     </div>`;
@@ -473,9 +501,8 @@ function render(el) {
           <span class="chip done">当前题目</span>
           <strong>${escapeHtml(design.title || project.title)}</strong>
         </div>
-        <div class="result-actions" style="margin:0 0 16px">
+        <div class="result-actions topic-step-actions" style="margin:0 0 16px">
           <button class="btn btn-ai-solid" id="rd-plan-gen">生成研究方案建议</button>
-          ${hasPlanSuggestions ? '<button class="btn" id="rd-plan-save">确认这些选择，进入下一步</button>' : ''}
         </div>
         ${hasPlanSuggestions ? `
         <section class="topic-candidate-section">
@@ -489,9 +516,12 @@ function render(el) {
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
             <h3>把方案收拢成一组</h3>
-            <p class="desc">这里只做最后两项选择：方法怎么做、数据从哪来。选完后直接进入出大纲。</p>
+            <p class="desc">先把这一组方案选完整，再单独确认进入下一步。生成和确认不放在一起。</p>
           </div>
           ${renderPlanSelection(design)}
+          <div class="topic-confirm-bar">
+            <button class="btn" id="rd-plan-save">确认这组方案，进入大纲</button>
+          </div>
         </section>
         ` : '<div class="topic-empty">先点击上方「生成研究方案建议」，系统再展示研究问题、方法、数据来源和可行性判断。</div>'}
       </section>`;
@@ -725,6 +755,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
           dataOptions,
           selectedDataSource: dataOptions[0] || '',
           objectiveOptions: Array.isArray(parsed.objectives) ? parsed.objectives.filter(Boolean) : [],
+          selectedObjectiveFocus: Array.isArray(parsed.objectives) ? (parsed.objectives.filter(Boolean)[0] || '') : '',
           researchGap: parsed.researchGap || current.researchGap,
           hypotheses: Array.isArray(parsed.hypotheses) ? parsed.hypotheses.filter(Boolean) : current.hypotheses,
           feasibility: {
@@ -732,6 +763,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
             risks: Array.isArray(parsed.feasibility?.risks) ? parsed.feasibility.risks : [],
             suggestions: Array.isArray(parsed.feasibility?.suggestions) ? parsed.feasibility.suggestions : [],
           },
+          selectedRiskStrategy: Array.isArray(parsed.feasibility?.suggestions) ? (parsed.feasibility.suggestions[0] || '') : '',
           currentStep: 2,
         });
         toast('研究方案候选已生成，选一个最合适的组合即可', 'ok');
@@ -769,12 +801,23 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         saveDesignPatch({ selectedDataSource: btn.dataset.selectData, currentStep: 2 });
         render(el);
       }));
+    el.querySelectorAll('[data-select-objective]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        saveDesignPatch({ selectedObjectiveFocus: btn.dataset.selectObjective, currentStep: 2 });
+        render(el);
+      }));
+    el.querySelectorAll('[data-select-strategy]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        saveDesignPatch({ selectedRiskStrategy: btn.dataset.selectStrategy, currentStep: 2 });
+        render(el);
+      }));
 
     el.querySelector('#rd-plan-save')?.addEventListener('click', () => {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const question = selectedQuestion(current);
       const method = selectedMethod(current);
       const data = selectedDataSource(current);
+      const objective = selectedObjectiveFocus(current);
       if (!question || !method || !data) {
         toast('请先各选一个研究问题、方法和数据来源', 'err');
         return;
@@ -783,7 +826,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         researchQuestions: [question],
         methods: [method],
         dataSources: [data],
-        objectives: current.objectiveOptions.length ? current.objectiveOptions : current.objectives,
+        objectives: objective ? [objective] : (current.objectiveOptions.length ? current.objectiveOptions : current.objectives),
         currentStep: 3,
       });
       toast('研究方案已确定，继续生成大纲', 'ok');
