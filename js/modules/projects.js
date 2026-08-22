@@ -76,6 +76,36 @@ export default {
           <p>还没有论文项目。V4 会按“项目”而不是“模块”推进整篇论文。</p>
           <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
         </div>`}
+
+      <div class="modal-backdrop" id="pc-create-modal" hidden>
+        <div class="modal-panel">
+          <div class="hero-top" style="align-items:flex-start">
+            <div>
+              <h2><span class="mark"></span>创建论文项目</h2>
+              <p class="desc">先填最基本的信息，创建后再进入项目设置继续补充。</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="pc-modal-close" type="button">关闭</button>
+          </div>
+          <label class="field-label">论文题目</label>
+          <input type="text" id="pc-title" placeholder="例如：基于大语言模型的智能客服满意度研究">
+          <div class="form-row">
+            <div>
+              <label class="field-label">学位类型</label>
+              <select id="pc-degree">
+                ${['本科论文', '硕士论文', '博士论文', '课程论文'].map(d => `<option${d === '硕士论文' ? ' selected' : ''}>${d}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="field-label">截止日期（可选）</label>
+              <input type="date" id="pc-due">
+            </div>
+          </div>
+          <div class="result-actions" style="margin-top:16px">
+            <button class="btn" id="pc-create-submit" type="button">创建并进入项目</button>
+            <button class="btn btn-ghost" id="pc-create-cancel" type="button">取消</button>
+          </div>
+        </div>
+      </div>
     `;
 
     function openProject(id, target = 'dashboard') {
@@ -83,14 +113,51 @@ export default {
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: target }));
     }
 
-    function promptCreate() {
-      const project = createProject({ title: '' });
+    const modal = el.querySelector('#pc-create-modal');
+    const titleInput = el.querySelector('#pc-title');
+    const degreeInput = el.querySelector('#pc-degree');
+    const dueInput = el.querySelector('#pc-due');
+
+    function closeCreateModal() {
+      modal.hidden = true;
+    }
+
+    function openCreateModal() {
+      modal.hidden = false;
+      titleInput.value = '';
+      degreeInput.value = '硕士论文';
+      dueInput.value = '';
+      setTimeout(() => titleInput.focus(), 0);
+    }
+
+    function submitCreate() {
+      const title = titleInput.value.trim();
+      if (!title) {
+        toast('请先填写论文题目', 'err');
+        titleInput.focus();
+        return;
+      }
+      const project = createProject({
+        title,
+        degreeType: degreeInput.value,
+        dueDate: dueInput.value || '',
+      });
+      closeCreateModal();
       toast('论文项目已创建，下一步先补充项目设置', 'ok');
       openProject(project.id, 'project-settings');
     }
 
-    el.querySelector('#pc-new')?.addEventListener('click', promptCreate);
-    el.querySelector('#pc-empty-new')?.addEventListener('click', promptCreate);
+    el.querySelector('#pc-new')?.addEventListener('click', openCreateModal);
+    el.querySelector('#pc-empty-new')?.addEventListener('click', openCreateModal);
+    el.querySelector('#pc-modal-close')?.addEventListener('click', closeCreateModal);
+    el.querySelector('#pc-create-cancel')?.addEventListener('click', closeCreateModal);
+    el.querySelector('#pc-create-submit')?.addEventListener('click', submitCreate);
+    modal?.addEventListener('click', e => {
+      if (e.target === modal) closeCreateModal();
+    });
+    titleInput?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitCreate();
+    });
 
     el.querySelectorAll('[data-open]').forEach(btn =>
       btn.addEventListener('click', () => openProject(btn.dataset.open, 'dashboard')));

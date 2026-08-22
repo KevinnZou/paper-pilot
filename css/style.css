@@ -573,6 +573,23 @@ kbd {
 }
 .empty p { margin: 4px 0 12px; }
 
+/* ---------- 轻量弹窗 ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 120;
+  background: rgba(30, 43, 54, .38);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop[hidden] { display: none; }
+.modal-panel {
+  width: min(560px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  padding: 22px 24px;
+}
+
 /* ---------- 滚动条 ---------- */
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: #D8D5CA; border-radius: 999px; border: 2px solid var(--paper); }
