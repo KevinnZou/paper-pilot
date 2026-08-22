@@ -84,6 +84,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     population: design.population || '',
     titleCandidates: normalizeTitleCandidates(design.titleCandidates),
     selectedTitleId: design.selectedTitleId || '',
+    planGenerated: !!design.planGenerated,
     researchQuestions: Array.isArray(design.researchQuestions) ? design.researchQuestions : [],
     questionCandidates: normalizeQuestionCandidates(design.questionCandidates),
     selectedQuestionId: design.selectedQuestionId || '',
@@ -541,7 +542,7 @@ function render(el) {
         ${integrityNote()}
       </section>`;
   } else if (step === 2) {
-    const hasPlanSuggestions = !!(design.questionCandidates.length || design.methodOptions.length || design.dataOptions.length);
+    const hasPlanSuggestions = !!(design.planGenerated && design.questionCandidates.length);
     body = `
       <section class="card topic-wizard-card">
         <div class="topic-wizard-head">
@@ -707,6 +708,23 @@ function render(el) {
         saveDesignPatch({
           title: selected.title,
           selectedTitleId: selected.id,
+          planGenerated: false,
+          researchQuestions: [],
+          questionCandidates: [],
+          selectedQuestionId: '',
+          researchGap: '',
+          objectives: [],
+          objectiveOptions: [],
+          selectedObjectiveFocus: '',
+          hypotheses: [],
+          methods: [],
+          methodOptions: [],
+          selectedMethod: '',
+          dataSources: [],
+          dataOptions: [],
+          selectedDataSource: '',
+          feasibility: { score: '', risks: [], suggestions: [] },
+          selectedRiskStrategy: '',
           currentStep: 2,
         });
         updateBasics({
@@ -786,7 +804,10 @@ function render(el) {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const btn = el.querySelector('#rd-plan-gen');
       setLoading(btn, true, '生成中…');
-      el.querySelector('#rd-question-out').innerHTML = '<div class="topic-empty">AI 正在生成研究问题与方案建议…</div>';
+      const host = el.querySelector('.topic-candidate-section');
+      if (host) {
+        host.insertAdjacentHTML('beforeend', '<div id="rd-plan-loading" class="topic-empty">AI 正在生成研究问题与方案建议…</div>');
+      }
       try {
         let parsed;
         if (shouldUseLiveAI()) {
@@ -818,6 +839,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         const dataOptions = normalizeOptionStrings(parsed.dataSources || []);
         if (!questions.length) throw new Error('AI 未返回有效研究问题');
         saveDesignPatch({
+          planGenerated: true,
           questionCandidates: questions,
           selectedQuestionId: questions[0]?.id || '',
           methodOptions,
@@ -842,6 +864,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         if (isAbort(e)) return;
         toast(e.message, 'err', 3600);
       } finally {
+        el.querySelector('#rd-plan-loading')?.remove();
         setLoading(btn, false);
       }
     }
