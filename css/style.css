@@ -1127,7 +1127,7 @@ kbd {
 }
 .wb-side-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .wb-side-metric {
@@ -1262,6 +1262,62 @@ kbd {
   font-size: 11px;
   color: var(--ink-soft);
   font-family: var(--font-mono);
+}
+.wb-todo-head {
+  margin-bottom: 10px;
+}
+.wb-todo-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.wb-todo-summary b {
+  font-size: 13px;
+}
+.wb-todo-summary span {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+}
+.wb-todo-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.wb-chapter-note {
+  min-height: 96px;
+}
+.wb-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.wb-todo-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+.wb-todo-item.done {
+  opacity: .72;
+}
+.wb-todo-main {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.wb-todo-main span {
+  line-height: 1.6;
+}
+.wb-todo-item.done .wb-todo-main span {
+  text-decoration: line-through;
 }
 .wb-side-head {
   display: flex;

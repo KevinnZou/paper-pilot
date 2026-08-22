@@ -367,6 +367,7 @@ function renderSuggestionBox(box, state) {
       <button class="btn" id="sg-accept">接受</button>
       <button class="btn btn-ghost" id="sg-reject">拒绝</button>
       <button class="btn btn-ai" id="sg-regenerate">重新生成</button>
+      ${item.actionId === 'logic' ? '<button class="btn btn-ghost" id="sg-todo">转成待修改清单</button>' : ''}
     </div>
     ${integrityNote()}`;
 }
@@ -455,6 +456,17 @@ function currentTimestampLabel() {
   return new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function workbenchState(project) {
+  const state = project?.writingWorkbench && typeof project.writingWorkbench === 'object' ? project.writingWorkbench : {};
+  return {
+    chapterNotes: state.chapterNotes && typeof state.chapterNotes === 'object' ? state.chapterNotes : {},
+  };
+}
+
+function todoId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
 export default {
   id: 'writing',
   icon: '✍️',
@@ -540,6 +552,7 @@ export default {
               <button class="wb-side-tab active" type="button" data-side-tab="assistant">写作助手</button>
               <button class="wb-side-tab" type="button" data-side-tab="citation">引用</button>
               <button class="wb-side-tab" type="button" data-side-tab="evidence">证据</button>
+              <button class="wb-side-tab" type="button" data-side-tab="todos">待修改</button>
               <button class="wb-side-tab" type="button" data-side-tab="versions">版本</button>
             </div>
             <div class="wb-side-pane active" data-side-pane="assistant">
@@ -558,6 +571,13 @@ export default {
                 <p class="desc">优先看和当前章节直接相关的证据卡。</p>
               </div>
               <div id="wb-evidence"></div>
+            </div>
+            <div class="wb-side-pane" data-side-pane="todos">
+              <div class="wb-side-pane-head">
+                <h3><span class="mark"></span>待修改清单</h3>
+                <p class="desc">把这一章接下来要改的点先挂住，润稿时就不会丢。</p>
+              </div>
+              <div id="wb-todos"></div>
             </div>
             <div class="wb-side-pane" data-side-pane="versions">
               <div class="wb-side-pane-head">
@@ -598,6 +618,7 @@ export default {
     const chapterCard = el.querySelector('#wb-chapter-card');
     const sideTabs = [...el.querySelectorAll('[data-side-tab]')];
     const sidePanes = [...el.querySelectorAll('[data-side-pane]')];
+    const todosBox = el.querySelector('#wb-todos');
     const versionsBox = el.querySelector('#wb-versions');
     const assetModal = el.querySelector('#wb-asset-modal');
     const assetForm = el.querySelector('#wb-asset-form');
@@ -922,6 +943,123 @@ export default {
       evidenceBox.innerHTML = relatedEvidenceHtml(section, citations);
     }
 
+    function sectionWorkbenchEntry(section) {
+      const key = section?.sectionId || section?.chapter || '';
+      const state = workbenchState(getProject());
+      const entry = state.chapterNotes[key] || {};
+      return {
+        key,
+        note: entry.note || '',
+        todos: Array.isArray(entry.todos) ? entry.todos : [],
+      };
+    }
+
+    function saveSectionWorkbench(section, patch) {
+      if (!section) return null;
+      const project = getProject();
+      const state = workbenchState(project);
+      const key = section.sectionId || section.chapter;
+      const current = state.chapterNotes[key] || { note: '', todos: [] };
+      const nextEntry = {
+        note: patch.note ?? current.note ?? '',
+        todos: patch.todos ?? current.todos ?? [],
+      };
+      const nextState = {
+        ...state,
+        chapterNotes: {
+          ...state.chapterNotes,
+          [key]: nextEntry,
+        },
+      };
+      saveProject({ writingWorkbench: nextState });
+      return nextEntry;
+    }
+
+    function addTodoToCurrentSection(text) {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      if (!section) {
+        toast('请先进入某个章节', 'err');
+        return;
+      }
+      const value = String(text || '').trim();
+      if (!value) {
+        toast('先写下这条要改什么', 'err');
+        return;
+      }
+      const entry = sectionWorkbenchEntry(section);
+      const todos = [{ id: todoId(), text: value, done: false, createdAt: Date.now() }, ...entry.todos];
+      saveSectionWorkbench(section, { todos });
+      renderTodosPanel();
+      toast('已加入当前章节待修改清单', 'ok', 1800);
+    }
+
+    function toggleTodo(section, id) {
+      const entry = sectionWorkbenchEntry(section);
+      const todos = entry.todos.map(item => item.id === id ? { ...item, done: !item.done } : item);
+      saveSectionWorkbench(section, { todos });
+      renderTodosPanel();
+      renderChapterCard();
+    }
+
+    function removeTodo(section, id) {
+      const entry = sectionWorkbenchEntry(section);
+      const todos = entry.todos.filter(item => item.id !== id);
+      saveSectionWorkbench(section, { todos });
+      renderTodosPanel();
+      renderChapterCard();
+    }
+
+    function renderTodosPanel() {
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
+      if (!section) {
+        todosBox.innerHTML = '<p class="desc">先进入一个章节，再给这一章记录待修改事项。</p>';
+        return;
+      }
+      const entry = sectionWorkbenchEntry(section);
+      const openTodos = entry.todos.filter(item => !item.done).length;
+      todosBox.innerHTML = `
+        <div class="wb-todo-head">
+          <div class="wb-todo-summary">
+            <b>${escapeHtml(section.chapter)}</b>
+            <span>${openTodos} 条未完成</span>
+          </div>
+        </div>
+        <div class="wb-todo-input-row">
+          <input type="text" id="wb-todo-input" placeholder="例如：补上这一段的数据来源，或重写结论过渡">
+          <button class="btn btn-sm" type="button" id="wb-todo-add">加入</button>
+        </div>
+        <label class="field-label" style="margin-top:12px">章节备注</label>
+        <textarea id="wb-chapter-note" class="wb-chapter-note" placeholder="把这一章目前的问题、老师反馈、后续修改方向记在这里。">${escapeHtml(entry.note || '')}</textarea>
+        <div class="wb-todo-list">
+          ${entry.todos.length ? entry.todos.map(item => `
+            <div class="wb-todo-item ${item.done ? 'done' : ''}">
+              <label class="wb-todo-main">
+                <input type="checkbox" data-todo-toggle="${item.id}" ${item.done ? 'checked' : ''}>
+                <span>${escapeHtml(item.text)}</span>
+              </label>
+              <button class="btn btn-ghost btn-sm" type="button" data-todo-remove="${item.id}">删除</button>
+            </div>`).join('') : '<p class="desc">这一章还没有待修改事项。可以先记下逻辑问题、补证据点或老师反馈。</p>'}
+        </div>`;
+      todosBox.querySelector('#wb-todo-add')?.addEventListener('click', () => {
+        const input = todosBox.querySelector('#wb-todo-input');
+        addTodoToCurrentSection(input?.value || '');
+      });
+      todosBox.querySelector('#wb-todo-input')?.addEventListener('keydown', evt => {
+        if (evt.key === 'Enter') {
+          evt.preventDefault();
+          addTodoToCurrentSection(evt.currentTarget.value || '');
+        }
+      });
+      todosBox.querySelector('#wb-chapter-note')?.addEventListener('change', evt => {
+        saveSectionWorkbench(section, { note: evt.currentTarget.value || '' });
+        toast('章节备注已保存', 'ok', 1200);
+      });
+      todosBox.querySelectorAll('[data-todo-toggle]').forEach(input =>
+        input.addEventListener('change', () => toggleTodo(section, input.dataset.todoToggle)));
+      todosBox.querySelectorAll('[data-todo-remove]').forEach(btn =>
+        btn.addEventListener('click', () => removeTodo(section, btn.dataset.todoRemove)));
+    }
+
     function createDocSnapshot(label = '手动保存') {
       const text = fullTextFromDoc(viewState.view.state.doc, citationMap(citations));
       const version = snapshotDoc(text, label, {
@@ -1220,6 +1358,8 @@ export default {
       });
       const status = getProject().chapterProgress?.[section.chapter] || '未开始';
       const evidenceItems = relatedEvidenceItems(section);
+      const entry = sectionWorkbenchEntry(section);
+      const todoOpen = entry.todos.filter(item => !item.done).length;
       const index = sections.findIndex(item => item.sectionId === section.sectionId);
       const prev = sections[index - 1];
       const next = sections[index + 1];
@@ -1233,6 +1373,7 @@ export default {
         <div class="wb-side-metrics">
           <div class="wb-side-metric"><span>字数</span><b>${wordCount(chapterText)}</b></div>
           <div class="wb-side-metric"><span>引用</span><b>${citationIds.size}</b></div>
+          <div class="wb-side-metric"><span>待改</span><b>${todoOpen}</b></div>
           <div class="wb-side-metric"><span>证据</span><b>${evidenceItems.length}</b></div>
         </div>
         <div class="wb-side-nav">
@@ -1275,6 +1416,7 @@ export default {
       const note = el.querySelector('#wb-cur-note');
       if (note) note.textContent = `${wordCount(viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n'))} 字 · 自动保存`;
       renderEvidencePanel();
+      renderTodosPanel();
       renderChapterCard();
       renderVersionsPanel();
     }
@@ -1289,6 +1431,7 @@ export default {
         renderOutline();
         renderCitationPicker();
         renderEvidencePanel();
+        renderTodosPanel();
         renderChapterCard();
         renderVersionsPanel();
         return true;
@@ -1372,6 +1515,7 @@ export default {
     renderOutline();
     renderCitationPicker();
     renderEvidencePanel();
+    renderTodosPanel();
     renderChapterCard();
     renderVersionsPanel();
     renderSuggestionBox(suggestionBox, viewState);
@@ -1485,6 +1629,20 @@ export default {
         toast('已拒绝本次建议，原文保持不变', 'ok', 1500);
       });
       suggestionBox.querySelector('#sg-regenerate')?.addEventListener('click', () => viewState.rerun?.());
+      suggestionBox.querySelector('#sg-todo')?.addEventListener('click', () => {
+        if (!viewState.pending?.suggestion) return;
+        const items = String(viewState.pending.suggestion)
+          .split(/\n+/)
+          .map(line => line.replace(/^\s*[-*•\d.、]+\s*/, '').trim())
+          .filter(Boolean)
+          .slice(0, 6);
+        if (!items.length) {
+          toast('这次检查结果没有识别出可转成待办的条目', 'err');
+          return;
+        }
+        items.forEach(text => addTodoToCurrentSection(text));
+        switchRightTab('todos');
+      });
     }
 
     el.querySelectorAll('[data-ai]').forEach(btn => btn.addEventListener('click', () => {
