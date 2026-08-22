@@ -374,5 +374,6 @@ export default {
   icon: '📚',
   title: '文献与格式',
   subtitle: 'GB/T 7714 引用格式，一键生成',
+  projectScoped: true,
   render,
 };

@@ -27,6 +27,7 @@ export default {
   icon: '🏠',
   title: '论文主页',
   subtitle: '你的论文，一条主线看到底',
+  projectScoped: true,
 
   render(el) {
     const p = getProject();

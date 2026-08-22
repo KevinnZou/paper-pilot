@@ -20,6 +20,14 @@ const PREFIX = 'paperpilot:';
 })();
 
 export function get(key, fallback = null) {
+  const scoped = globalThis.__paperpilotScopedStore;
+  if (scoped?.has?.(key)) {
+    try {
+      return scoped.read(key, fallback);
+    } catch {
+      return fallback;
+    }
+  }
   try {
     const raw = localStorage.getItem(PREFIX + key);
     return raw === null ? fallback : JSON.parse(raw);
@@ -29,6 +37,11 @@ export function get(key, fallback = null) {
 }
 
 export function set(key, value) {
+  const scoped = globalThis.__paperpilotScopedStore;
+  if (scoped?.has?.(key)) {
+    scoped.write(key, value);
+    return;
+  }
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(value));
   } catch (e) {
@@ -43,5 +56,10 @@ export function set(key, value) {
 }
 
 export function remove(key) {
+  const scoped = globalThis.__paperpilotScopedStore;
+  if (scoped?.has?.(key)) {
+    scoped.remove(key);
+    return;
+  }
   localStorage.removeItem(PREFIX + key);
 }

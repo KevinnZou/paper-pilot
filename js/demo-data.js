@@ -1,6 +1,6 @@
 // 演示数据：一键填充示例论文（题目/大纲/草稿/文献/打卡/素材），用于课程演示与体验
 // 注意：载入会覆盖当前本地数据（调用方需先确认）
-import { saveProject, getProject } from './project.js';
+import { saveProject, getProject, hasActiveProject, createProject } from './project.js';
 import { get, set } from './storage.js';
 
 const DAY = 86400000;
@@ -11,6 +11,7 @@ function iso(ms) {
 }
 
 export function loadDemoData() {
+  if (!hasActiveProject()) createProject({ title: '演示论文项目' });
   const due = new Date(Date.now() + 30 * DAY);
   const dueStr = iso(due.getTime());
   const chapters = ['第一章 绪论', '第二章 相关理论基础', '第三章 方法设计', '第四章 实验与结果分析', '第五章 总结与展望'];

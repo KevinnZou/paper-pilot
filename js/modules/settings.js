@@ -2,7 +2,7 @@
 import { getConfig, saveConfig, testConnection } from '../api.js';
 import { toast, setLoading, escapeHtml } from '../ui.js';
 import { get } from '../storage.js';
-import { getProject, updateBasics } from '../project.js';
+import { listProjects } from '../project.js';
 import { versionCount } from '../versions.js';
 import { loadDemoData, hasExistingData } from '../demo-data.js';
 
@@ -26,17 +26,20 @@ const abortSignal = () => window.__tmAbort.signal;
 export default {
   id: 'settings',
   icon: '⚙️',
-  title: '设置',
-  subtitle: 'API 配置与本地数据管理',
+  title: '应用设置',
+  subtitle: '模型配置、备份恢复与隐私说明',
 
   render(el) {
     const cfg = getConfig();
-    const p = getProject();
+    const projects = listProjects();
+    const totalCitations = projects.reduce((sum, p) => sum + (p.citations || []).length, 0);
+    const totalCheckins = projects.reduce((sum, p) => sum + (p.checkins || []).length, 0);
+    const totalDrafts = projects.reduce((sum, p) => sum + Object.keys(p.drafts || {}).length, 0);
 
     el.innerHTML = `
       <div class="card">
         <h2><span class="mark"></span>大模型 API 配置</h2>
-        <p class="desc">本应用无后端：请求从你的浏览器直接发送到模型服务商。Key 仅保存在本机浏览器 localStorage，不会上传到任何服务器。</p>
+        <p class="desc">论文数据默认仅存本机，无需登录。使用 AI 功能时，仅本次处理所需内容会从浏览器直接发送至你配置的模型服务商，PaperPilot 不经过自有服务器。</p>
 
         <label class="field-label">API Key</label>
         <div style="display:flex;gap:8px">
@@ -66,33 +69,8 @@ export default {
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn" id="cfg-save">保存配置</button>
           <button class="btn btn-ai" id="cfg-test">测试连接</button>
-          <button class="btn btn-ghost" id="cfg-back-home" style="display:none" data-nav="dashboard">回论文主页看下一步 →</button>
         </div>
         <div class="result-box" id="cfg-test-out"><span class="placeholder">测试结果将显示在这里</span></div>
-      </div>
-
-      <div class="card">
-        <h2><span class="mark"></span>论文基本信息</h2>
-        <p class="desc">这里是论文项目的主线信息（论文主页的数据来源），其他模块会预填并汇总到这里</p>
-        <div class="form-row">
-          <div>
-            <label class="field-label">论文题目</label>
-            <input type="text" id="cfg-p-title" value="${escapeHtml(p.title)}" placeholder="例如：基于大语言模型的智能客服满意度研究">
-          </div>
-          <div>
-            <label class="field-label">学位类型</label>
-            <select id="cfg-p-degree">
-              <option value="">未设置</option>
-              <option value="本科论文">本科论文</option><option value="硕士论文">硕士论文</option>
-              <option value="博士论文">博士论文</option><option value="课程论文">课程论文</option>
-            </select>
-          </div>
-        </div>
-        <label class="field-label">论文截止日期</label>
-        <input type="date" id="cfg-p-due" value="${p.dueDate || ''}">
-        <div style="margin-top:14px">
-          <button class="btn" id="cfg-p-save">保存论文信息</button>
-        </div>
       </div>
 
       <div class="card">
@@ -103,18 +81,18 @@ export default {
 
       <div class="card">
         <h2><span class="mark"></span>数据备份</h2>
-        <p class="desc">当前本地：文献 <b>${get('citations', []).length}</b> 条 · 打卡 <b>${get('checkins', []).length}</b> 天 · 草稿 <b>${Object.keys(get('drafts', {})).length}</b> 章 · 版本 <b>${versionCount()}</b> 份。所有数据存在浏览器本地——导出成文件，换电脑、清缓存都不丢论文。</p>
+        <p class="desc">当前本地：项目 <b>${projects.length}</b> 个 · 文献 <b>${totalCitations}</b> 条 · 打卡 <b>${totalCheckins}</b> 天 · 草稿 <b>${totalDrafts}</b> 章 · 版本 <b>${versionCount()}</b> 份。所有数据存在浏览器本地——导出成文件，换电脑、清缓存都不丢论文。</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn" id="cfg-export">导出备份文件</button>
           <button class="btn btn-ghost" id="cfg-import-btn">导入并恢复</button>
           <input type="file" id="cfg-import" accept=".json,application/json" style="display:none">
         </div>
-        <p class="hint">备份文件包含论文、草稿、文献、打卡与 API 配置（含你的 API Key），请妥善保管、勿外传。</p>
+        <p class="hint">备份默认包含项目数据和应用设置。API Key 属于敏感信息，请谨慎保管备份文件。</p>
       </div>
 
       <div class="card">
         <h2><span class="mark"></span>本地数据</h2>
-        <p class="desc">文献库、写作计划、打卡记录均保存在本机浏览器中。</p>
+        <p class="desc">AI 请求发送至模型服务商；文献检索请求发送至 CrossRef / OpenAlex；PaperPilot 自身无服务器存储正文。</p>
         <button class="btn btn-danger" id="cfg-clear">清除全部本地数据</button>
       </div>`;
 
@@ -130,12 +108,6 @@ export default {
     provider.addEventListener('change', () => {
       customWrap.style.display = provider.value === '__custom__' ? 'block' : 'none';
     });
-
-    // 回显已保存的学位类型
-    const pDegree = el.querySelector('#cfg-p-degree');
-    if (p.degreeType && [...pDegree.options].some(o => o.value === p.degreeType)) {
-      pDegree.value = p.degreeType;
-    }
 
     el.querySelector('#cfg-key-toggle').addEventListener('click', () => {
       const inp = el.querySelector('#cfg-key');
@@ -157,30 +129,11 @@ export default {
       return true;
     }
 
-    // 「回主页看下一步」引导：已配 Key 且旅程未完成（无论文题目）时显示，避免新用户配置完不知道下一步去哪（KR1）
-    const backHomeBtn = el.querySelector('#cfg-back-home');
-    const syncBackHome = () => {
-      backHomeBtn.style.display = (getConfig().apiKey && !getProject().title) ? '' : 'none';
-    };
-    backHomeBtn.addEventListener('click', () =>
-      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' })));
-    syncBackHome();
-
     el.querySelector('#cfg-save').addEventListener('click', () => {
       if (saveFromForm()) {
         toast('配置已保存（仅存本机浏览器）', 'ok');
         document.dispatchEvent(new Event('tm:config-changed'));
-        syncBackHome();
       }
-    });
-
-    el.querySelector('#cfg-p-save').addEventListener('click', () => {
-      updateBasics({
-        title: el.querySelector('#cfg-p-title').value.trim(),
-        degreeType: el.querySelector('#cfg-p-degree').value,
-        dueDate: el.querySelector('#cfg-p-due').value,
-      });
-      toast('论文信息已保存', 'ok');
     });
 
     el.querySelector('#cfg-test').addEventListener('click', async () => {

@@ -252,5 +252,6 @@ export default {
   icon: '🧭',
   title: '选题与大纲',
   subtitle: '从方向到框架，理清论文第一步',
+  projectScoped: true,
   render,
 };

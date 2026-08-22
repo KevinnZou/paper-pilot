@@ -1029,5 +1029,6 @@ export default {
   icon: '✍️',
   title: '写作工作台',
   subtitle: '一份完整论文文档：目录定位、序号引用、文末文献自动生成',
+  projectScoped: true,
   render,
 };

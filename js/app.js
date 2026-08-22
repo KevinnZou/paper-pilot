@@ -1,36 +1,41 @@
 // PaperPilot 应用入口：导航、模块挂载、全局状态
+import projects from './modules/projects.js';
 import dashboard from './modules/dashboard.js';
 import topic from './modules/topic.js';
 import writing from './modules/writing.js';
 import citation from './modules/citation.js';
 import planner from './modules/planner.js';
+import projectSettings from './modules/project-settings.js';
 import settings from './modules/settings.js';
 import { ICONS } from './icons.js';
 import { getConfig } from './api.js';
-import { getProject } from './project.js';
+import { getProject, hasActiveProject } from './project.js';
 
-const MODULES = [dashboard, topic, writing, citation, planner, settings];
+const MODULES = [projects, dashboard, topic, citation, writing, planner, projectSettings, settings];
 const container = document.getElementById('module-container');
 const navEl = document.getElementById('nav');
 
 function renderNav() {
   navEl.innerHTML = '';
-  MODULES.filter(m => m.id !== 'settings').forEach(m => {
+  const visible = MODULES.filter(m => m.id !== 'settings')
+    .filter(m => m.id === 'projects' || hasActiveProject());
+  visible.forEach(m => {
     const btn = document.createElement('button');
     btn.className = 'nav-item';
     btn.dataset.module = m.id;
-    btn.innerHTML = `<span class="nav-icon">${ICONS[m.id] || ''}</span><span>${m.title}</span>`;
+    btn.innerHTML = `<span class="nav-icon">${ICONS[m.id] || ICONS.settings || ''}</span><span>${m.title}</span>`;
     // 导航统一走 tm:navigate 事件（与页内 data-nav 一致），供模块监听（如中断 AI 请求）
     btn.addEventListener('click', () =>
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: m.id })));
     navEl.appendChild(btn);
   });
   document.getElementById('nav-settings').innerHTML =
-    `<span class="nav-icon">${ICONS.settings}</span><span>设置</span>`;
+    `<span class="nav-icon">${ICONS.settings}</span><span>应用设置</span>`;
 }
 
 export function switchModule(id) {
-  const m = MODULES.find(x => x.id === id) || MODULES[0];
+  const target = MODULES.find(x => x.id === id) || MODULES[0];
+  const m = (!hasActiveProject() && target.projectScoped) ? projects : target;
   document.querySelectorAll('.nav-item').forEach(b =>
     b.classList.toggle('active', b.dataset.module === m.id));
   document.getElementById('nav-settings').classList.toggle('active', m.id === 'settings');
@@ -70,11 +75,17 @@ function updateApiPill() {
 // 顶部论文徽标：显示当前论文（项目主线，链路④）
 function updateProjectBadge() {
   const badge = document.getElementById('project-badge');
+  if (!hasActiveProject()) {
+    badge.textContent = '未打开项目';
+    badge.title = '还没有创建或选择论文项目';
+    badge.classList.remove('ready');
+    return;
+  }
   const p = getProject();
   const t = p.title.trim();
-  badge.textContent = t ? `论文 · ${t.length > 12 ? t.slice(0, 12) + '…' : t}` : '未设置论文';
-  badge.title = t || '未设置论文';
-  badge.classList.toggle('ready', !!t);
+  badge.textContent = t ? `项目 · ${t.length > 12 ? t.slice(0, 12) + '…' : t}` : '未命名项目';
+  badge.title = t || '未命名项目';
+  badge.classList.add('ready');
 }
 
 // 模块间跳转：任何模块可通过事件导航（dispatchEvent('tm:navigate', {detail: 'topic'})）
@@ -83,11 +94,12 @@ document.addEventListener('tm:navigate', e => switchModule(e.detail));
 document.addEventListener('tm:config-changed', updateApiPill);
 // 论文项目变化时刷新徽标
 document.addEventListener('tm:project-changed', updateProjectBadge);
+document.addEventListener('tm:projects-changed', renderNav);
 
 document.getElementById('nav-settings').addEventListener('click', () =>
   document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'settings' })));
 
 renderNav();
-switchModule('dashboard');
+switchModule(hasActiveProject() ? 'dashboard' : 'projects');
 updateApiPill();
 updateProjectBadge();

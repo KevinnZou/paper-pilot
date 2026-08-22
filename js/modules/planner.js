@@ -173,5 +173,6 @@ export default {
   icon: '📅',
   title: '计划与进度',
   subtitle: '甘特图、倒计时、打卡，对抗拖延',
+  projectScoped: true,
   render,
 };

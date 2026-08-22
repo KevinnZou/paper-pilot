@@ -1,9 +1,5 @@
-// 草稿版本管理：按章节版本链 + 整文档里程碑，localStorage 持久化（设计文档 version-management-design.html）
-// 容量：总量 1.2MB 硬上限 → 淘汰最旧 auto 档至 900KB 以下；永不触碰 drafts/project 等主数据
-// 备份兼容：设置页按 paperpilot: 前缀全量遍历，versions 自动随导出/导入/清除走
-import { get, set } from './storage.js';
-
-const KEY = 'versions';
+// 草稿版本管理：按章节版本链 + 整文档里程碑，V4 Phase 1 起绑定到活动项目。
+import { getVersionsStore, saveVersionsStore } from './project.js';
 const CHAPTER_CAP = 10;          // 每章最多保留版本数
 const DOC_CAP = 5;               // 整文档里程碑上限
 const EVICT_AT = 1.2 * 1024 * 1024;   // 总量触发淘汰阈值
@@ -12,14 +8,14 @@ const EVICT_TO = 900 * 1024;          // 淘汰目标水位
 function blank() { return { chapters: {}, doc: [] }; }
 
 function store() {
-  const s = get(KEY, blank());
+  const s = getVersionsStore();
   s.chapters = s.chapters || {};
   s.doc = Array.isArray(s.doc) ? s.doc : [];
   return s;
 }
 
 function persist(s) {
-  set(KEY, s);
+  saveVersionsStore(s);
   evictIfNeeded();
 }
 
@@ -113,7 +109,7 @@ function evictIfNeeded() {
   }
 }
 
-function persistNoEvict(s) { set(KEY, s); }
+function persistNoEvict(s) { saveVersionsStore(s); }
 
 /** 其余章节名（版本存在但当前大纲没有的章节） */
 export function orphanChapters(outlineNames) {
