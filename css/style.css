@@ -2544,3 +2544,13 @@ kbd {
 .oc-plan-item b { font-size: 13px; color: var(--ink); font-weight: 600; line-height: 1.5; }
 .oc-outline { max-height: 240px; overflow-y: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: var(--ink); white-space: pre-wrap; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 @media (max-width: 560px) { .oc-plan-grid { grid-template-columns: 1fr; } }
+
+/* 检查导出：导出摘要（干净网格） */
+.export-summary { margin-top: 16px; }
+.export-summary-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 8px; }
+.export-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.export-summary-item { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
+.export-summary-item span { display: block; font-size: 11px; color: var(--mute); margin-bottom: 3px; }
+.export-summary-item b { font-size: 12.5px; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.export-summary-title { grid-column: 1 / -1; }
+@media (max-width: 560px) { .export-summary-grid { grid-template-columns: 1fr; } .export-summary-title { grid-column: auto; } }

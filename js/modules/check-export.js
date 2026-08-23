@@ -231,12 +231,15 @@ export default {
     el.innerHTML = `
       <div class="card check-summary-card">
         <h2><span class="mark"></span>检查概览</h2>
-        <p class="desc">先把最影响提交质量的问题挑出来，再决定是否导出。</p>
+        <p class="desc">进入页面时已按当前数据自动检查一次；改动后可点「重新检查」。</p>
         <div class="hero-stats">
           <div class="stat"><span class="stat-num">${summary.structure}</span><span class="stat-label">结构问题</span></div>
           <div class="stat"><span class="stat-num">${summary.logic}</span><span class="stat-label">逻辑问题</span></div>
           <div class="stat"><span class="stat-num">${summary.citation}</span><span class="stat-label">引用问题</span></div>
           <div class="stat"><span class="stat-num">${summary.format}</span><span class="stat-label">格式问题</span></div>
+        </div>
+        <div class="result-actions" style="margin-top:16px">
+          <button class="btn btn-ghost btn-sm" id="ce-recheck">重新检查</button>
         </div>
       </div>
 
@@ -258,12 +261,14 @@ export default {
             <button class="btn btn-ghost" id="ce-html">导出 HTML</button>
             <button class="btn btn-ghost" id="ce-pdf">排版预览 / PDF</button>
           </div>
-          <div class="result-box filled" style="margin-top:16px">
-            <span class="sample-tag">导出摘要</span>
-            标题：${escapeHtml(project.title || '未命名论文')}<br>
-            章节数：${state.outline.length}<br>
-            引用数：${buildCitationNumberMap(doc).size}<br>
-            证据卡：${getEvidence().length}
+          <div class="export-summary">
+            <div class="export-summary-label">导出摘要</div>
+            <div class="export-summary-grid">
+              <div class="export-summary-item export-summary-title"><span>标题</span><b>${escapeHtml(project.title || '未命名论文')}</b></div>
+              <div class="export-summary-item"><span>章节数</span><b>${state.outline.length}</b></div>
+              <div class="export-summary-item"><span>引用数</span><b>${buildCitationNumberMap(doc).size}</b></div>
+              <div class="export-summary-item"><span>证据卡</span><b>${getEvidence().length}</b></div>
+            </div>
           </div>
         </div>
       </div>
@@ -273,6 +278,8 @@ export default {
         <div class="result-box filled" style="max-height:520px;overflow:auto">${previewHtml}</div>
       </div>`;
 
+    el.querySelector('#ce-recheck')?.addEventListener('click', () =>
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'checkExport' })));
     el.querySelectorAll('[data-issue-go]').forEach(btn =>
       btn.addEventListener('click', () => {
         const item = issues[Number(btn.dataset.issueGo)];
