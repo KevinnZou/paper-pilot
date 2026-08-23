@@ -1240,6 +1240,12 @@ kbd {
 .wb-side-actions .btn {
   min-width: 0;
 }
+.wb-side-label {
+  display: flex; align-items: center; gap: 8px;
+  margin: 14px 0 6px;
+  font-size: 11px; letter-spacing: .06em; color: var(--ink-soft);
+}
+.wb-side-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .wb-side-switcher {
   position: relative;
   border: 1px solid var(--line);

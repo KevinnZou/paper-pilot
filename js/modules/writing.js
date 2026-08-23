@@ -3,7 +3,7 @@ import { EditorView } from 'prosemirror-view';
 import { history, undo, redo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { Fragment } from 'prosemirror-model';
-import { toast, integrityNote, escapeHtml, setLoading, copyText } from '../ui.js';
+import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } from '../ui.js';
 import { chat } from '../api.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
 import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
@@ -124,6 +124,19 @@ function currentSectionText(view) {
   const sec = sectionForPos(view.state.doc, view.state.selection.from);
   if (!sec) return '';
   return view.state.doc.textBetween(sec.bodyFrom, sec.bodyTo, '\n').trim();
+}
+
+// 选中范围是否命中题名/章节标题（标题会被回写项目结构，禁止 AI 改写）
+function selectionHitsHeading(view) {
+  const { state } = view;
+  const from = state.selection.from;
+  const to = state.selection.to;
+  if (!(to > from)) return false;
+  let hit = false;
+  state.doc.nodesBetween(from, to, n => {
+    if (n.type.name === 'heading' && (n.attrs.role === 'title' || n.attrs.role === 'section')) hit = true;
+  });
+  return hit;
 }
 
 function buildPreviewHtml(doc, citations) {
@@ -1614,9 +1627,13 @@ export default {
           <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${prev?.sectionId || ''}" ${prev ? '' : 'disabled'}>上一章</button>
           <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${next?.sectionId || ''}" ${next ? '' : 'disabled'}>下一章</button>
         </div>
+        <div class="wb-side-label">结构调整</div>
         <div class="wb-side-actions">
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="up" ${prev ? '' : 'disabled'}>上移</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="down" ${next ? '' : 'disabled'}>下移</button>
+        </div>
+        <div class="wb-side-label">编辑本章</div>
+        <div class="wb-side-actions">
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="rename">改标题</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="before">前插一章</button>
           <button class="btn btn-ghost btn-sm" type="button" data-section-action="after">后加一章</button>
@@ -1838,7 +1855,7 @@ export default {
           actionId: action.id,
           label: action.label,
           original: sourceText,
-          suggestion: reply.trim(),
+          suggestion: cleanAiText(reply),
           replaceFrom,
           replaceTo,
           sourceLabel,
@@ -1897,6 +1914,10 @@ export default {
       const action = AI_ACTIONS.find(item => item.id === btn.dataset.ai);
       if (!action) return;
       const text = selectionText(viewState.view);
+      if (action.mode === 'selection' && selectionHitsHeading(viewState.view)) {
+        toast('选中内容包含题名/章节标题。标题会同步回写项目结构，请不要对标题做 AI 改写', 'err', 3600);
+        return;
+      }
       if (action.mode === 'selection' && !text) {
         toast('请先在编辑器中选中要处理的文字', 'err');
         return;
@@ -1941,7 +1962,7 @@ export default {
           actionId: 'draft',
           label: `本章草稿建议 · ${section.chapter}`,
           original: currentText,
-          suggestion: reply.trim(),
+          suggestion: cleanAiText(reply),
           replaceFrom: section.bodyFrom,
           replaceTo: section.bodyTo,
         };
