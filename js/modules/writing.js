@@ -218,15 +218,24 @@ function openPrintPreview(doc, citations) {
 }
 
 function citationViewFactory(getLabel) {
-  return () => ({
-    dom: document.createElement('span'),
-    update(node) {
-      this.dom.className = 'pm-citation';
-      this.dom.setAttribute('data-citation-id', node.attrs.citationId);
-      this.dom.textContent = `[${getLabel(node.attrs.citationId)}]`;
-      return true;
-    },
-  });
+  return (node) => {
+    const dom = document.createElement('span');
+    const sync = () => {
+      dom.className = 'pm-citation';
+      dom.setAttribute('data-citation-id', node.attrs.citationId);
+      dom.textContent = `[${getLabel(node.attrs.citationId)}]`;
+    };
+    // 首次渲染时 view 可能尚未赋值（getLabel 读到 null state），先兜底，后续 update 纠正确编号
+    try { sync(); } catch { dom.className = 'pm-citation'; dom.setAttribute('data-citation-id', node.attrs.citationId); dom.textContent = '[?]'; }
+    return {
+      dom,
+      update(nextNode) {
+        node = nextNode;
+        sync();
+        return true;
+      },
+    };
+  };
 }
 
 function footnoteViewFactory(getLabel, openEditor) {
@@ -961,7 +970,9 @@ export default {
     }
 
     function getCitationNumber(id) {
-      const map = buildCitationNumberMap(viewState.view.state.doc);
+      // nodeView 首次渲染时 viewState.view 尚未赋值；用初始 editorState.doc 兜底即可算对编号
+      const doc = viewState.view ? viewState.view.state.doc : editorState.doc;
+      const map = buildCitationNumberMap(doc);
       return map.get(id) || '?';
     }
 
