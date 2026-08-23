@@ -1673,6 +1673,15 @@ export default {
       ],
     });
 
+    function refreshCitationNumbers() {
+      if (!viewState.view) return;
+      const map = buildCitationNumberMap(viewState.view.state.doc);
+      el.querySelectorAll('.pm-editor .pm-citation').forEach(dom => {
+        const id = dom.getAttribute('data-citation-id');
+        if (id) dom.textContent = `[${map.get(id) || '?'}]`;
+      });
+    }
+
     viewState.view = new EditorView(el.querySelector('#wb-editor'), {
       state: editorState,
       nodeViews: {
@@ -1685,6 +1694,7 @@ export default {
       dispatchTransaction(tr) {
         const nextState = viewState.view.state.apply(tr);
         viewState.view.updateState(nextState);
+        refreshCitationNumbers();
         syncCurrentChapter();
         if (saveTimer) clearTimeout(saveTimer);
         setSaveStatus('saving');
@@ -1693,6 +1703,7 @@ export default {
     });
 
     syncCurrentChapter();
+    refreshCitationNumbers();
     renderOutline();
     renderCitationPicker();
     renderEvidencePanel();

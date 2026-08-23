@@ -240,23 +240,25 @@ function renderPlanSummary(design) {
   const question = selectedQuestion(design);
   const method = selectedMethod(design);
   const data = selectedDataSource(design);
+  const planIncomplete = !(question?.question || method || data);
   return `
+    ${planIncomplete ? `<div class="topic-summary-notice">研究方案（研究问题/方法/数据来源）尚未单独设定。若已选定大纲可直接采用，或回到「定方案」步完善。 <button class="btn btn-ghost btn-sm" type="button" data-go-step="2">去定方案</button></div>` : ``}
     <div class="topic-summary-grid">
       <div class="topic-summary-item">
         <span>论文题目</span>
-        <b>${escapeHtml(design.title || '未选择')}</b>
+        <b>${escapeHtml(design.title || '未设定')}</b>
       </div>
       <div class="topic-summary-item">
         <span>研究问题</span>
-        <b>${escapeHtml(question?.question || '未选择')}</b>
+        <b>${escapeHtml(question?.question || '未单独设定')}</b>
       </div>
       <div class="topic-summary-item">
         <span>研究方法</span>
-        <b>${escapeHtml(method || '未选择')}</b>
+        <b>${escapeHtml(method || '未单独设定')}</b>
       </div>
       <div class="topic-summary-item">
         <span>数据来源</span>
-        <b>${escapeHtml(data || '未选择')}</b>
+        <b>${escapeHtml(data || '未单独设定')}</b>
       </div>
     </div>
     ${design.objectives.length ? `<div class="topic-mini-block"><h4>研究目标</h4><ul>${design.objectives.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>` : ''}

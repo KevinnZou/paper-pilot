@@ -989,13 +989,12 @@ kbd {
   margin-top: 16px;
 }
 .focus-check {
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--ink);
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 13px; color: var(--ink-soft); line-height: 1.6;
+}
+.focus-check::before {
+  content: ''; flex: 0 0 auto; width: 6px; height: 6px; margin-top: 7px;
+  border-radius: 50%; background: var(--line-strong);
 }
 
 /* 写作之旅：线性轨道节点（节点坐在贯穿轨道上） */
@@ -2484,3 +2483,11 @@ kbd {
 
 /* 结构操作菜单：默认收起（hidden 需压过 display:grid） */
 .wb-ch-ops[hidden] { display: none; }
+
+/* 研究设计：方案摘要为空时提示 */
+.topic-summary-notice {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 14px; padding: 9px 12px;
+  border-left: 3px solid var(--amber); background: var(--amber-soft);
+  border-radius: 4px; font-size: 13px; color: var(--ink-soft);
+}
