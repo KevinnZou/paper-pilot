@@ -71,7 +71,18 @@ export default {
 
         <div class="result-actions">
           <button class="btn" id="ps-save">保存项目设置</button>
-          <button class="btn btn-ghost" id="ps-next">去研究设计</button>
+          <button class="btn btn-ghost" id="ps-next">${(p.outline || []).length ? '去写作工作台' : '去研究设计'}</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="mark"></span>研究方案</h2>
+        <p class="desc">研究设计（选题、研究问题、方法与数据来源）在采用大纲后在此查看。章节结构调整请在「写作工作台」进行。</p>
+        <div class="topic-summary-grid">
+          <div class="topic-summary-item"><span>研究问题</span><b>${escapeHtml((p.researchDesign?.researchQuestions?.[0]?.question) || '未单独设定')}</b></div>
+          <div class="topic-summary-item"><span>研究方法</span><b>${escapeHtml((p.researchDesign?.methods?.[0]) || '未单独设定')}</b></div>
+          <div class="topic-summary-item"><span>数据来源</span><b>${escapeHtml((p.researchDesign?.dataSources?.[0]) || '未单独设定')}</b></div>
+          <div class="topic-summary-item"><span>关键词</span><b>${escapeHtml(p.researchDesign?.keywords || '未设置')}</b></div>
         </div>
       </div>`;
 
@@ -88,7 +99,9 @@ export default {
       toast('项目设置已保存', 'ok');
     });
 
-    el.querySelector('#ps-next').addEventListener('click', () =>
-      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' })));
+    el.querySelector('#ps-next').addEventListener('click', () => {
+      const target = (getProject().outline || []).length ? 'writing' : 'topic';
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: target }));
+    });
   },
 };

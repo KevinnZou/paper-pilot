@@ -1118,6 +1118,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       });
       updateBasics({ title: current.title || getProject().title, degreeType: getProject().degreeType });
       toast(`已采用大纲（${chapters.length} 章），正在进入论文写作`, 'ok');
+      document.dispatchEvent(new Event('tm:projects-changed')); // 研究设计完成 -> 从导航隐藏
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'writing' }));
       return true;
     }

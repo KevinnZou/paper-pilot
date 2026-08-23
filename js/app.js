@@ -26,10 +26,16 @@ function applySidebarCollapsed(collapsed) {
   }
 }
 
+function researchDesignComplete() {
+  // 研究设计是一次性初始化：大纲已采用即视为完成，不再常驻导航
+  return !!(getProject().outline || []).length;
+}
+
 function renderNav() {
   navEl.innerHTML = '';
   const visible = MODULES.filter(m => m.id !== 'settings')
-    .filter(m => m.id === 'projects' || hasActiveProject());
+    .filter(m => m.id === 'projects' || hasActiveProject())
+    .filter(m => m.id !== 'topic' || !researchDesignComplete());
   visible.forEach(m => {
     const btn = document.createElement('button');
     btn.className = 'nav-item';
@@ -114,7 +120,16 @@ document.addEventListener('tm:navigate', e => switchModule(e.detail));
 // 配置变化时刷新状态指示
 document.addEventListener('tm:config-changed', updateApiPill);
 // 论文项目变化时刷新徽标
-document.addEventListener('tm:project-changed', updateProjectBadge);
+// 论文项目变化时刷新徽标；研究设计完成态变化时刷新导航（隐藏/显示"研究设计"）
+let lastResearchComplete = null;
+document.addEventListener('tm:project-changed', () => {
+  updateProjectBadge();
+  const complete = researchDesignComplete();
+  if (complete !== lastResearchComplete) {
+    lastResearchComplete = complete;
+    renderNav();
+  }
+});
 document.addEventListener('tm:projects-changed', renderNav);
 
 document.getElementById('nav-settings').addEventListener('click', () =>
