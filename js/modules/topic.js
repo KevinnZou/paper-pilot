@@ -603,10 +603,9 @@ function render(el) {
             <p class="desc">每次只回答一个问题。点一个答案就进入下一问，不需要再点确认。</p>
           </div>
           <div class="result-actions topic-step-actions" style="margin:0 0 12px">
-            <button class="btn btn-ghost btn-sm" id="rd-plan-retry">重新生成这一轮方案</button>
+            <button class="btn btn-ghost btn-sm" id="rd-plan-retry">换一批方案</button>
           </div>
           ${renderPlanQuestionnaire(design)}
-          ${feedbackBlock('rd-plan-feedback', '例如：问题太宏观，想更偏管理效能；方法不要实验法，想偏案例或访谈', '结合这些意见重生成方案')}
         </section>
         ` : (design.planStatus === 'idle' ? '<div class="topic-empty">正在准备研究方案问卷…</div>' : '')}
       </section>`;
@@ -645,7 +644,6 @@ function render(el) {
             <label class="field-label" for="outline-editor">编辑大纲（可直接改章节名、增删二级标题）</label>
             <textarea id="outline-editor" class="topic-outline-textarea" placeholder="先生成大纲，然后你可以直接调整章节名、增删二级标题。"></textarea>
           </div>
-          ${feedbackBlock('outline-feedback', '例如：理论部分太重，想更偏案例分析；第三章想拆成现状与问题两节', '按这些意见重生成大纲')}
         </section>
         ${integrityNote()}
       </section>`;
@@ -955,14 +953,6 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
 
     el.querySelector('#rd-plan-gen')?.addEventListener('click', () => generatePlan());
     el.querySelector('#rd-plan-retry')?.addEventListener('click', () => generatePlan());
-    el.querySelector('#rd-plan-feedback-submit')?.addEventListener('click', () => {
-      const feedback = el.querySelector('#rd-plan-feedback')?.value.trim();
-      if (!feedback) {
-        toast('先告诉我哪里不满意，比如太泛、太虚、方法不合适', 'err');
-        return;
-      }
-      generatePlan(feedback);
-    });
     if (design.planStatus === 'idle') {
       generatePlan();
       return;
@@ -1060,15 +1050,6 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       const adoptBtn = el.querySelector('#outline-adopt');
       if (copyBtn) copyBtn.disabled = !value.trim();
       if (adoptBtn) adoptBtn.disabled = !value.trim();
-    });
-
-    el.querySelector('#outline-feedback-submit')?.addEventListener('click', () => {
-      const feedback = el.querySelector('#outline-feedback')?.value.trim();
-      if (!feedback) {
-        toast('写一句你想怎么改，我按这个方向重生成', 'err');
-        return;
-      }
-      generateOutline(feedback);
     });
 
     el.querySelector('#outline-copy').addEventListener('click', () => {
