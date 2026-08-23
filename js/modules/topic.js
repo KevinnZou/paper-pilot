@@ -619,36 +619,34 @@ function render(el) {
             <span class="chip ${project.outline.length ? 'done' : 'doing'}">${project.outline.length ? '大纲已采用' : '当前阶段'}</span>
           </div>
         </div>
-        <div class="topic-outline-layout">
-          <section class="topic-candidate-section topic-outline-main">
-            <div class="topic-candidate-head">
+        <details class="topic-plan-summary">
+          <summary>已确定方案（题目 / 研究问题 / 方法 / 数据来源）</summary>
+          <div class="topic-primary-panel">
+            <h3>方案摘要</h3>
+            ${renderPlanSummary(design)}
+          </div>
+        </details>
+        <section class="topic-candidate-section">
+          <div class="topic-candidate-head topic-candidate-head-actions">
+            <div>
               <h3>生成并微调大纲</h3>
               <p class="desc">先生成一版，再直接改文字，处理完就可以去正式写作。</p>
             </div>
-            <div class="result-actions" style="margin:0 0 16px">
-              <button class="btn btn-ai-solid" id="outline-gen">生成论文大纲</button>
+            <div class="topic-outline-actions">
+              <button class="btn btn-ghost btn-sm" id="outline-gen">生成大纲</button>
               <button class="btn btn-ghost btn-sm" id="outline-copy" ${project.outline.length ? '' : 'disabled'}>复制文本</button>
-              <button class="btn" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>${project.outline.length ? '采用当前编辑稿' : '采用此大纲'}</button>
+              <button class="btn btn-sm" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>${project.outline.length ? '采用当前编辑稿' : '采用大纲'}</button>
             </div>
-            <details class="topic-outline-preview">
-              <summary>预览大纲结构</summary>
-              <div id="outline-out">${renderOutlinePreview('')}</div>
-            </details>
-            <div class="topic-outline-editor">
-              <label class="field-label" for="outline-editor">编辑大纲（可直接改章节名、增删二级标题）</label>
-              <textarea id="outline-editor" class="topic-outline-textarea" placeholder="先生成大纲，然后你可以直接调整章节名、增删二级标题。"></textarea>
-            </div>
-          </section>
-          <aside class="topic-outline-side">
-            <details class="topic-plan-summary">
-              <summary>已确定方案</summary>
-              <div class="topic-primary-panel">
-                ${renderPlanSummary(design)}
-              </div>
-            </details>
-            <div class="topic-outline-tip">点「生成论文大纲」→ 在下方直接改章节 → 点「采用此大纲」进入写作。</div>
-          </aside>
-        </div>
+          </div>
+          <details class="topic-outline-preview">
+            <summary>预览大纲结构</summary>
+            <div id="outline-out">${renderOutlinePreview('')}</div>
+          </details>
+          <div class="topic-outline-editor">
+            <label class="field-label" for="outline-editor">编辑大纲（可直接改章节名、增删二级标题）</label>
+            <textarea id="outline-editor" class="topic-outline-textarea" placeholder="先生成大纲，然后你可以直接调整章节名、增删二级标题。"></textarea>
+          </div>
+        </section>
         ${integrityNote()}
       </section>`;
   }
