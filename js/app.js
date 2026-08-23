@@ -15,6 +15,16 @@ import { getProject, hasActiveProject, projectStoreReady } from './project.js';
 const MODULES = [projects, dashboard, topic, citation, writing, planner, checkExport, projectSettings, settings];
 const container = document.getElementById('module-container');
 const navEl = document.getElementById('nav');
+const sidebarToggleEl = document.getElementById('sidebar-toggle');
+
+function applySidebarCollapsed(collapsed) {
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+  if (sidebarToggleEl) {
+    sidebarToggleEl.textContent = collapsed ? '⇥' : '⇤';
+    sidebarToggleEl.title = collapsed ? '展开导航栏' : '收起导航栏';
+    sidebarToggleEl.setAttribute('aria-label', collapsed ? '展开导航栏' : '收起导航栏');
+  }
+}
 
 function renderNav() {
   navEl.innerHTML = '';
@@ -37,6 +47,7 @@ function renderNav() {
 export function switchModule(id) {
   const target = MODULES.find(x => x.id === id) || MODULES[0];
   const m = (!hasActiveProject() && target.projectScoped) ? projects : target;
+  document.body.dataset.module = m.id;
   document.querySelectorAll('.nav-item').forEach(b =>
     b.classList.toggle('active', b.dataset.module === m.id));
   document.getElementById('nav-settings').classList.toggle('active', m.id === 'settings');
@@ -100,7 +111,14 @@ document.addEventListener('tm:projects-changed', renderNav);
 document.getElementById('nav-settings').addEventListener('click', () =>
   document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'settings' })));
 
+sidebarToggleEl?.addEventListener('click', () => {
+  const collapsed = !document.body.classList.contains('sidebar-collapsed');
+  applySidebarCollapsed(collapsed);
+  window.localStorage.setItem('paperpilot.sidebarCollapsed', collapsed ? '1' : '0');
+});
+
 await projectStoreReady;
+applySidebarCollapsed(window.localStorage.getItem('paperpilot.sidebarCollapsed') === '1');
 renderNav();
 switchModule(hasActiveProject() ? 'dashboard' : 'projects');
 updateApiPill();

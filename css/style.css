@@ -64,11 +64,36 @@ body {
 .sidebar {
   width: 228px; flex-shrink: 0; background: var(--side-bg);
   display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  transition: width .18s ease;
 }
-.brand { display: flex; gap: 11px; align-items: center; padding: 24px 20px 20px; }
+.brand {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 20px 16px 18px;
+}
+.brand-main {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  min-width: 0;
+}
 .brand-seal { display: flex; }
+.brand-copy { min-width: 0; }
 .brand-name { color: #fff; font-family: var(--font-serif); font-weight: 700; font-size: 17.5px; letter-spacing: .3px; line-height: 1.25; }
 .brand-sub { color: var(--side-text); font-size: 11px; letter-spacing: .4px; margin-top: 1px; }
+.sidebar-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--side-line);
+  background: rgba(255,255,255,.04);
+  color: var(--side-text-strong);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sidebar-toggle:hover { background: rgba(255,255,255,.08); }
 .nav { flex: 1; padding: 8px 12px; overflow-y: auto; }
 .nav-item {
   position: relative;
@@ -100,6 +125,40 @@ body {
 /* ---------- 主区域 ---------- */
 .main { flex: 1; min-width: 0; padding: 30px 40px 56px; }
 .module-container { max-width: 1140px; margin: 0 auto; }
+.module-writing .module-container,
+.module-writing .main-header {
+  max-width: 1320px;
+}
+body.sidebar-collapsed .sidebar {
+  width: 76px;
+}
+body.sidebar-collapsed .brand {
+  padding-inline: 12px;
+}
+body.sidebar-collapsed .brand-copy,
+body.sidebar-collapsed .nav-item span:not(.nav-icon),
+body.sidebar-collapsed .btn-side span:not(.nav-icon),
+body.sidebar-collapsed .side-note {
+  display: none;
+}
+body.sidebar-collapsed .brand-main {
+  justify-content: center;
+}
+body.sidebar-collapsed .nav {
+  padding-inline: 8px;
+}
+body.sidebar-collapsed .nav-item,
+body.sidebar-collapsed .btn-side {
+  justify-content: center;
+  padding-inline: 0;
+}
+body.sidebar-collapsed .sidebar-foot {
+  padding-inline: 8px;
+}
+body.sidebar-collapsed .module-writing .module-container,
+body.sidebar-collapsed .module-writing .main-header {
+  max-width: 1380px;
+}
 .main-header {
   max-width: 1140px; margin: 0 auto 24px;
   display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
@@ -1052,8 +1111,8 @@ kbd {
 }
 
 /* ---------- 写作工作台 ---------- */
-.workbench { display: grid; grid-template-columns: 208px minmax(0, 1fr) 244px; }
-.workbench.outline-collapsed { grid-template-columns: 56px minmax(0, 1fr) 244px; }
+.workbench { display: grid; grid-template-columns: 200px minmax(0, 1fr) 272px; }
+.workbench.outline-collapsed { grid-template-columns: 56px minmax(0, 1fr) 272px; }
 .wb-left, .wb-right { padding: 20px 16px; background: var(--surface-2); }
 .wb-left {
   border-right: 1px solid var(--line);
@@ -1068,6 +1127,7 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
 }
 .wb-center { padding: 20px 18px 20px 20px; min-width: 0; }
 .wb-left-expanded {
@@ -1168,28 +1228,45 @@ kbd {
   min-width: 0;
 }
 .wb-side-tabs {
-  display: inline-flex;
-  gap: 6px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #F5F1EA;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
 }
+.wb-side-tabs::-webkit-scrollbar { display: none; }
 .wb-side-tab {
   min-height: 32px;
   padding: 0 12px;
-  border: 0;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: transparent;
+  background: var(--surface);
   color: var(--ink-soft);
   font: inherit;
   font-size: 12.5px;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .wb-side-tab.active {
   background: var(--brand);
   color: #fff;
   font-weight: 600;
+  border-color: transparent;
+}
+.wb-side-pane-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+.wb-side-pane-head .desc {
+  margin: 0;
+}
+.wb-side-pane-head .wb-side-card-chip,
+.wb-side-pane-head .wb-side-chip {
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 .wb-side-pane {
   display: none;

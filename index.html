@@ -10,15 +10,18 @@
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <span class="brand-seal" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="30" height="30"><rect x="2" y="2" width="20" height="20" rx="3" fill="#C03B2D"/><text x="12" y="16.8" font-size="13" text-anchor="middle" fill="#fff" font-family="Songti SC, STSong, SimSun, serif" font-weight="700">文</text></svg>
-        </span>
-        <div>
-          <div class="brand-name">PaperPilot</div>
-          <div class="brand-sub">论文写作助手</div>
+        <div class="brand-main">
+          <span class="brand-seal" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="30" height="30"><rect x="2" y="2" width="20" height="20" rx="3" fill="#C03B2D"/><text x="12" y="16.8" font-size="13" text-anchor="middle" fill="#fff" font-family="Songti SC, STSong, SimSun, serif" font-weight="700">文</text></svg>
+          </span>
+          <div class="brand-copy">
+            <div class="brand-name">PaperPilot</div>
+            <div class="brand-sub">论文写作助手</div>
+          </div>
         </div>
+        <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="收起导航栏" title="收起导航栏">⇤</button>
       </div>
       <nav class="nav" id="nav"></nav>
       <div class="sidebar-foot">
