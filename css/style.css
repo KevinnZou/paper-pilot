@@ -2498,3 +2498,22 @@ kbd {
   border-radius: 4px; padding: 8px 10px; margin-bottom: 12px;
   font-size: 13px; line-height: 1.5;
 }
+
+/* 写作台右侧工具：常驻可见标签栏（替代折叠的"右侧工具 ▾"，提升可发现性） */
+.wb-side-tabs {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 10px 12px; margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #FCFBF8 0%, #F6F2EA 100%);
+}
+.wb-side-tab {
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink-soft);
+  font-size: 12.5px; line-height: 1; cursor: pointer;
+  white-space: nowrap; transition: background .15s, color .15s, border-color .15s;
+}
+.wb-side-tab:hover { color: var(--brand); border-color: var(--line-strong); }
+.wb-side-tab.active { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+@media (max-width: 980px) { .wb-side-tabs { padding: 8px 6px; } }

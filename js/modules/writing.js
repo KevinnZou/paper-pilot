@@ -718,24 +718,11 @@ export default {
 
           <aside class="wb-right">
             <div class="wb-side-card" id="wb-chapter-card"></div>
-            <details class="wb-side-switcher" id="wb-side-switcher">
-              <summary class="wb-side-switcher-trigger">
-                <div class="wb-side-switcher-copy">
-                  <span class="wb-side-switcher-kicker">右侧工具</span>
-                  <strong id="wb-side-switcher-label">写作助手</strong>
-                  <span class="wb-side-switcher-hint" id="wb-side-switcher-hint">查看 AI 建议，确认后再写回正文。</span>
-                </div>
-                <span class="wb-side-switcher-arrow" aria-hidden="true">▾</span>
-              </summary>
-              <div class="wb-side-switcher-menu">
-                ${Object.entries(SIDE_PANELS).map(([id, item]) => `
-                  <button class="wb-side-option ${id === 'assistant' ? 'active' : ''}" type="button" data-side-tab="${id}">
-                    <span class="wb-side-option-title">${item.label}</span>
-                    <span class="wb-side-option-hint">${item.hint}</span>
-                  </button>
-                `).join('')}
-              </div>
-            </details>
+            <div class="wb-side-tabs" role="tablist" aria-label="右侧工具">
+              ${Object.entries(SIDE_PANELS).map(([id, item]) => `
+                <button class="wb-side-tab ${id === 'assistant' ? 'active' : ''}" type="button" role="tab" aria-selected="${id === 'assistant'}" data-side-tab="${id}" title="${item.hint}">${item.label}</button>
+              `).join('')}
+            </div>
             <div class="wb-side-pane active" data-side-pane="assistant">
               <div id="wb-suggestion"></div>
             </div>
@@ -1433,11 +1420,12 @@ export default {
     function switchRightTab(tab) {
       panelState.activeRightTab = tab;
       const meta = SIDE_PANELS[tab] || SIDE_PANELS.assistant;
-      sideTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.sideTab === tab));
+      sideTabs.forEach(btn => {
+        const on = btn.dataset.sideTab === tab;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
       sidePanes.forEach(pane => pane.classList.toggle('active', pane.dataset.sidePane === tab));
-      if (sideSwitcherLabel) sideSwitcherLabel.textContent = meta.label;
-      if (sideSwitcherHint) sideSwitcherHint.textContent = meta.hint;
-      if (sideSwitcher) sideSwitcher.open = false;
     }
 
     function jumpToSection(sectionId) {

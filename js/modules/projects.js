@@ -148,8 +148,8 @@ export default {
         dueDate: dueInput.value || '',
       });
       closeCreateModal();
-      toast('论文项目已创建，下一步先补充项目设置', 'ok');
-      openProject(project.id, 'project-settings');
+      toast('论文项目已创建，先到论文主页开始写作', 'ok');
+      openProject(project.id, 'dashboard');
     }
 
     el.querySelector('#pc-new')?.addEventListener('click', openCreateModal);
