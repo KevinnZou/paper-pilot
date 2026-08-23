@@ -613,29 +613,22 @@ function render(el) {
           <div>
             <div class="topic-step-label">Step 3</div>
             <h2><span class="mark"></span>生成并采用论文大纲</h2>
-            <p class="desc">大纲会根据已确定的研究方案生成。你可以直接修改章节，采用后同步到写作工作台。</p>
+            <p class="desc">下面已按研究方案自动生成一版大纲。你可以直接修改章节，确认后一次性采用到写作工作台。</p>
           </div>
           <div class="topic-head-side">
             <span class="chip ${project.outline.length ? 'done' : 'doing'}">${project.outline.length ? '大纲已采用' : '当前阶段'}</span>
           </div>
         </div>
-        <details class="topic-plan-summary">
-          <summary>已确定方案（题目 / 研究问题 / 方法 / 数据来源）</summary>
-          <div class="topic-primary-panel">
-            <h3>方案摘要</h3>
-            ${renderPlanSummary(design)}
-          </div>
-        </details>
         <section class="topic-candidate-section">
           <div class="topic-candidate-head topic-candidate-head-actions">
             <div>
               <h3>生成并微调大纲</h3>
-              <p class="desc">先生成一版，再直接改文字，处理完就可以去正式写作。</p>
+              <p class="desc">已自动生成一版，直接改文字即可；不满意可「重新生成」。</p>
             </div>
             <div class="topic-outline-actions">
-              <button class="btn btn-ghost btn-sm" id="outline-gen">生成大纲</button>
-              <button class="btn btn-ghost btn-sm" id="outline-copy" ${project.outline.length ? '' : 'disabled'}>复制文本</button>
-              <button class="btn btn-sm" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>采用大纲</button>
+              <button class="btn btn-ghost btn-sm" id="outline-gen">重新生成</button>
+              <button class="btn btn-ghost btn-sm" id="outline-copy">复制文本</button>
+              <button class="btn btn-sm" id="outline-adopt">采用大纲</button>
             </div>
           </div>
           <details class="topic-outline-preview">
@@ -644,11 +637,31 @@ function render(el) {
           </details>
           <div class="topic-outline-editor">
             <label class="field-label" for="outline-editor">编辑大纲（可直接改章节名、增删二级标题）</label>
-            <textarea id="outline-editor" class="topic-outline-textarea" placeholder="先生成大纲，然后你可以直接调整章节名、增删二级标题。"></textarea>
+            <textarea id="outline-editor" class="topic-outline-textarea" placeholder="正在生成大纲…"></textarea>
           </div>
         </section>
         ${integrityNote()}
-      </section>`;
+      </section>
+      <div class="modal-backdrop" id="outline-confirm" hidden>
+        <div class="modal-panel">
+          <div class="hero-top modal-head">
+            <div>
+              <h2>确认方案与大纲</h2>
+              <p class="desc">确认后一次性应用到写作工作台。</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="oc-close" type="button">关闭</button>
+          </div>
+          <div id="oc-conflict"></div>
+          <label class="field-label">研究方案</label>
+          <div class="result-box" id="oc-plan"></div>
+          <label class="field-label">论文大纲</label>
+          <div class="result-box" id="oc-outline"></div>
+          <div class="result-actions">
+            <button class="btn" id="oc-confirm">确认并应用</button>
+            <button class="btn btn-ghost" id="oc-cancel">取消</button>
+          </div>
+        </div>
+      </div>`;
   }
 
   el.innerHTML = `
@@ -1063,18 +1076,16 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       copyText(text.trim());
     });
 
-    el.querySelector('#outline-adopt').addEventListener('click', () => {
-      const text = outlineEditor?.value || outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
-      if (!text.trim()) {
-        toast('请先生成大纲', 'err');
-        return;
-      }
-      const chapterCount = (String(text).match(/第[一二三四五六七八九十百\d]+章/g) || []).length;
-      if (!confirm(`确定采用这份大纲（${chapterCount || '若干'} 章）吗？采用后将同步到写作工作台。`)) return;
+    const ocModal = el.querySelector('#outline-confirm');
+    const ocPlan = el.querySelector('#oc-plan');
+    const ocOutline = el.querySelector('#oc-outline');
+    const ocConflict = el.querySelector('#oc-conflict');
+
+    function applyOutline(text) {
       const chapters = adoptOutline(text.trim());
       if (!chapters.length) {
         toast('大纲解析失败：未识别到「第X章」格式，请重新生成一次', 'err', 4000);
-        return;
+        return false;
       }
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       saveDesignPatch({
@@ -1087,7 +1098,40 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       updateBasics({ title: current.title || getProject().title, degreeType: getProject().degreeType });
       toast(`已采用大纲（${chapters.length} 章），正在进入论文写作`, 'ok');
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'writing' }));
+      return true;
+    }
+
+    function openOutlineConfirm(text) {
+      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
+      if (ocPlan) ocPlan.innerHTML = renderPlanSummary(current);
+      if (ocOutline) ocOutline.textContent = text.trim();
+      if (ocConflict) {
+        const p = getProject();
+        const hasData = (p.outline || []).length || Object.keys(p.drafts || {}).length || p.documentV2;
+        ocConflict.innerHTML = hasData
+          ? '<div class="oc-conflict-warning">当前工作台已有内容（已用大纲 / 草稿 / 正文）。采用新大纲会替换章节结构；已匹配章节的草稿会尽量保留，其余内容可能被覆盖。请确认。</div>'
+          : '';
+      }
+      if (ocModal) ocModal.hidden = false;
+    }
+
+    function closeOutlineConfirm() { if (ocModal) ocModal.hidden = true; }
+
+    el.querySelector('#outline-adopt').addEventListener('click', () => {
+      const text = outlineEditor?.value || outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
+      if (!text.trim()) {
+        toast('请先生成大纲', 'err');
+        return;
+      }
+      openOutlineConfirm(text);
     });
+    el.querySelector('#oc-confirm')?.addEventListener('click', () => {
+      closeOutlineConfirm();
+      applyOutline(outlineEditor?.value || outlineOut?.dataset.outlineText || '');
+    });
+    el.querySelector('#oc-cancel')?.addEventListener('click', closeOutlineConfirm);
+    el.querySelector('#oc-close')?.addEventListener('click', closeOutlineConfirm);
+    ocModal?.addEventListener('click', e => { if (e.target === ocModal) closeOutlineConfirm(); });
   }
 }
 

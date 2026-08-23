@@ -2287,7 +2287,9 @@ kbd {
 }
 .modal-backdrop[hidden] { display: none; }
 .modal-panel {
-  width: min(560px, 100%);
+  width: min(560px, 92vw);
+  max-height: min(86vh, 720px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -2521,3 +2523,10 @@ kbd {
 .topic-candidate-head-actions > div:first-child { min-width: 0; }
 .topic-outline-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 @media (max-width: 640px) { .topic-outline-actions { width: 100%; } }
+
+/* 研究设计：采用大纲确认弹窗内的数据冲突警告 */
+.oc-conflict-warning {
+  margin: 0 0 14px; padding: 9px 12px; font-size: 12.5px; color: var(--amber);
+  background: var(--amber-soft); border-left: 3px solid var(--amber);
+  border-radius: 4px; line-height: 1.6;
+}
