@@ -612,8 +612,8 @@ function render(el) {
         <div class="topic-wizard-head">
           <div>
             <div class="topic-step-label">Step 3</div>
-            <h2><span class="mark"></span>确认方案，生成并采用大纲</h2>
-            <p class="desc">题目、研究问题、方法和数据来源都已经选定，这里只做最后确认，然后生成五章大纲，准备进入正式写作。</p>
+            <h2><span class="mark"></span>生成并采用论文大纲</h2>
+            <p class="desc">大纲会根据已确定的研究方案生成。你可以直接修改章节，采用后同步到写作工作台。</p>
           </div>
           <div class="topic-head-side">
             <span class="chip ${project.outline.length ? 'done' : 'doing'}">${project.outline.length ? '大纲已采用' : '当前阶段'}</span>
@@ -635,7 +635,7 @@ function render(el) {
             <div class="topic-outline-actions">
               <button class="btn btn-ghost btn-sm" id="outline-gen">生成大纲</button>
               <button class="btn btn-ghost btn-sm" id="outline-copy" ${project.outline.length ? '' : 'disabled'}>复制文本</button>
-              <button class="btn btn-sm" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>${project.outline.length ? '采用当前编辑稿' : '采用大纲'}</button>
+              <button class="btn btn-sm" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>采用大纲</button>
             </div>
           </div>
           <details class="topic-outline-preview">
@@ -1069,6 +1069,8 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         toast('请先生成大纲', 'err');
         return;
       }
+      const chapterCount = (String(text).match(/第[一二三四五六七八九十百\d]+章/g) || []).length;
+      if (!confirm(`确定采用这份大纲（${chapterCount || '若干'} 章）吗？采用后将同步到写作工作台。`)) return;
       const chapters = adoptOutline(text.trim());
       if (!chapters.length) {
         toast('大纲解析失败：未识别到「第X章」格式，请重新生成一次', 'err', 4000);
