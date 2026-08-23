@@ -602,9 +602,6 @@ function render(el) {
             <h3>像答问卷一样把方案定下来</h3>
             <p class="desc">每次只回答一个问题。点一个答案就进入下一问，不需要再点确认。</p>
           </div>
-          <div class="result-actions topic-step-actions" style="margin:0 0 12px">
-            <button class="btn btn-ghost btn-sm" id="rd-plan-retry">换一批方案</button>
-          </div>
           ${renderPlanQuestionnaire(design)}
         </section>
         ` : (design.planStatus === 'idle' ? '<div class="topic-empty">正在准备研究方案问卷…</div>' : '')}
@@ -622,14 +619,17 @@ function render(el) {
             <span class="chip ${project.outline.length ? 'done' : 'doing'}">${project.outline.length ? '大纲已采用' : '当前阶段'}</span>
           </div>
         </div>
-        <div class="topic-primary-panel">
-          <h3>方案摘要</h3>
-          ${renderPlanSummary(design)}
-        </div>
+        <details class="topic-plan-summary">
+          <summary>已确定方案（题目 / 研究问题 / 方法 / 数据来源）</summary>
+          <div class="topic-primary-panel">
+            <h3>方案摘要</h3>
+            ${renderPlanSummary(design)}
+          </div>
+        </details>
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
             <h3>生成并微调大纲</h3>
-            <p class="desc">先生成一版，再直接改文字，或者给一句修改意见让系统重生成。这里处理完就可以去正式写作。</p>
+            <p class="desc">先生成一版，再直接改文字，处理完就可以去正式写作。</p>
           </div>
           <div class="result-actions" style="margin:0 0 16px">
             <button class="btn btn-ai-solid" id="outline-gen">生成论文大纲</button>

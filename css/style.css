@@ -2502,3 +2502,14 @@ kbd {
   border-left: 3px solid var(--amber); background: var(--amber-soft);
   border-radius: 4px; font-size: 13px; color: var(--ink-soft);
 }
+
+/* 研究设计：方案摘要折叠（默认收起，突出大纲） */
+.topic-plan-summary { margin-bottom: 14px; }
+.topic-plan-summary summary {
+  cursor: pointer; font-size: 13px; color: var(--brand); font-weight: 600;
+  list-style: none; padding: 8px 0;
+}
+.topic-plan-summary summary::-webkit-details-marker { display: none; }
+.topic-plan-summary summary::before { content: '▸ '; }
+.topic-plan-summary[open] summary::before { content: '▾ '; }
+.topic-plan-summary .topic-primary-panel { padding-top: 6px; }
