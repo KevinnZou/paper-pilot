@@ -288,6 +288,7 @@ function figureViewFactory(openEditor) {
     const caption = document.createElement('figcaption');
     const toolbar = document.createElement('div');
     const editBtn = document.createElement('button');
+    const deleteBtn = document.createElement('button');
     const sync = () => {
       dom.className = 'pm-figure-card';
       img.src = node.attrs.src || '';
@@ -297,6 +298,9 @@ function figureViewFactory(openEditor) {
       editBtn.textContent = '编辑图片';
       editBtn.type = 'button';
       editBtn.className = 'pm-asset-edit';
+      deleteBtn.textContent = '删除图片';
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'pm-asset-delete';
       toolbar.className = 'pm-asset-toolbar';
     };
     editBtn.addEventListener('click', evt => {
@@ -304,7 +308,12 @@ function figureViewFactory(openEditor) {
       evt.stopPropagation();
       openEditor({ ...node.attrs, pos: getPos() });
     });
-    toolbar.appendChild(editBtn);
+    deleteBtn.addEventListener('click', evt => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      openEditor({ ...node.attrs, pos: getPos(), requestDelete: true });
+    });
+    toolbar.append(editBtn, deleteBtn);
     dom.append(toolbar, img, caption);
     sync();
     return {
@@ -780,9 +789,11 @@ export default {
           </div>
           <div class="citation-inline-actions" style="margin-top:16px">
             <button class="btn" type="button" id="wb-asset-save">保存图片</button>
+            ${payload?.pos != null ? '<button class="btn btn-ghost btn-danger-soft" type="button" id="wb-asset-delete">删除图片</button>' : ''}
             <button class="btn btn-ghost" type="button" id="wb-asset-cancel">取消</button>
           </div>`;
         assetForm.querySelector('#wb-image-choose')?.addEventListener('click', () => imageInput?.click());
+        assetForm.querySelector('#wb-asset-delete')?.addEventListener('click', deleteImageAsset);
         assetForm.querySelector('#wb-image-caption')?.focus();
       } else if (kind === 'table') {
         const rows = payload?.rows?.length ? payload.rows : Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => ''));
@@ -900,6 +911,22 @@ export default {
       const target = viewState.view.state.doc.nodeAt(pos);
       if (!target) return;
       viewState.view.dispatch(viewState.view.state.tr.replaceWith(pos, pos + target.nodeSize, node).scrollIntoView());
+    }
+
+    function deleteNodeAtPos(pos) {
+      const target = viewState.view.state.doc.nodeAt(pos);
+      if (!target) return false;
+      viewState.view.dispatch(viewState.view.state.tr.delete(pos, pos + target.nodeSize).scrollIntoView());
+      return true;
+    }
+
+    function deleteImageAsset() {
+      if (assetDraft?.pos == null) return;
+      const title = assetDraft.caption || assetDraft.alt || '这张图片';
+      if (!window.confirm(`确认删除“${title}”吗？删除后会从正文中移除。`)) return;
+      const removed = deleteNodeAtPos(assetDraft.pos);
+      closeAssetModal();
+      toast(removed ? '图片已删除' : '删除失败，请重试', removed ? 'ok' : 'err');
     }
 
     function saveAsset(kind) {

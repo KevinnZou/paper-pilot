@@ -1770,6 +1770,7 @@ kbd {
 .pm-asset-toolbar {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 8px;
 }
 .pm-asset-edit {
@@ -1782,6 +1783,21 @@ kbd {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+}
+.pm-asset-delete {
+  border: 1px solid #E3C4BB;
+  background: #FBEFEB;
+  color: var(--cinnabar);
+  border-radius: 999px;
+  min-height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pm-asset-delete:hover,
+.btn-danger-soft:hover {
+  background: #F8E3DD;
 }
 .pm-figure-card img {
   display: block;
@@ -1933,6 +1949,11 @@ kbd {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+.btn-danger-soft {
+  border-color: #E3C4BB;
+  color: var(--cinnabar);
+  background: #FBEFEB;
 }
 .citation-panel .result-box {
   margin-top: 2px;
