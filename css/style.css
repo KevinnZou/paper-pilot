@@ -1739,6 +1739,13 @@ kbd {
 }
 .pm-editor .ProseMirror h1 { font-size: 24px; margin-top: 0; }
 .pm-editor .ProseMirror h2 { font-size: 18px; }
+/* 论文纸面层级区分：题名居中、摘要/关键词居中弱化、章节主体加间距、参考文献/致谢用分隔线收尾 */
+.pm-editor .ProseMirror h1[data-role="title"] { text-align: center; font-size: 26px; letter-spacing: .02em; margin-bottom: 6px; }
+.pm-editor .ProseMirror h2[data-role="abstract"],
+.pm-editor .ProseMirror h2[data-role="keywords"] { text-align: center; font-size: 16px; color: var(--ink-soft); margin: 28px 0 8px; }
+.pm-editor .ProseMirror h2[data-role="section"] { margin-top: 28px; }
+.pm-editor .ProseMirror h2[data-role="references"],
+.pm-editor .ProseMirror h2[data-role="ack"] { font-size: 17px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
 .pm-editor .ProseMirror p { margin: 0 0 12px; }
 .pm-editor .ProseMirror blockquote {
   margin: 12px 0; padding: 6px 14px;
