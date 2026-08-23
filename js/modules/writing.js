@@ -1507,6 +1507,27 @@ export default {
       toast('已在当前章节后插入新章节', 'ok');
     }
 
+    // 无章节（新建项目）时新增首个章节：插到「参考文献」标题之前
+    function addFirstSection() {
+      const doc = viewState.view.state.doc;
+      if (topLevelSections(doc).length) { toast('已有章节，可直接切换或新增', 'ok'); return; }
+      const title = window.prompt('首个章节标题', '第一章 绪论');
+      if (!title?.trim()) return;
+      let pos = doc.content.size;
+      doc.forEach((node, offset) => {
+        if (node.type.name === 'heading' && node.attrs.role === 'references') pos = offset;
+      });
+      insertSectionRelative(pos, title.trim());
+      const created = topLevelSections(viewState.view.state.doc).find(s => s.chapter === title.trim());
+      if (created) {
+        viewState.currentChapter = created.chapter;
+        setCurrentChapter(created.chapter);
+        jumpToSection(created.sectionId);
+      }
+      renderOutline();
+      toast('已新增首个章节', 'ok');
+    }
+
     function moveCurrentSection(direction) {
       const doc = viewState.view.state.doc;
       const sections = topLevelSections(doc);
@@ -1594,8 +1615,15 @@ export default {
         chapterCard.innerHTML = `
           <div class="wb-side-card-head">
             <h3><span class="mark"></span>当前章节</h3>
-            <p class="desc">先选中一个章节再开始写。</p>
+            <p class="desc">还没有章节。新增第一章后即可开始写作，或在「研究设计」生成大纲。</p>
+          </div>
+          <div class="result-actions" style="margin-top:12px">
+            <button class="btn btn-sm" type="button" data-add-first-section>新增第一章</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-nav-topic>去研究设计</button>
           </div>`;
+        chapterCard.querySelector('[data-add-first-section]')?.addEventListener('click', addFirstSection);
+        chapterCard.querySelector('[data-nav-topic]')?.addEventListener('click', () =>
+          document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' })));
         return;
       }
       const chapterText = viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n').trim();

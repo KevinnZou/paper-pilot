@@ -2483,12 +2483,12 @@ kbd {
   flex: 0 0 auto;
   width: 28px; height: 28px; border-radius: 50%;
   border: 1px solid var(--line-strong);
-  background: var(--surface); color: transparent;
+  background: var(--surface); color: var(--mute);
   font-weight: 700; line-height: 1; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background .15s, color .15s, border-color .15s;
 }
-.task-check:hover { border-color: var(--jade); }
+.task-check:hover { color: var(--jade); border-color: var(--jade); }
 .task-check.done { background: var(--jade); border-color: var(--jade); color: #fff; }
 
 /* 研究设计：已定题提示条 */
