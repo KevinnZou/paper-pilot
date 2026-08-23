@@ -717,12 +717,12 @@ export default {
           </section>
 
           <aside class="wb-right">
+            <div class="wb-side-card" id="wb-chapter-card"></div>
             <div class="wb-side-tabs" role="tablist" aria-label="右侧工具">
-              ${Object.entries(SIDE_PANELS).map(([id, item]) => `
+              ${Object.entries(SIDE_PANELS).filter(([id]) => id !== 'todos' && id !== 'versions').map(([id, item]) => `
                 <button class="wb-side-tab ${id === 'assistant' ? 'active' : ''}" type="button" role="tab" aria-selected="${id === 'assistant'}" data-side-tab="${id}" title="${item.hint}">${item.label}</button>
               `).join('')}
             </div>
-            <div class="wb-side-card" id="wb-chapter-card"></div>
             <div class="wb-side-pane active" data-side-pane="assistant">
               <div id="wb-suggestion"></div>
             </div>
@@ -1653,6 +1653,8 @@ export default {
             <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${next?.sectionId || ''}" ${next ? '' : 'disabled'}>下一章</button>
           </div>
           <div class="wb-ch-ops" id="wb-ch-ops-menu" hidden>
+            <button class="wb-ch-ops-item" type="button" data-go-pane="todos">待修改清单${todoOpen ? ` · ${todoOpen}` : ''}</button>
+            <button class="wb-ch-ops-item" type="button" data-go-pane="versions">版本历史</button>
             <button class="wb-ch-ops-item" type="button" data-section-action="up" ${prev ? '' : 'disabled'}>上移</button>
             <button class="wb-ch-ops-item" type="button" data-section-action="down" ${next ? '' : 'disabled'}>下移</button>
             <button class="wb-ch-ops-item" type="button" data-section-action="rename">改标题</button>
@@ -1685,6 +1687,12 @@ export default {
           if (btn.dataset.sectionAction === 'delete') deleteCurrentSection();
         });
       });
+      chapterCard.querySelectorAll('[data-go-pane]').forEach(btn =>
+        btn.addEventListener('click', () => {
+          const menu = chapterCard.querySelector('#wb-ch-ops-menu');
+          if (menu) menu.hidden = true;
+          switchRightTab(btn.dataset.goPane);
+        }));
     }
 
     function syncCurrentChapter() {
