@@ -155,8 +155,8 @@ function renderTaskList(tasks, plan, emptyText) {
         <div class="item-meta">${escapeHtml(task.note || '')}</div>
       </div>
       <div class="card-actions-rail">
-        <button class="btn btn-ghost btn-sm" data-task-go="${escapeHtml(task.id)}">去处理</button>
-        <button class="btn btn-sm" data-task-done="${escapeHtml(task.id)}">${isDone(task, plan) ? '撤销完成' : '标记完成'}</button>
+        <button class="task-check ${isDone(task, plan) ? 'done' : ''}" type="button" data-task-done="${escapeHtml(task.id)}" role="checkbox" aria-checked="${isDone(task, plan)}" title="${isDone(task, plan) ? '撤销完成' : '标记完成'}" aria-label="${isDone(task, plan) ? '撤销完成' : '标记完成'}">✓</button>
+        <button class="btn ${isDone(task, plan) ? 'btn-ghost' : 'btn'} btn-sm" data-task-go="${escapeHtml(task.id)}">${isDone(task, plan) ? '已完成' : '去处理'}</button>
       </div>
     </div>`).join('')}</div>`;
 }

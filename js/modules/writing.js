@@ -365,6 +365,50 @@ function tableViewFactory(openEditor) {
   };
 }
 
+// 重写类 AI 动作（润色/补论/重构）才做前后 diff；续写/逻辑检查是新增或批注，不做 rewrite diff
+const DIFF_ACTIONS = new Set(['academic', 'argument', 'reframe']);
+
+function diffTokens(a, b) {
+  const n = a.length, m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const parts = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { parts.push({ k: 'eq', v: a[i] }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { parts.push({ k: 'del', v: a[i] }); i++; }
+    else { parts.push({ k: 'ins', v: b[j] }); j++; }
+  }
+  while (i < n) { parts.push({ k: 'del', v: a[i] }); i++; }
+  while (j < m) { parts.push({ k: 'ins', v: b[j] }); j++; }
+  return parts;
+}
+
+// 混合中英文/数字的轻量 tokenize：西文词与数字归组、每个汉字单 token、空白与标点各一 token
+function diffTokensFrom(s) {
+  return String(s || '').match(/[A-Za-z0-9]+|[\u4e00-\u9fff]|\s|[^\s\u4e00-\u9fffA-Za-z0-9]/g) || [];
+}
+
+function inlineDiffHtml(original, suggestion) {
+  const parts = diffTokens(diffTokensFrom(original), diffTokensFrom(suggestion));
+  const runs = [];
+  parts.forEach(p => {
+    const last = runs[runs.length - 1];
+    if (last && last.k === p.k) last.v += p.v;
+    else runs.push({ k: p.k, v: p.v });
+  });
+  return runs.map(r => {
+    const t = escapeHtml(r.v);
+    if (r.k === 'del') return `<del class="pm-diff-del">${t}</del>`;
+    if (r.k === 'ins') return `<ins class="pm-diff-ins">${t}</ins>`;
+    return t;
+  }).join('');
+}
+
 function renderSuggestionBox(box, state) {
   if (!state.pending) {
     box.innerHTML = `
@@ -374,12 +418,18 @@ function renderSuggestionBox(box, state) {
     return;
   }
   const item = state.pending;
+  const isRewriteDiff = DIFF_ACTIONS.has(item.actionId) && (item.original || '').trim() && (item.suggestion || '').trim();
   box.innerHTML = `
     <h3><span class="mark"></span>${escapeHtml(item.label)}</h3>
     <p class="desc">AI 建议默认不直接改正文，你可以比较后决定是否接受。</p>
-    <label class="field-label">原文</label>
-    <div class="result-box">${escapeHtml(item.original || '（无原文，基于上下文生成）')}</div>
-    <label class="field-label">AI 建议</label>
+    ${isRewriteDiff ? `
+      <label class="field-label">前后对比（<s>删除线</s> = 原文去掉，<b>高亮</b> = 新增）</label>
+      <div class="result-box">${inlineDiffHtml(item.original, item.suggestion)}</div>
+    ` : `
+      <label class="field-label">原文</label>
+      <div class="result-box">${escapeHtml(item.original || '（无原文，基于上下文生成）')}</div>
+    `}
+    <label class="field-label">${isRewriteDiff ? '建议全文' : 'AI 建议'}</label>
     <div class="result-box filled">${escapeHtml(item.suggestion)}</div>
     <div class="result-actions">
       <button class="btn" id="sg-accept">接受</button>
@@ -1523,7 +1573,9 @@ export default {
 
     function renderChapterCard() {
       const sections = topLevelSections(viewState.view.state.doc);
-      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from) || sections[0];
+      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from)
+        || sections.find(s => s.chapter === viewState.currentChapter)
+        || sections[0];
       if (!chapterCard) return;
       if (!section) {
         chapterCard.innerHTML = `
@@ -1602,6 +1654,16 @@ export default {
       renderTodosPanel();
       renderChapterCard();
       renderVersionsPanel();
+    }
+
+    // 初始对齐：把光标落在「正在写」章节，使顶部标题 / 目录反色 / 右侧当前章节卡三处一致
+    function alignInitialChapter() {
+      const sections = topLevelSections(viewState.view.state.doc);
+      const target = sections.find(s => s.chapter === viewState.currentChapter) || sections[0];
+      if (!target) return;
+      viewState.view.dispatch(
+        viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, target.headingFrom)).scrollIntoView()
+      );
     }
 
     function persistNow() {
@@ -1706,6 +1768,7 @@ export default {
     renderSuggestionBox(suggestionBox, viewState);
     syncOutlineCollapse();
     setSaveStatus('idle', '已载入');
+    alignInitialChapter();
     persistNow();
     switchRightTab(panelState.activeRightTab);
 

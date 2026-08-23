@@ -77,6 +77,7 @@ function normalizeQuestionCandidates(list = []) {
 function normalizeResearchDesign(design = {}, project = getProject()) {
   return {
     currentStep: Number(design.currentStep) || 1,
+    stepTouched: !!design.stepTouched,
     initialIdea: design.initialIdea || '',
     title: design.title || project.title || '',
     keywords: design.keywords || '',
@@ -147,6 +148,9 @@ function maxAvailableStep(design, project) {
 
 function currentStep(design, project) {
   const max = maxAvailableStep(design, project);
+  // 首次进入向导（用户未手动切过步）时，若项目已推进到更高阶段，默认落在已达成阶段，
+  // 避免"已有题目/大纲却看起来要从零再来"；用户手动切步后（stepTouched）尊重其选择。
+  if (!design.stepTouched && max > 1) return max;
   return Math.min(Math.max(design.currentStep || 1, 1), max);
 }
 
@@ -529,6 +533,7 @@ function render(el) {
         </div>
         <div class="topic-wizard-grid">
           <div class="topic-primary-panel">
+            ${(design.title || project.title) ? `<div class="topic-already">你已定题：<b>${escapeHtml(design.title || project.title)}</b>。可在此基础上细化研究想法，或直接进入下一步。</div>` : ''}
             <label class="field-label">研究想法</label>
             <textarea id="rd-idea" class="topic-idea-box" placeholder="例如：通过 AI 助力装修行业标准化、规范化、数字化">${escapeHtml(design.initialIdea)}</textarea>
             <div class="form-row">
@@ -660,7 +665,7 @@ function render(el) {
   el.querySelectorAll('[data-go-step]').forEach(btn =>
     btn.addEventListener('click', () => {
       const next = Number(btn.dataset.goStep);
-      saveDesignPatch({ currentStep: next });
+      saveDesignPatch({ currentStep: next, stepTouched: true });
       render(el);
     }));
 

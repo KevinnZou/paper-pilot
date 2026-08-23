@@ -2455,3 +2455,28 @@ kbd {
   .progress-label { width: 96px; }
   .hero-action-row { margin-top: 12px; }
 }
+
+/* AI 前后 diff：删除线 = 原文去掉（朱砂），高亮 = 新增（松烟绿） */
+.pm-diff-del { color: #9AA3AB; text-decoration: line-through; text-decoration-color: var(--cinnabar); text-decoration-thickness: 1px; }
+.pm-diff-ins { background: var(--jade-soft); color: var(--jade); border-radius: 2px; padding: 0 1px; }
+
+/* 计划任务卡：完成勾选（松烟绿） + 单主行动 */
+.task-check {
+  flex: 0 0 auto;
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--surface); color: transparent;
+  font-weight: 700; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.task-check:hover { border-color: var(--jade); }
+.task-check.done { background: var(--jade); border-color: var(--jade); color: #fff; }
+
+/* 研究设计：已定题提示条 */
+.topic-already {
+  background: var(--brand-soft); color: var(--brand-strong);
+  border-left: 3px solid var(--brand);
+  border-radius: 4px; padding: 8px 10px; margin-bottom: 12px;
+  font-size: 13px; line-height: 1.5;
+}
