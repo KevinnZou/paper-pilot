@@ -398,6 +398,11 @@
 - 用户质疑"模板"功能意义，认为内容太多、还挤，若不重要就删。
 - AI 评估后采纳删除：移除填空式"模板库"（SIDE_PANELS.templates、模板面板、templateGroupsForSection/renderTemplatesPanel/insertTemplateText、`.wb-template-*` 样式）；右栏工具标签由 4 个减为 3 个（写作助手/引用/证据），更清爽。全模块回归 0 溢出 0 报错。详见 `report/dev-log.md` 第 66 次会话。
 
+## 2026-08-23 · 真实用户走查 + 修复"引用不可见"P0
+
+- 用户要求转回真实用户走查。
+- AI 走查并修复 P0：插入引用后正文出现空 `<span>`（引用[ n]一直不可见）——nodeView 只在 update 填充、首次渲染 view 未就绪导致 getCitationNumber 抛错。修复 getCitationNumber 用 editorState.doc 兜底 + nodeView 创建即 sync。demo 第二章引用现正确显示 [1]/[2]。另记录"内联编号不自动重排"为已知 P2 局限。详见 `report/dev-log.md` 第 67 次会话。
+
 ## 后续维护约定
 
 - 每次出现以下任一情况，都需要追加一条记录：
