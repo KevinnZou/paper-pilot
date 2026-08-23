@@ -637,9 +637,12 @@ function render(el) {
             <button class="btn btn-ghost btn-sm" id="outline-copy" ${project.outline.length ? '' : 'disabled'}>复制文本</button>
             <button class="btn" id="outline-adopt" ${project.outline.length ? '' : 'disabled'}>${project.outline.length ? '采用当前编辑稿' : '采用此大纲'}</button>
           </div>
-          <div id="outline-out">${renderOutlinePreview('')}</div>
+          <details class="topic-outline-preview">
+            <summary>预览大纲结构</summary>
+            <div id="outline-out">${renderOutlinePreview('')}</div>
+          </details>
           <div class="topic-outline-editor">
-            <label class="field-label" for="outline-editor">可直接编辑的大纲文本</label>
+            <label class="field-label" for="outline-editor">编辑大纲（可直接改章节名、增删二级标题）</label>
             <textarea id="outline-editor" class="topic-outline-textarea" placeholder="先生成大纲，然后你可以直接调整章节名、增删二级标题。"></textarea>
           </div>
           ${feedbackBlock('outline-feedback', '例如：理论部分太重，想更偏案例分析；第三章想拆成现状与问题两节', '按这些意见重生成大纲')}
