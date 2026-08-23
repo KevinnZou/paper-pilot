@@ -271,11 +271,6 @@ export default {
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="card preview-card">
-        <h2><span class="mark"></span>排版预览</h2>
-        <div class="result-box filled" style="max-height:520px;overflow:auto">${previewHtml}</div>
       </div>`;
 
     el.querySelector('#ce-recheck')?.addEventListener('click', () =>
