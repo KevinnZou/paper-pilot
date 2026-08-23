@@ -717,12 +717,12 @@ export default {
           </section>
 
           <aside class="wb-right">
-            <div class="wb-side-card" id="wb-chapter-card"></div>
             <div class="wb-side-tabs" role="tablist" aria-label="右侧工具">
               ${Object.entries(SIDE_PANELS).map(([id, item]) => `
                 <button class="wb-side-tab ${id === 'assistant' ? 'active' : ''}" type="button" role="tab" aria-selected="${id === 'assistant'}" data-side-tab="${id}" title="${item.hint}">${item.label}</button>
               `).join('')}
             </div>
+            <div class="wb-side-card" id="wb-chapter-card"></div>
             <div class="wb-side-pane active" data-side-pane="assistant">
               <div id="wb-suggestion"></div>
             </div>
@@ -1433,14 +1433,15 @@ export default {
       if (!section) return;
       viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, section.headingFrom)));
       viewState.view.focus();
-      // 让章节标题滚到视口顶部（工作区内容上移）；rAF 后按稳定坐标纠正
+      // 让章节标题滚到编辑区顶部（只动工作区内容，不滚页面）
       requestAnimationFrame(() => {
         let dom = viewState.view.nodeDOM(section.headingFrom);
         if (dom && dom.nodeType === 3) dom = dom.parentElement;
         const el = (dom && dom.nodeType === 1) ? dom : (dom && dom.closest ? dom.closest('h1,h2,h3') : null);
-        if (!el || typeof el.getBoundingClientRect !== 'function') return;
-        const top = el.getBoundingClientRect().top;
-        (document.scrollingElement || document.documentElement).scrollBy({ top: top - 10, behavior: 'instant' });
+        const sheet = viewState.view.dom.closest('.paper-sheet');
+        if (!el || !sheet || typeof el.getBoundingClientRect !== 'function') return;
+        const gap = el.getBoundingClientRect().top - sheet.getBoundingClientRect().top - 10;
+        if (gap) sheet.scrollTop += gap;
       });
     }
 
@@ -1642,7 +1643,7 @@ export default {
               <span class="wb-ch-chip ${status === '已完成' ? 'done' : status === '进行中' ? 'doing' : ''}">${escapeHtml(status)}</span>
               <b class="wb-ch-title" title="${escapeHtml(section.chapter)}">${escapeHtml(section.chapter)}</b>
             </div>
-            <button class="btn btn-ghost btn-sm" type="button" id="wb-ch-ops" aria-haspopup="true" aria-expanded="false">操作 ▾</button>
+            <button class="btn btn-ghost btn-sm wb-ch-more" type="button" id="wb-ch-ops" aria-haspopup="true" aria-expanded="false" title="章节操作">⋯</button>
           </div>
           <div class="wb-ch-metrics">
             <span>字数 <b>${wordCount(chapterText)}</b></span><span>引用 <b>${citationIds.size}</b></span><span>待改 <b>${todoOpen}</b></span><span>证据 <b>${evidenceItems.length}</b></span>

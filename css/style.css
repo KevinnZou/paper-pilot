@@ -1721,7 +1721,8 @@ kbd {
   border-left: 3px solid var(--cinnabar-rail);
   border-radius: 3px;
   padding: 18px 26px 26px;
-  min-height: 560px; resize: vertical;
+  min-height: 380px; height: calc(100vh - 250px); max-height: 900px;
+  overflow-y: auto;
   font-family: var(--font-serif); font-size: 16px; line-height: 2; color: var(--ink);
   transition: border-color .15s;
 }
@@ -2539,3 +2540,10 @@ kbd {
 .wb-ch-ops-item.wb-ch-ops-danger:hover { background: var(--cinnabar-soft); border-color: var(--cinnabar); }
 @keyframes wbFade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .wb-ch-ops { animation: wbFade .12s ease-out; }
+
+/* 当前章节条：「⋯」低调入口（结构操作收纳在菜单里） */
+.wb-ch-more { padding: 2px 9px; }
+.wb-side-card { margin-bottom: 10px; }
+
+/* 结构操作菜单：默认收起（hidden 需压过 display:grid） */
+.wb-ch-ops[hidden] { display: none; }
