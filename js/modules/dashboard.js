@@ -332,8 +332,8 @@ export default {
 
     // 版面顺序按阶段：入门中（未定题/未用大纲）旅程在上引导上手；已进入写作后旅程沉底
     el.innerHTML = writingPhase
-      ? `${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}${entranceHtml}`
-      : `${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${entranceHtml}${progressHtml}`;
+      ? `<div class="dashboard-stack">${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}${entranceHtml}</div>`
+      : `<div class="dashboard-stack">${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${entranceHtml}${progressHtml}</div>`;
 
     // 章节直写
     el.querySelectorAll('[data-write]').forEach(b =>
