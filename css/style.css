@@ -196,8 +196,9 @@ body.sidebar-collapsed .module-writing .main-header {
 .card .desc { margin: 0 0 16px; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
 .card .desc b { color: var(--ink); }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-@media (max-width: 980px) { .grid-2 { grid-template-columns: 1fr; } }
+.grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; align-items: start; }
+.grid-2 > * { min-width: 0; }
+@media (max-width: 980px) { .grid-2 { grid-template-columns: minmax(0,1fr); } }
 
 .workspace-columns {
   display: grid;
