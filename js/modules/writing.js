@@ -1431,8 +1431,17 @@ export default {
     function jumpToSection(sectionId) {
       const section = topLevelSections(viewState.view.state.doc).find(x => x.sectionId === sectionId);
       if (!section) return;
-      viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, section.headingFrom)).scrollIntoView());
+      viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, section.headingFrom)));
       viewState.view.focus();
+      // 让章节标题滚到视口顶部（工作区内容上移）；rAF 后按稳定坐标纠正
+      requestAnimationFrame(() => {
+        let dom = viewState.view.nodeDOM(section.headingFrom);
+        if (dom && dom.nodeType === 3) dom = dom.parentElement;
+        const el = (dom && dom.nodeType === 1) ? dom : (dom && dom.closest ? dom.closest('h1,h2,h3') : null);
+        if (!el || typeof el.getBoundingClientRect !== 'function') return;
+        const top = el.getBoundingClientRect().top;
+        (document.scrollingElement || document.documentElement).scrollBy({ top: top - 10, behavior: 'instant' });
+      });
     }
 
     function sectionFragment(title) {
@@ -1627,34 +1636,38 @@ export default {
       const prev = sections[index - 1];
       const next = sections[index + 1];
       chapterCard.innerHTML = `
-        <div class="wb-side-card-head">
-          <h3><span class="mark"></span>当前章节</h3>
-          <p class="desc">先把这一章写顺，再切到下一章。</p>
-        </div>
-        <div class="wb-side-card-title">${escapeHtml(section.chapter)}</div>
-        <div class="wb-side-card-chip ${status === '已完成' ? 'done' : status === '进行中' ? 'doing' : ''}">${escapeHtml(status)}</div>
-        <div class="wb-side-metrics">
-          <div class="wb-side-metric"><span>字数</span><b>${wordCount(chapterText)}</b></div>
-          <div class="wb-side-metric"><span>引用</span><b>${citationIds.size}</b></div>
-          <div class="wb-side-metric"><span>待改</span><b>${todoOpen}</b></div>
-          <div class="wb-side-metric"><span>证据</span><b>${evidenceItems.length}</b></div>
-        </div>
-        <div class="wb-side-nav">
-          <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${prev?.sectionId || ''}" ${prev ? '' : 'disabled'}>上一章</button>
-          <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${next?.sectionId || ''}" ${next ? '' : 'disabled'}>下一章</button>
-        </div>
-        <div class="wb-side-label">结构调整</div>
-        <div class="wb-side-actions">
-          <button class="btn btn-ghost btn-sm" type="button" data-section-action="up" ${prev ? '' : 'disabled'}>上移</button>
-          <button class="btn btn-ghost btn-sm" type="button" data-section-action="down" ${next ? '' : 'disabled'}>下移</button>
-        </div>
-        <div class="wb-side-label">编辑本章</div>
-        <div class="wb-side-actions">
-          <button class="btn btn-ghost btn-sm" type="button" data-section-action="rename">改标题</button>
-          <button class="btn btn-ghost btn-sm" type="button" data-section-action="before">前插一章</button>
-          <button class="btn btn-ghost btn-sm" type="button" data-section-action="after">后加一章</button>
-          <button class="btn btn-ghost btn-sm" type="button" data-section-action="delete">删除本章</button>
+        <div class="wb-ch-strip">
+          <div class="wb-ch-row">
+            <div class="wb-ch-title-wrap">
+              <span class="wb-ch-chip ${status === '已完成' ? 'done' : status === '进行中' ? 'doing' : ''}">${escapeHtml(status)}</span>
+              <b class="wb-ch-title" title="${escapeHtml(section.chapter)}">${escapeHtml(section.chapter)}</b>
+            </div>
+            <button class="btn btn-ghost btn-sm" type="button" id="wb-ch-ops" aria-haspopup="true" aria-expanded="false">操作 ▾</button>
+          </div>
+          <div class="wb-ch-metrics">
+            <span>字数 <b>${wordCount(chapterText)}</b></span><span>引用 <b>${citationIds.size}</b></span><span>待改 <b>${todoOpen}</b></span><span>证据 <b>${evidenceItems.length}</b></span>
+          </div>
+          <div class="wb-ch-nav">
+            <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${prev?.sectionId || ''}" ${prev ? '' : 'disabled'}>上一章</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-jump-section="${next?.sectionId || ''}" ${next ? '' : 'disabled'}>下一章</button>
+          </div>
+          <div class="wb-ch-ops" id="wb-ch-ops-menu" hidden>
+            <button class="wb-ch-ops-item" type="button" data-section-action="up" ${prev ? '' : 'disabled'}>上移</button>
+            <button class="wb-ch-ops-item" type="button" data-section-action="down" ${next ? '' : 'disabled'}>下移</button>
+            <button class="wb-ch-ops-item" type="button" data-section-action="rename">改标题</button>
+            <button class="wb-ch-ops-item" type="button" data-section-action="before">前插一章</button>
+            <button class="wb-ch-ops-item" type="button" data-section-action="after">后加一章</button>
+            <button class="wb-ch-ops-item wb-ch-ops-danger" type="button" data-section-action="delete">删除本章</button>
+          </div>
         </div>`;
+      chapterCard.querySelector('#wb-ch-ops')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menu = chapterCard.querySelector('#wb-ch-ops-menu');
+        if (!menu) return;
+        const open = menu.hidden;
+        menu.hidden = !open;
+        e.currentTarget.setAttribute('aria-expanded', String(open));
+      });
       chapterCard.querySelectorAll('[data-jump-section]').forEach(btn => {
         btn.addEventListener('click', () => {
           if (!btn.dataset.jumpSection) return;
