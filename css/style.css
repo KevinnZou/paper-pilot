@@ -2518,9 +2518,11 @@ kbd {
 
 /* 研究设计 第3步：标题行右侧放操作按钮（不再单占一行的大按钮） */
 .topic-candidate-head-actions {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap;
 }
 .topic-candidate-head-actions > div:first-child { min-width: 0; }
+.topic-candidate-head-actions h3 { margin: 0 0 2px; font-size: 16px; }
+.topic-candidate-head-actions .desc { margin: 0; font-size: 12.5px; color: var(--ink-soft); }
 .topic-outline-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 @media (max-width: 640px) { .topic-outline-actions { width: 100%; } }
 
@@ -2530,3 +2532,15 @@ kbd {
   background: var(--amber-soft); border-left: 3px solid var(--amber);
   border-radius: 4px; line-height: 1.6;
 }
+
+/* 研究设计：确认方案与大纲弹窗 */
+.oc-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.oc-modal-head h2 { font-size: 18px; margin: 0 0 4px; }
+.oc-modal-head .desc { margin: 0; }
+.oc-modal-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin: 16px 0 8px; }
+.oc-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.oc-plan-item { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
+.oc-plan-item span { display: block; font-size: 11px; color: var(--mute); margin-bottom: 4px; }
+.oc-plan-item b { font-size: 13px; color: var(--ink); font-weight: 600; line-height: 1.5; }
+.oc-outline { max-height: 240px; overflow-y: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: var(--ink); white-space: pre-wrap; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+@media (max-width: 560px) { .oc-plan-grid { grid-template-columns: 1fr; } }

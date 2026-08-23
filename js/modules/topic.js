@@ -643,19 +643,19 @@ function render(el) {
         ${integrityNote()}
       </section>
       <div class="modal-backdrop" id="outline-confirm" hidden>
-        <div class="modal-panel">
-          <div class="hero-top modal-head">
+        <div class="modal-panel oc-modal">
+          <div class="oc-modal-head">
             <div>
               <h2>确认方案与大纲</h2>
-              <p class="desc">确认后一次性应用到写作工作台。</p>
+              <p class="desc">确认后将一次性应用到写作工作台。</p>
             </div>
-            <button class="btn btn-ghost btn-sm" id="oc-close" type="button">关闭</button>
+            <button class="btn btn-ghost btn-sm" id="oc-close" type="button" aria-label="关闭">✕</button>
           </div>
           <div id="oc-conflict"></div>
-          <label class="field-label">研究方案</label>
-          <div class="result-box" id="oc-plan"></div>
-          <label class="field-label">论文大纲</label>
-          <div class="result-box" id="oc-outline"></div>
+          <div class="oc-modal-label">研究方案</div>
+          <div id="oc-plan" class="oc-plan"></div>
+          <div class="oc-modal-label">论文大纲</div>
+          <div id="oc-outline" class="oc-outline"></div>
           <div class="result-actions">
             <button class="btn" id="oc-confirm">确认并应用</button>
             <button class="btn btn-ghost" id="oc-cancel">取消</button>
@@ -1103,13 +1103,21 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
 
     function openOutlineConfirm(text) {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
-      if (ocPlan) ocPlan.innerHTML = renderPlanSummary(current);
+      if (ocPlan) {
+        ocPlan.innerHTML = `
+          <div class="oc-plan-grid">
+            <div class="oc-plan-item"><span>论文题目</span><b>${escapeHtml(current.title || getProject().title)}</b></div>
+            <div class="oc-plan-item"><span>研究问题</span><b>${escapeHtml(selectedQuestion(current)?.question || '未单独设定')}</b></div>
+            <div class="oc-plan-item"><span>研究方法</span><b>${escapeHtml(selectedMethod(current) || '未单独设定')}</b></div>
+            <div class="oc-plan-item"><span>数据来源</span><b>${escapeHtml(selectedDataSource(current) || '未单独设定')}</b></div>
+          </div>`;
+      }
       if (ocOutline) ocOutline.textContent = text.trim();
       if (ocConflict) {
         const p = getProject();
         const hasData = (p.outline || []).length || Object.keys(p.drafts || {}).length || p.documentV2;
         ocConflict.innerHTML = hasData
-          ? '<div class="oc-conflict-warning">当前工作台已有内容（已用大纲 / 草稿 / 正文）。采用新大纲会替换章节结构；已匹配章节的草稿会尽量保留，其余内容可能被覆盖。请确认。</div>'
+          ? '<div class="oc-conflict-warning">当前工作台已有内容（已用大纲 / 草稿 / 正文）。采用新大纲会替换章节结构；已匹配章节的草稿会尽量保留，其余内容可能被覆盖。</div>'
           : '';
       }
       if (ocModal) ocModal.hidden = false;
