@@ -9,7 +9,7 @@ import checkExport from './modules/check-export.js';
 import projectSettings from './modules/project-settings.js';
 import settings from './modules/settings.js';
 import { ICONS } from './icons.js';
-import { getConfig } from './api.js';
+import { getConfig, shouldUseLiveAI } from './api.js';
 import { getProject, hasActiveProject, projectStoreReady } from './project.js';
 
 const MODULES = [projects, dashboard, topic, citation, writing, planner, checkExport, projectSettings, settings];
@@ -75,12 +75,21 @@ export function switchModule(id) {
 function updateApiPill() {
   const pill = document.getElementById('api-status');
   const cfg = getConfig();
-  if (cfg.apiKey) {
+  if (cfg.apiKey && shouldUseLiveAI()) {
     pill.textContent = `API 已配置 · ${cfg.model}`;
     pill.classList.add('ready');
-  } else {
-    pill.textContent = '未配置 API';
+    pill.classList.remove('demo');
+    pill.title = '已启用真实 AI 调用';
+  } else if (cfg.apiKey) {
+    pill.textContent = '演示模式 · 已配 Key 未启用';
+    pill.classList.add('demo');
     pill.classList.remove('ready');
+    pill.title = '已填入 API Key，但尚未打开「真实 AI 调用」。到「应用设置」打开即可使用真实模型。';
+  } else {
+    pill.textContent = '演示模式 · Mock 结果';
+    pill.classList.add('demo');
+    pill.classList.remove('ready');
+    pill.title = '当前为演示/模拟结果，不消耗额度。真实 AI 请到「应用设置」填入 API Key。';
   }
 }
 

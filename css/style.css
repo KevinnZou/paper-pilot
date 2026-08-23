@@ -179,6 +179,8 @@ body.sidebar-collapsed .module-writing .main-header {
 .status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
 .status-pill.ready { background: var(--jade-soft); border-color: transparent; color: var(--jade); }
 .status-pill.ready::before { background: var(--jade); }
+.status-pill.demo { background: var(--amber-soft); border-color: transparent; color: var(--amber); }
+.status-pill.demo::before { background: var(--amber); }
 
 /* ---------- 通用组件 ---------- */
 .card {
@@ -2303,6 +2305,7 @@ kbd {
 
 /* ---------- 空状态 ---------- */
 .empty { text-align: center; padding: 24px 12px; color: var(--ink-soft); font-size: 13px; }
+.empty .empty-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
 .empty .empty-icon {
   width: 44px; height: 44px; margin: 0 auto 10px; border-radius: var(--radius);
   border: 1.5px dashed var(--line-strong); display: flex; align-items: center; justify-content: center;

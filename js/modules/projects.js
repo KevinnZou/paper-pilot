@@ -8,6 +8,7 @@ import {
   projectStats,
   getAppState,
 } from '../project.js';
+import { loadDemoData, hasExistingData } from '../demo-data.js';
 
 function fmtDate(iso) {
   if (!iso) return '未编辑';
@@ -74,7 +75,11 @@ export default {
         <div class="card empty">
           <div class="empty-icon">文</div>
           <p>还没有论文项目。V4 会按“项目”而不是“模块”推进整篇论文。</p>
-          <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
+          <div class="empty-actions">
+            <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
+            <button class="btn btn-ghost" id="pc-empty-trial">开始试用 · 无需配置</button>
+          </div>
+          <p class="desc" style="margin-top:10px">「开始试用」会用演示项目走一遍完整流程；AI 结果为内置示例，不消耗额度。要用真实 AI，再到「应用设置」填入你的 API Key。</p>
         </div>`}
 
       <div class="modal-backdrop" id="pc-create-modal" hidden>
@@ -149,6 +154,12 @@ export default {
 
     el.querySelector('#pc-new')?.addEventListener('click', openCreateModal);
     el.querySelector('#pc-empty-new')?.addEventListener('click', openCreateModal);
+    el.querySelector('#pc-empty-trial')?.addEventListener('click', () => {
+      if (hasExistingData() && !confirm('启动试用的演示项目会覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
+      loadDemoData();
+      toast('演示项目已载入——正在进入演示模式', 'ok');
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
+    });
     el.querySelector('#pc-modal-close')?.addEventListener('click', closeCreateModal);
     el.querySelector('#pc-create-cancel')?.addEventListener('click', closeCreateModal);
     el.querySelector('#pc-create-submit')?.addEventListener('click', submitCreate);
