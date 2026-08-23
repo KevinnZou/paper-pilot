@@ -1227,32 +1227,94 @@ kbd {
 .wb-side-actions .btn {
   min-width: 0;
 }
-.wb-side-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-.wb-side-tabs::-webkit-scrollbar { display: none; }
-.wb-side-tab {
-  min-height: 32px;
-  padding: 0 12px;
+.wb-side-switcher {
+  position: relative;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 12.5px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #FCFBF8 0%, #F6F2EA 100%);
 }
-.wb-side-tab.active {
-  background: var(--brand);
-  color: #fff;
-  font-weight: 600;
-  border-color: transparent;
+.wb-side-switcher[open] {
+  box-shadow: var(--shadow);
+}
+.wb-side-switcher summary {
+  list-style: none;
+}
+.wb-side-switcher summary::-webkit-details-marker {
+  display: none;
+}
+.wb-side-switcher-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.wb-side-switcher-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.wb-side-switcher-kicker {
+  font-size: 11px;
+  color: var(--ink-soft);
+  letter-spacing: .4px;
+}
+.wb-side-switcher-copy strong {
+  font-size: 14px;
+  font-family: var(--font-serif);
+  line-height: 1.5;
+}
+.wb-side-switcher-hint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.wb-side-switcher-arrow {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  transition: transform .18s ease;
+}
+.wb-side-switcher[open] .wb-side-switcher-arrow {
+  transform: rotate(180deg);
+}
+.wb-side-switcher-menu {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
+  border-top: 1px solid rgba(228, 225, 216, .9);
+}
+.wb-side-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.wb-side-option:hover {
+  border-color: var(--line-strong);
+  background: #FCFAF5;
+}
+.wb-side-option.active {
+  border-color: #C9D8E2;
+  background: var(--brand-soft);
+}
+.wb-side-option-title {
+  font-size: 13px;
+  font-family: var(--font-serif);
+}
+.wb-side-option-hint {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  line-height: 1.55;
 }
 .wb-side-pane-head {
   display: flex;

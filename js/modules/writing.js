@@ -33,6 +33,15 @@ const AI_ACTIONS = [
   { id: 'logic', label: '本章逻辑检查', prompt: t => `请从导师视角检查下面这段章节内容的逻辑结构，指出论证跳跃、只有描述没有分析、缺少证据支持的位置。请用简短分点输出。 \n\n${t}`, mode: 'review' },
 ];
 
+const SIDE_PANELS = {
+  assistant: { label: '写作助手', hint: '查看 AI 建议，确认后再写回正文。' },
+  citation: { label: '引用', hint: '插入文献引用，编号会自动更新。' },
+  evidence: { label: '证据', hint: '优先取用和当前章节直接相关的证据。' },
+  templates: { label: '模板', hint: '快速插入这一章常见的起手段和分析骨架。' },
+  todos: { label: '待修改', hint: '把这一章后续要改的点先挂住。' },
+  versions: { label: '版本', hint: '在关键节点留档，需要时可以回退。' },
+};
+
 if (!window.__tmWritingAbort) {
   window.__tmWritingAbort = new AbortController();
   document.addEventListener('tm:navigate', () => {
@@ -637,14 +646,24 @@ export default {
 
           <aside class="wb-right">
             <div class="wb-side-card" id="wb-chapter-card"></div>
-            <div class="wb-side-tabs">
-              <button class="wb-side-tab active" type="button" data-side-tab="assistant">写作助手</button>
-              <button class="wb-side-tab" type="button" data-side-tab="citation">引用</button>
-              <button class="wb-side-tab" type="button" data-side-tab="evidence">证据</button>
-              <button class="wb-side-tab" type="button" data-side-tab="templates">模板</button>
-              <button class="wb-side-tab" type="button" data-side-tab="todos">待修改</button>
-              <button class="wb-side-tab" type="button" data-side-tab="versions">版本</button>
-            </div>
+            <details class="wb-side-switcher" id="wb-side-switcher">
+              <summary class="wb-side-switcher-trigger">
+                <div class="wb-side-switcher-copy">
+                  <span class="wb-side-switcher-kicker">右侧工具</span>
+                  <strong id="wb-side-switcher-label">写作助手</strong>
+                  <span class="wb-side-switcher-hint" id="wb-side-switcher-hint">查看 AI 建议，确认后再写回正文。</span>
+                </div>
+                <span class="wb-side-switcher-arrow" aria-hidden="true">▾</span>
+              </summary>
+              <div class="wb-side-switcher-menu">
+                ${Object.entries(SIDE_PANELS).map(([id, item]) => `
+                  <button class="wb-side-option ${id === 'assistant' ? 'active' : ''}" type="button" data-side-tab="${id}">
+                    <span class="wb-side-option-title">${item.label}</span>
+                    <span class="wb-side-option-hint">${item.hint}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </details>
             <div class="wb-side-pane active" data-side-pane="assistant">
               <div id="wb-suggestion"></div>
             </div>
@@ -715,6 +734,9 @@ export default {
     const chapterCard = el.querySelector('#wb-chapter-card');
     const sideTabs = [...el.querySelectorAll('[data-side-tab]')];
     const sidePanes = [...el.querySelectorAll('[data-side-pane]')];
+    const sideSwitcher = el.querySelector('#wb-side-switcher');
+    const sideSwitcherLabel = el.querySelector('#wb-side-switcher-label');
+    const sideSwitcherHint = el.querySelector('#wb-side-switcher-hint');
     const templatesBox = el.querySelector('#wb-templates');
     const todosBox = el.querySelector('#wb-todos');
     const versionsBox = el.querySelector('#wb-versions');
@@ -1320,8 +1342,12 @@ export default {
 
     function switchRightTab(tab) {
       panelState.activeRightTab = tab;
+      const meta = SIDE_PANELS[tab] || SIDE_PANELS.assistant;
       sideTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.sideTab === tab));
       sidePanes.forEach(pane => pane.classList.toggle('active', pane.dataset.sidePane === tab));
+      if (sideSwitcherLabel) sideSwitcherLabel.textContent = meta.label;
+      if (sideSwitcherHint) sideSwitcherHint.textContent = meta.hint;
+      if (sideSwitcher) sideSwitcher.open = false;
     }
 
     function jumpToSection(sectionId) {
