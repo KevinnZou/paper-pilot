@@ -607,7 +607,26 @@ function render(el) {
         ` : (design.planStatus === 'idle' ? '<div class="topic-empty">正在准备研究方案问卷…</div>' : '')}
       </section>`;
   } else {
-    body = `
+    const adopted = !!project.outline.length;
+    const adoptedText = (project.outline || []).map(item => `${item.chapter}${(item.sections || []).length ? `\n${item.sections.map(s => `  ${s}`).join('\n')}` : ''}`).join('\n');
+    body = adopted ? `
+      <section class="card topic-wizard-card">
+        <div class="topic-wizard-head">
+          <div>
+            <div class="topic-step-label">Step 3</div>
+            <h2><span class="mark"></span>已采用论文大纲</h2>
+            <p class="desc">大纲已采用到写作工作台。调整章节结构请直接在「写作工作台」进行（可新增、改名、调序、删除章节）。</p>
+          </div>
+          <div class="topic-head-side"><span class="chip done">大纲已采用</span></div>
+        </div>
+        <div class="result-actions" style="margin:16px 0 8px">
+          <button class="btn" id="adopted-go-writing">去写作工作台</button>
+        </div>
+        <details class="topic-outline-preview" open>
+          <summary>当前大纲</summary>
+          <div id="outline-out">${renderOutlinePreview(adoptedText)}</div>
+        </details>
+      </section>` : `
       <section class="card topic-wizard-card">
         <div class="topic-wizard-head">
           <div>
@@ -1004,6 +1023,8 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
   }
 
   if (step === 3) {
+    el.querySelector('#adopted-go-writing')?.addEventListener('click', () =>
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'writing' })));
     const outlineEditor = el.querySelector('#outline-editor');
 
     function syncOutlineUI(text) {
@@ -1050,7 +1071,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       }
     }
 
-    el.querySelector('#outline-gen').addEventListener('click', () => generateOutline());
+    el.querySelector('#outline-gen')?.addEventListener('click', () => generateOutline());
     if (!(getProject().outline || []).length && !String(outlineEditor?.value || '').trim()) {
       generateOutline();
     }
@@ -1067,7 +1088,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       if (adoptBtn) adoptBtn.disabled = !value.trim();
     });
 
-    el.querySelector('#outline-copy').addEventListener('click', () => {
+    el.querySelector('#outline-copy')?.addEventListener('click', () => {
       const text = outlineEditor?.value || outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
       if (!text.trim()) {
         toast('请先生成大纲', 'err');
@@ -1125,7 +1146,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
 
     function closeOutlineConfirm() { if (ocModal) ocModal.hidden = true; }
 
-    el.querySelector('#outline-adopt').addEventListener('click', () => {
+    el.querySelector('#outline-adopt')?.addEventListener('click', () => {
       const text = outlineEditor?.value || outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
       if (!text.trim()) {
         toast('请先生成大纲', 'err');
