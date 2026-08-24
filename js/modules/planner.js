@@ -183,98 +183,68 @@ function render(el) {
 
   const calHtml = calGridHtml(checkins.map(c => c.date));
 
+  const doneChapters = chapters.filter(c => (project.chapterProgress?.[c.chapter] || '未开始') === '已完成').length;
   el.innerHTML = `
-    <div class="grid-2 planner-focus-grid">
-      <div class="card focus-card">
-        <h2><span class="mark"></span>今日任务</h2>
-        <p class="desc">默认先看今天最该推进什么。${overdueTasks.length ? `当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '目前没有逾期任务。'}</p>
-        ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
-        ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
+    <div class="card planner-overview">
+      <div class="planner-overview-head">
+        <div>
+          <h2><span class="mark"></span>进度总览</h2>
+          <p class="desc">${daysLeft != null ? (daysLeft >= 0 ? `距截止 <b>${daysLeft}</b> 天` : `已过截止 <b>${-daysLeft}</b> 天`) : '未设截止'} · 本周阶段：<b>${escapeHtml(currentStageText(stages))}</b> · 已完成 <b>${doneChapters}/${chapters.length}</b> 章 · 连续打卡 <b>${streak}</b> 天</p>
+        </div>
+        <button class="btn btn-sm" id="checkin-btn" ${checkedToday ? 'disabled title="今天已经打过卡，明天再来"' : ''}>${checkedToday ? '今日已打卡 ✓' : '今日打卡'}</button>
       </div>
-
-      <div class="card side-summary-card">
-        <h2><span class="mark"></span>本周任务</h2>
-        <p class="desc">本周阶段：<b>${escapeHtml(currentStageText(stages))}</b>${daysLeft != null ? ` · 距截止 ${daysLeft >= 0 ? `<b>${daysLeft}</b> 天` : `已超期 <b>${-daysLeft}</b> 天`}` : ''}</p>
-        ${renderTaskList(weekTasks, plan, '本周自动任务还不多，可以补充一个手动任务。')}
+      <div class="checkin-row">
+        ${chapters.length ? `<select id="ck-chapter"><option value="">（未写章节，仅打卡）</option>${chapters.map(c => `<option value="${escapeHtml(c.chapter)}"${c.chapter === project.currentChapter ? ' selected' : ''}>${escapeHtml(c.chapter)}</option>`).join('')}</select>` : '<span class="desc">先在研究设计里采用大纲，打卡时就能同步章节进度。</span>'}
+        <input type="text" id="ck-note" placeholder="今日小结（可选）">
+        ${checkedToday ? '<span class="seal">已打卡</span>' : ''}
       </div>
+      <div class="planner-cal">${calHtml}</div>
+      ${checkins.length ? `<details class="planner-collapse">
+          <summary>打卡记录（最近 7 次）</summary>
+          <div class="planner-collapse-body">${checkins.slice(0, 7).map(c => `<div class="item"><div class="item-main"><div class="item-title mono">${escapeHtml(c.date)}${c.chapter ? ` · ${escapeHtml(c.chapter)}` : ''}</div>${c.note ? `<div class="item-meta">${escapeHtml(c.note)}</div>` : ''}</div>${c.chapter ? '<span class="chip doing">进行中</span>' : '<span class="seal" style="font-size:11px">已打卡</span>'}</div>`).join('')}</div>
+        </details>` : ''}
     </div>
 
-    <div class="grid-2 planner-support-grid">
-      <div class="card">
-        <h2><span class="mark"></span>手动补充任务</h2>
+    <div class="card">
+      <h2><span class="mark"></span>今日任务 <span class="chip ${overdueTasks.length ? 'doing' : ''}">${overdueTasks.length ? `${overdueTasks.length} 逾期` : todayTasks.length}</span></h2>
+      <p class="desc">${overdueTasks.length ? `默认先清逾期：当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '先推进今天最该做的事；暂无逾期。'}</p>
+      ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
+      ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
+    </div>
+
+    <details class="planner-collapse">
+      <summary>本周任务（${weekTasks.length}）</summary>
+      <div class="planner-collapse-body">${renderTaskList(weekTasks, plan, '本周自动任务还不多，可以补充一个手动任务。')}</div>
+    </details>
+
+    <details class="planner-collapse">
+      <summary>手动补充任务</summary>
+      <div class="planner-collapse-body">
         <p class="desc">可把导师反馈、补文献、补数据、改某一章这些任务手动挂进来。</p>
         <label class="field-label">任务内容</label>
         <input type="text" id="plan-task-title" placeholder="例如：补第三章 3 篇近三年中文文献">
         <div class="form-row">
-          <div>
-            <label class="field-label">截止日期</label>
-            <input type="date" id="plan-task-due" value="${plusDays(2)}">
-          </div>
-          <div>
-            <label class="field-label">关联章节</label>
-            <select id="plan-task-section">
-              <option value="">暂不关联</option>
-              ${chapters.map(item => `<option value="${escapeHtml(item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}
-            </select>
-          </div>
+          <div><label class="field-label">截止日期</label><input type="date" id="plan-task-due" value="${plusDays(2)}"></div>
+          <div><label class="field-label">关联章节</label><select id="plan-task-section"><option value="">暂不关联</option>${chapters.map(item => `<option value="${escapeHtml(item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}</select></div>
         </div>
         <label class="field-label">备注（可选）</label>
         <input type="text" id="plan-task-note" placeholder="例如：优先补方法比较和近三年研究现状">
         <div style="margin-top:16px"><button class="btn" id="plan-task-add">加入任务列表</button></div>
       </div>
+    </details>
 
-      <div class="card">
-        <h2><span class="mark"></span>计划与时间轴</h2>
-        <p class="desc">时间轴保留为辅助视图，真正的执行入口放在今日任务和本周任务。</p>
+    <details class="planner-collapse">
+      <summary>计划与时间轴</summary>
+      <div class="planner-collapse-body">
         <div class="form-row">
-          <div>
-            <label class="field-label">计划模板</label>
-            <select id="plan-tpl">${TEMPLATES.map((t, i) => `<option value="${i}"${t.name === plan.lastTemplate ? ' selected' : ''}>${t.name}</option>`).join('')}</select>
-          </div>
-          <div>
-            <label class="field-label">论文截止日期</label>
-            <input type="date" id="plan-due" value="${project.dueDate || ''}">
-          </div>
+          <div><label class="field-label">计划模板</label><select id="plan-tpl">${TEMPLATES.map((t, i) => `<option value="${i}"${t.name === plan.lastTemplate ? ' selected' : ''}>${t.name}</option>`).join('')}</select></div>
+          <div><label class="field-label">论文截止日期</label><input type="date" id="plan-due" value="${project.dueDate || ''}"></div>
         </div>
-        <div style="margin-top:16px"><button class="btn" id="plan-gen">生成 / 更新计划</button></div>
-        <div id="plan-out" style="margin-top:14px">
-          ${stages.length
-            ? renderGantt(stages, totalDays, project.chapterProgress)
-            : '<div class="result-box"><span class="placeholder">设定截止日期后，这里会显示倒排计划</span></div>'}
-        </div>
+        <div style="margin-top:12px"><button class="btn" id="plan-gen">生成 / 更新计划</button></div>
+        <div id="plan-out" style="margin-top:14px">${stages.length ? renderGantt(stages, totalDays, project.chapterProgress) : '<div class="result-box"><span class="placeholder">设定截止日期后，这里会显示倒排计划</span></div>'}</div>
       </div>
-    </div>
-
-    <div class="card planner-checkin-card">
-      <h2><span class="mark"></span>每日打卡</h2>
-      <p class="desc">累计 <b>${checkins.length}</b> 天 · 连续 <b>${streak}</b> 天${daysLeft !== null ? (daysLeft >= 0 ? ` · 距截止还有 <b>${daysLeft}</b> 天` : ` · 已过截止 <b>${-daysLeft}</b> 天`) : ''}</p>
-      ${calHtml}
-      ${chapters.length ? `
-        <label class="field-label">今天主要推进了哪一章？</label>
-        <select id="ck-chapter">
-          <option value="">（未写章节，仅打卡）</option>
-          ${chapters.map(c => `<option value="${escapeHtml(c.chapter)}"${c.chapter === project.currentChapter ? ' selected' : ''}>${escapeHtml(c.chapter)}</option>`).join('')}
-        </select>` : '<p class="desc">先在研究设计里采用大纲，打卡时就能同步章节进度。</p>'}
-      <label class="field-label">今日小结（可选）</label>
-      <input type="text" id="ck-note" placeholder="例如：完成第二章 900 字，并补了两条证据卡">
-      <div style="margin-top:14px">
-        <button class="btn" id="checkin-btn" ${checkedToday ? 'disabled title="今天已经打过卡，明天再来"' : ''}>${checkedToday ? '今日已打卡' : '今日已写作，打卡'}</button>
-        ${checkedToday ? '<span class="seal" style="margin-left:10px">已打卡</span>' : ''}
-      </div>
-      ${checkins.length ? `
-        <h3>打卡记录（最近 7 次）</h3>
-        <div class="item-list">
-          ${checkins.slice(0, 7).map(c => `
-            <div class="item">
-              <div class="item-main">
-                <div class="item-title mono">${escapeHtml(c.date)}${c.chapter ? ` · ${escapeHtml(c.chapter)}` : ''}</div>
-                ${c.note ? `<div class="item-meta">${escapeHtml(c.note)}</div>` : ''}
-              </div>
-              ${c.chapter ? '<span class="chip doing">进行中</span>' : '<span class="seal" style="font-size:11px">已打卡</span>'}
-            </div>`).join('')}
-        </div>` : ''}
-    </div>`;
-
+    </details>
+  `;
   el.querySelector('#plan-gen').addEventListener('click', () => {
     const dueVal = el.querySelector('#plan-due').value;
     if (!dueVal) {

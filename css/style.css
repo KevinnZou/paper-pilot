@@ -2567,3 +2567,17 @@ kbd {
 .task-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; color: var(--mute); }
 .task-date { font-family: var(--font-mono); color: var(--ink-soft); }
 .task-item .task-check { width: 26px; height: 26px; color: var(--mute); }
+
+/* 计划与进度：进度总览 + 今日焦点 + 可折叠块 */
+.planner-overview-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.planner-overview-head .desc { margin: 0; }
+.checkin-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.checkin-row select { flex: 0 0 260px; }
+.checkin-row input { flex: 1 1 160px; min-width: 140px; }
+.planner-cal { margin-top: 12px; }
+.planner-collapse { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px; background: var(--surface); }
+.planner-collapse summary { cursor: pointer; padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--ink); list-style: none; }
+.planner-collapse summary::-webkit-details-marker { display: none; }
+.planner-collapse summary::before { content: '▸ '; color: var(--brand); }
+.planner-collapse[open] summary::before { content: '▾ '; }
+.planner-collapse-body { padding: 0 16px 16px; }
