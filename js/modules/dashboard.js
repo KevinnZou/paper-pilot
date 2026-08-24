@@ -330,10 +330,8 @@ export default {
         </div>
       </div>`;
 
-    // 版面顺序按阶段：入门中（未定题/未用大纲）旅程在上引导上手；已进入写作后旅程沉底
-    el.innerHTML = writingPhase
-      ? `<div class="dashboard-stack">${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}${entranceHtml}</div>`
-      : `<div class="dashboard-stack">${heroHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${entranceHtml}${progressHtml}</div>`;
+    // 版面顺序：hero → 工作区入口（高频）→ 今天该做什么/写作之旅 → 章节进度
+    el.innerHTML = `<div class="dashboard-stack">${heroHtml}${entranceHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}</div>`;
 
     // 章节直写
     el.querySelectorAll('[data-write]').forEach(b =>

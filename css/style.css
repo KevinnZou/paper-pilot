@@ -1908,7 +1908,7 @@ kbd {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 .citation-panel {
   padding: 20px;
@@ -1916,6 +1916,7 @@ kbd {
   flex-direction: column;
   gap: 14px;
 }
+.citation-panel .result-box { flex: 1 1 auto; }
 .citation-panel-head {
   display: flex;
   justify-content: space-between;
@@ -2548,9 +2549,21 @@ kbd {
 /* 检查导出：导出摘要（干净网格） */
 .export-summary { margin-top: 16px; }
 .export-summary-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 8px; }
-.export-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.export-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
 .export-summary-item { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
 .export-summary-item span { display: block; font-size: 11px; color: var(--mute); margin-bottom: 3px; }
 .export-summary-item b { font-size: 12.5px; color: var(--ink); font-weight: 600; line-height: 1.5; }
 .export-summary-title { grid-column: 1 / -1; }
 @media (max-width: 560px) { .export-summary-grid { grid-template-columns: 1fr; } .export-summary-title { grid-column: auto; } }
+
+/* 计划任务卡：清晰勾选 + 标题/日期/备注 + 单主行动 */
+.task-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface);
+}
+.task-body { flex: 1 1 auto; min-width: 0; }
+.task-title { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.5; }
+.task-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; color: var(--mute); }
+.task-date { font-family: var(--font-mono); color: var(--ink-soft); }
+.task-item .task-check { width: 26px; height: 26px; color: var(--mute); }

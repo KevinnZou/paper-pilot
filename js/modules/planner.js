@@ -144,21 +144,17 @@ function taskChip(task) {
 
 function renderTaskList(tasks, plan, emptyText) {
   if (!tasks.length) return `<div class="result-box"><span class="placeholder">${emptyText}</span></div>`;
-  return `<div class="item-list">${tasks.map(task => `
-    <div class="item task-item">
-      <div class="item-main">
-        <div class="item-title">
-          <span class="chip ${taskChip(task)}">${task.dueDate || '未设日期'}</span>
-          ${isDone(task, plan) ? '<span class="chip done">已完成</span>' : ''}
-          ${escapeHtml(task.title)}
-        </div>
-        <div class="item-meta">${escapeHtml(task.note || '')}</div>
+  return `<div class="item-list">${tasks.map(task => {
+    const done = isDone(task, plan);
+    return `
+    <div class="task-item">
+      <button class="task-check ${done ? 'done' : ''}" type="button" data-task-done="${escapeHtml(task.id)}" role="checkbox" aria-checked="${done}" title="${done ? '撤销完成' : '标记完成'}" aria-label="${done ? '撤销完成' : '标记完成'}">✓</button>
+      <div class="task-body">
+        <div class="task-title">${escapeHtml(task.title)} ${done ? '<span class="chip done">已完成</span>' : ''}</div>
+        <div class="task-meta">${task.dueDate ? `<span class="task-date">${escapeHtml(task.dueDate)}</span>` : ''}${task.note ? `<span>${escapeHtml(task.note)}</span>` : ''}</div>
       </div>
-      <div class="card-actions-rail">
-        <button class="task-check ${isDone(task, plan) ? 'done' : ''}" type="button" data-task-done="${escapeHtml(task.id)}" role="checkbox" aria-checked="${isDone(task, plan)}" title="${isDone(task, plan) ? '撤销完成' : '标记完成'}" aria-label="${isDone(task, plan) ? '撤销完成' : '标记完成'}">✓</button>
-        <button class="btn ${isDone(task, plan) ? 'btn-ghost' : 'btn'} btn-sm" data-task-go="${escapeHtml(task.id)}">${isDone(task, plan) ? '已完成' : '去处理'}</button>
-      </div>
-    </div>`).join('')}</div>`;
+      <button class="btn ${done ? 'btn-ghost' : 'btn'} btn-sm" data-task-go="${escapeHtml(task.id)}">${done ? '已完成' : '去处理'}</button>
+    </div>`;}).join('')}</div>`;
 }
 
 function currentStageText(stages) {
