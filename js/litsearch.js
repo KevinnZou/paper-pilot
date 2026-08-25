@@ -49,7 +49,7 @@ function mockLiterature(query) {
       pages: '45-58',
       type: 'J',
       abstract: '本文围绕数字化转型、流程标准化与组织协同展开，适合作为研究背景与理论铺垫。',
-      provider: 'Mock',
+      provider: '模拟结果',
       url: '',
     },
     {
@@ -64,7 +64,7 @@ function mockLiterature(query) {
       pages: '12-26',
       type: 'J',
       abstract: '聚焦案例研究法和访谈法的结合方式，可支撑方法设计部分。',
-      provider: 'Mock',
+      provider: '模拟结果',
       url: '',
     },
     {
@@ -79,7 +79,7 @@ function mockLiterature(query) {
       pages: '66-79',
       type: 'J',
       abstract: '讨论 AI 介入行业规范化与效率提升的关键路径，适合作为案例分析和讨论参考。',
-      provider: 'Mock',
+      provider: '模拟结果',
       url: '',
     },
   ];
@@ -237,6 +237,7 @@ async function searchOpenAlexZh(query, rows, signal) {
 
 /** 检索词含中文时检索中文文献通道，失败静默返回空（主动取消透传） */
 async function searchZhIfCjk(query, rows, signal) {
+  if (!shouldUseLiveAI()) return [];
   if (!/[一-鿿]/.test(query)) return [];
   try {
     return await searchOpenAlexZh(query, rows, signal);
@@ -333,7 +334,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
   container.innerHTML = `
     <div class="lit-search-shell">
       <div class="lit-search-bar">
-        <input type="text" id="lit-q" placeholder="输入检索词（论文题目、关键词、章节主题…）" value="${escapeHtml(defaultQuery)}" style="flex:1">
+        <input type="text" id="lit-q" class="lit-query-input" placeholder="输入检索词（论文题目、关键词、章节主题…）" value="${escapeHtml(defaultQuery)}">
         <button class="btn" id="lit-search">查找</button>
       </div>
       ${batchFrom && (batchFrom.title || batchFrom.chapters?.length) ? `
@@ -373,7 +374,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       const i = startIndex + idxInBatch;
       const key = itemKey(r);
       const inLib = key && libKeys.has(key);
-      const langTag = r.lang === 'zh' ? '🇨🇳 中文文献' : '🌐 英文文献';
+      const langTag = r.lang === 'zh' ? '中文文献' : '英文文献';
       const topic = r.chapter || r.group || '';
       const groupKey = topic ? `${langTag}｜${topic}` : '';
       let groupHeader = '';
@@ -392,22 +393,22 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
           <label class="lit-cb" for="lit-cb-${i}" title="${inLib ? '已入库' : '点击勾选'}">
             <input type="checkbox" id="lit-cb-${i}" ${inLib ? 'disabled' : (autoCheck && i < 3 ? 'checked' : '')}>
             <span class="lit-main">
-              <span class="lit-title">${escapeHtml(r.title)}${inLib ? ' <span class="seal" style="font-size:11px;vertical-align:2px">已入库</span>' : ''}</span>
+              <span class="lit-title">${escapeHtml(r.title)}${inLib ? ' <span class="seal lit-in-library">已入库</span>' : ''}</span>
               ${r.reason ? `<span class="lit-reason"><span class="rsn-label">推荐理由</span>${escapeHtml(r.reason)}</span>` : ''}
               <span class="lit-meta"><span class="authors">${escapeHtml([r.author || r.authors, r.source].filter(Boolean).join(' · '))}</span> · <span class="mono">${escapeHtml([r.year, issueLabel(r.volume, r.issue, r.pages)].filter(Boolean).join(' '))}</span> · <span class="chip">${escapeHtml(r.provider || '')}</span>${r.lang === 'zh' ? ' <span class="chip">中文</span>' : ''}</span>
             </span>
           </label>
           <div class="lit-actions">
-            <a class="btn btn-ghost btn-sm" href="${link}" target="_blank" rel="noopener" title="打开原文页面核对">原文 ↗</a>
+            <a class="btn btn-ghost btn-sm" href="${link}" target="_blank" rel="noopener" title="打开原文页面核对">打开原文</a>
             <button class="btn btn-ghost btn-sm" data-lit-detail="${i}">详情</button>
           </div>
         </div>
-        <div class="lit-detail" id="lit-detail-${i}" style="display:none">
-          <div class="gb" style="margin-bottom:6px">${escapeHtml(formatCitation(r))}</div>
+        <div class="lit-detail" id="lit-detail-${i}" hidden>
+          <div class="gb">${escapeHtml(formatCitation(r))}</div>
           ${r.doi ? `<div class="mono">DOI: ${escapeHtml(r.doi)}</div>` : ''}
-          ${r.url ? `<div class="mono" style="margin-top:4px">URL: ${escapeHtml(r.url)}</div>` : ''}
-          <div style="margin-top:6px">摘要：${abs}</div>
-          <div style="margin-top:8px"><a href="${link}" target="_blank" rel="noopener">打开原文页面 →</a></div>
+          ${r.url ? `<div class="mono lit-detail-url">URL: ${escapeHtml(r.url)}</div>` : ''}
+          <div class="lit-abstract">摘要：${abs}</div>
+          <div class="lit-detail-link"><a href="${link}" target="_blank" rel="noopener">打开原文页面</a></div>
         </div>`;
     }).join('');
   }
@@ -460,8 +461,8 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
     results.innerHTML = `
       <div class="lit-results-head">
         <div class="lit-results-stats">
-          <span class="hint mono" id="lit-count" style="margin:0">已选 0 条</span>
-          <span class="hint mono" style="margin:0" id="lit-total">共 ${items.length} 条 · 已按适配章节分组去重</span>
+          <span class="hint mono lit-stat" id="lit-count">已选 0 条</span>
+          <span class="hint mono lit-stat" id="lit-total">共 ${items.length} 条 · 已按适配章节分组去重</span>
         </div>
         <div class="result-actions lit-result-actions">
           <button class="btn btn-ghost btn-sm" id="lit-sel-all">全选</button>
@@ -492,8 +493,8 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       const det = e.target.closest('[data-lit-detail]');
       if (!det) return;
       const d = results.querySelector(`#lit-detail-${det.dataset.litDetail}`);
-      const show = d.style.display === 'none';
-      d.style.display = show ? 'block' : 'none';
+      const show = d.hidden;
+      d.hidden = !show;
       det.textContent = show ? '收起' : '详情';
     });
     results.querySelector('#lit-add').addEventListener('click', () => {
@@ -538,7 +539,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       seal.textContent = `已入库 ${added} 条`;
       const goBtn = document.createElement('button');
       goBtn.className = 'btn btn-ghost btn-sm';
-      goBtn.textContent = '去写作工作台插入引用 →';
+      goBtn.textContent = '去写作工作台插入引用';
       goBtn.addEventListener('click', () =>
         document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'writing' })));
       guide.append(seal, goBtn);
@@ -568,7 +569,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       renderResults(items);
     } catch (e) {
       if (isAbort(e)) return; // 主动取消（切页），不打扰
-      results.innerHTML = `<p class="desc">❌ ${escapeHtml(e.message)}</p>`;
+      results.innerHTML = `<p class="desc">检索失败：${escapeHtml(e.message)}</p>`;
       toast(e.message, 'err', 3600);
     } finally {
       setLoading(btn, false);
@@ -607,14 +608,16 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       const zhPairs = [ctx.title, ...(ctx.chapters || [])]
         .filter(q => /[一-鿿]/.test(q))
         .slice(0, 6);
-      const zhGroups = await Promise.all(zhPairs.map(q =>
-        searchOpenAlexZh(q, 3, litSignal())
-          .then(list => list.map(r => ({ ...r, group: q, lang: 'zh' })))
-          .catch(e => { if (isAbort(e)) throw e; return []; })));
+      const zhGroups = shouldUseLiveAI()
+        ? await Promise.all(zhPairs.map(q =>
+            searchOpenAlexZh(q, 3, litSignal())
+              .then(list => list.map(r => ({ ...r, group: q, lang: 'zh' })))
+              .catch(e => { if (isAbort(e)) throw e; return []; })))
+        : [];
       items = dedupe([...zhGroups, ...groups]);
     } catch (e) {
       if (isAbort(e)) { setLoading(batchBtn, false); return; }
-      results.innerHTML = `<p class="desc">❌ ${escapeHtml(e.message)}</p>`;
+      results.innerHTML = `<p class="desc">检索失败：${escapeHtml(e.message)}</p>`;
       toast(e.message, 'err', 3600);
       setLoading(batchBtn, false);
       return;

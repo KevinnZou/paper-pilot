@@ -2078,6 +2078,10 @@ kbd {
   display: flex;
   gap: 8px;
 }
+.lit-query-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .lit-batch-callout {
   display: flex;
   justify-content: space-between;
@@ -2109,6 +2113,7 @@ kbd {
   flex-wrap: wrap;
   align-items: center;
 }
+.lit-stat { margin: 0; }
 .lit-result-actions {
   margin-top: 0;
 }
@@ -2193,6 +2198,7 @@ kbd {
 .lit-cb { display: flex; gap: 10px; flex: 1; min-width: 0; cursor: pointer; align-items: flex-start; }
 .lit-main { flex: 1; min-width: 0; display: block; }
 .lit-title { font-weight: 600; font-size: 14px; line-height: 1.55; display: block; }
+.lit-in-library { margin-left: 6px; font-size: 11px; vertical-align: 2px; }
 .lit-reason {
   display: block;
   margin-top: 7px; padding: 7px 11px; background: var(--amber-soft); border-left: 3px solid var(--amber);
@@ -2212,7 +2218,11 @@ kbd {
   padding: 11px 14px; background: var(--surface-2); border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
   border-radius: 4px; font-size: 12px; color: var(--ink-soft); margin: 0 0 10px 25px; line-height: 1.75;
 }
+.lit-detail[hidden] { display: none; }
 .lit-detail .gb { color: var(--ink); font-family: var(--font-serif); font-size: 13px; }
+.lit-detail-url { margin-top: 4px; }
+.lit-abstract { margin-top: 6px; }
+.lit-detail-link { margin-top: 8px; }
 
 /* ---------- 选题建议 ---------- */
 .suggestion-list { display: flex; flex-direction: column; gap: 10px; }
