@@ -501,24 +501,6 @@ body.sidebar-collapsed .module-writing .main-header {
   font-size: 13px;
   line-height: 1.7;
 }
-.topic-meta-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 10px 0 0;
-}
-.topic-meta-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--surface-2);
-  border: 1px solid transparent;
-  color: var(--mute);
-  font-size: 12px;
-  line-height: 1.45;
-}
 .topic-choice-card p b {
   display: inline-block;
   min-width: 46px;
@@ -968,14 +950,12 @@ kbd {
 .stat-label { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 
 .dash-focus-grid,
-.planner-focus-grid,
-.check-layout { align-items: stretch; }
+.planner-focus-grid { align-items: stretch; }
 
 .dash-focus-grid > .card,
 .dash-cols > .card,
 .planner-focus-grid > .card,
 .planner-support-grid > .card,
-.check-layout > .card,
 .project-grid > .card {
   height: 100%;
 }
@@ -1390,95 +1370,6 @@ kbd {
   margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.6;
-}
-.wb-side-switcher {
-  position: relative;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: linear-gradient(180deg, #FCFBF8 0%, #F6F2EA 100%);
-}
-.wb-side-switcher[open] {
-  box-shadow: var(--shadow);
-}
-.wb-side-switcher summary {
-  list-style: none;
-}
-.wb-side-switcher summary::-webkit-details-marker {
-  display: none;
-}
-.wb-side-switcher-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  cursor: pointer;
-}
-.wb-side-switcher-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.wb-side-switcher-kicker {
-  font-size: 11px;
-  color: var(--ink-soft);
-  letter-spacing: .4px;
-}
-.wb-side-switcher-copy strong {
-  font-size: 14px;
-  font-family: var(--font-serif);
-  line-height: 1.5;
-}
-.wb-side-switcher-hint {
-  font-size: 12px;
-  color: var(--ink-soft);
-  line-height: 1.6;
-}
-.wb-side-switcher-arrow {
-  flex-shrink: 0;
-  color: var(--ink-soft);
-  transition: transform .18s ease;
-}
-.wb-side-switcher[open] .wb-side-switcher-arrow {
-  transform: rotate(180deg);
-}
-.wb-side-switcher-menu {
-  display: grid;
-  gap: 8px;
-  padding: 0 14px 14px;
-  border-top: 1px solid rgba(228, 225, 216, .9);
-}
-.wb-side-option {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  text-align: left;
-  color: var(--ink);
-  font: inherit;
-  cursor: pointer;
-}
-.wb-side-option:hover {
-  border-color: var(--line-strong);
-  background: #FCFAF5;
-}
-.wb-side-option.active {
-  border-color: #C9D8E2;
-  background: var(--brand-soft);
-}
-.wb-side-option-title {
-  font-size: 13px;
-  font-family: var(--font-serif);
-}
-.wb-side-option-hint {
-  font-size: 12px;
-  color: var(--ink-soft);
-  line-height: 1.55;
 }
 .wb-side-pane-head {
   display: flex;
@@ -2389,21 +2280,7 @@ kbd {
 .item .item-title { font-weight: 600; font-size: 13px; line-height: 1.5; }
 .item .item-meta { color: var(--ink-soft); font-size: 12px; margin-top: 2px; line-height: 1.6; }
 .item .item-meta.gb { font-family: var(--font-serif); }
-.task-item,
-.issue-item { align-items: stretch; min-height: 88px; }
-.card-actions-rail {
-  width: 116px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-}
-.card-actions-rail .btn {
-  width: 100%;
-  justify-content: center;
-  min-height: 34px;
-}
+.task-item { align-items: stretch; min-height: 88px; }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } }
@@ -2602,10 +2479,7 @@ kbd {
   .project-actions .btn:first-child,
   .project-actions .btn:nth-child(2) { grid-column: span 1; }
   .item,
-  .task-item,
-  .issue-item { flex-direction: column; }
-  .card-actions-rail { width: 100%; flex-direction: row; }
-  .card-actions-rail .btn { flex: 1; }
+  .task-item { flex-direction: column; }
   /* 主页：旅程节点卡内横向滚动防溢出；hero 统计条收窄 */
   .journey { overflow-x: auto; padding-bottom: 4px; }
   .journey-step { flex: 0 0 auto; min-width: 108px; }

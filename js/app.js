@@ -92,7 +92,7 @@ function updateApiPill() {
     pill.classList.remove('ready');
     pill.title = '已填入 API Key，但尚未打开「真实 AI 调用」。到「应用设置」打开即可使用真实模型。';
   } else {
-    pill.textContent = '演示模式 · Mock 结果';
+    pill.textContent = '演示模式 · 模拟结果';
     pill.classList.add('demo');
     pill.classList.remove('ready');
     pill.title = '当前为演示/模拟结果，不消耗额度。真实 AI 请到「应用设置」填入 API Key。';

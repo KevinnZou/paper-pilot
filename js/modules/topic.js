@@ -196,29 +196,6 @@ function renderTitleCards(design) {
     </article>`).join('')}</div>`;
 }
 
-function renderQuestionCards(design) {
-  if (!design.questionCandidates.length) {
-    return '<div class="topic-empty">先生成方案建议，这里会给出 3 个左右可选的研究问题。</div>';
-  }
-  return `<div class="topic-choice-list compact">${design.questionCandidates.map((item, idx) => `
-    <article class="topic-choice-card compact ${design.selectedQuestionId === item.id ? 'selected' : ''}">
-      <div class="topic-choice-head">
-        <span class="chip ref-no">${idx + 1}</span>
-        ${design.selectedQuestionId === item.id ? '<span class="chip done">已选</span>' : ''}
-      </div>
-      <h3>${escapeHtml(item.question)}</h3>
-      <div class="topic-meta-pills">
-        ${item.object ? `<span class="topic-meta-pill">${escapeHtml(item.object)}</span>` : ''}
-        ${item.variable ? `<span class="topic-meta-pill">${escapeHtml(item.variable)}</span>` : ''}
-        ${item.method ? `<span class="topic-meta-pill">${escapeHtml(item.method)}</span>` : ''}
-        ${item.dataNeed ? `<span class="topic-meta-pill">${escapeHtml(item.dataNeed)}</span>` : ''}
-      </div>
-      <div class="result-actions">
-        <button class="btn btn-ghost btn-sm" data-select-question="${escapeHtml(item.id)}">${design.selectedQuestionId === item.id ? '已选中' : '选为主问题'}</button>
-      </div>
-    </article>`).join('')}</div>`;
-}
-
 function renderOptionPills(options, selected, attr, emptyText) {
   if (!options.length) return `<div class="topic-empty">${emptyText}</div>`;
   return `<div class="topic-pill-group">${options.map(item => `
