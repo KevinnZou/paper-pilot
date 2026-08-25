@@ -2587,3 +2587,178 @@ kbd {
 .planner-overview-head .btn { white-space: nowrap; flex: 0 0 auto; }
 .planner-overview .cal-grid { max-width: 100%; margin-left: 0; margin-right: 0; }
 .planner-overview .hero-stats { gap: 22px; }
+
+/* 计划与进度：重新做成安静的工作面板 */
+.planner-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.planner-hero {
+  border-color: #D9D5C8;
+  box-shadow: var(--shadow-lift);
+}
+.planner-hero-head,
+.planner-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+}
+.planner-panel-head .desc,
+.planner-hero-head .desc {
+  margin: 0;
+}
+.planner-hero-metrics {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.planner-metric {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.planner-metric span {
+  font-size: 11px;
+  color: var(--ink-soft);
+  letter-spacing: .3px;
+}
+.planner-metric b {
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--ink);
+  font-family: var(--font-serif);
+}
+.planner-metric b.danger {
+  color: var(--cinnabar);
+}
+.planner-checkin-panel {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.planner-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, .95fr);
+  gap: 18px;
+  align-items: start;
+}
+.planner-main-stack,
+.planner-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.planner-card {
+  margin-bottom: 0;
+}
+.planner-today-card {
+  border-color: #D9D5C8;
+}
+.planner-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.planner-history-card .planner-cal {
+  margin-top: 10px;
+}
+.planner-checkin-list {
+  margin-top: 14px;
+}
+.planner-seal-lite {
+  font-size: 11px;
+}
+.planner-timeline-card .form-row {
+  margin-top: 4px;
+}
+.planner-timeline-shell {
+  margin-top: 14px;
+}
+
+/* 计划任务与时间轴：细节收束 */
+.task-item {
+  min-height: 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: #FCFBF8;
+}
+.task-item:hover {
+  border-color: var(--line-strong);
+}
+.task-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.task-meta {
+  line-height: 1.6;
+}
+.gantt-placeholder {
+  gap: 10px;
+}
+.gantt-block {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #FCFBF8;
+}
+.gantt-row {
+  align-items: flex-start;
+}
+.gantt-label {
+  width: 132px;
+  line-height: 1.5;
+}
+.gantt-track {
+  height: 18px;
+  margin-top: 1px;
+}
+.gantt-week {
+  min-width: 88px;
+  text-align: right;
+}
+.gantt-tasks {
+  margin: 8px 0 0 142px;
+}
+.gantt-info {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1120px) {
+  .planner-hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .planner-board {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .planner-hero-metrics {
+    grid-template-columns: 1fr;
+  }
+  .gantt-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .gantt-label,
+  .gantt-week {
+    width: auto;
+    min-width: 0;
+    text-align: left;
+  }
+  .gantt-tasks {
+    margin-left: 0;
+  }
+}
