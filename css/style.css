@@ -1251,6 +1251,16 @@ kbd {
   height: 16px;
   display: block;
 }
+.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-text svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
 .workbench.outline-collapsed .wb-left-expanded { display: none; }
 .workbench.outline-collapsed .wb-left-collapsed { display: flex; flex-direction: column; }
 .wb-left h3, .wb-right h3 { font-size: 13px; margin: 0 0 8px; font-family: var(--font-serif); letter-spacing: .5px; }
@@ -2475,7 +2485,10 @@ kbd {
   /* 移动端：章节目录横排滑动，避免竖排占屏 */
   .chapter-list { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
   .chapter-item { flex-shrink: 0; width: auto; }
-  .wb-toolbar-more-panel { position: static; min-width: 0; }
+  .wb-toolbar-more { flex: 1 1 100%; width: 100%; }
+  .wb-toolbar-more summary { width: 100%; }
+  .wb-toolbar-more-panel { position: static; min-width: 0; width: 100%; }
+  .wb-toolbar-more-panel .btn { width: 100%; justify-content: center; }
   .workbench.outline-collapsed { grid-template-columns: 1fr; }
   .workbench.outline-collapsed .wb-left-collapsed { display: none; }
   .workbench.outline-collapsed .wb-left-expanded { display: flex; }

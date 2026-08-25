@@ -615,8 +615,8 @@ export default {
                     <button class="btn btn-ghost btn-sm" id="wb-insert-note">插入注释</button>
                     <button class="btn btn-ghost btn-sm" id="wb-insert-image">插入图片</button>
                     <button class="btn btn-ghost btn-sm" id="wb-insert-table">插入表格</button>
-                    <button class="btn btn-ghost btn-sm" id="wb-undo">↶ 撤销</button>
-                    <button class="btn btn-ghost btn-sm" id="wb-redo">↷ 重做</button>
+                    <button class="btn btn-ghost btn-sm icon-text" id="wb-undo">${ICONS.undo}<span>撤销</span></button>
+                    <button class="btn btn-ghost btn-sm icon-text" id="wb-redo">${ICONS.redo}<span>重做</span></button>
                     <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
                     <button class="btn btn-ghost btn-sm" id="wb-preview">排版预览</button>
                   </div>
