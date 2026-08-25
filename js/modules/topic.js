@@ -75,12 +75,23 @@ function normalizeQuestionCandidates(list = []) {
     : [];
 }
 
+function isPlaceholderTitle(title) {
+  return /^(未命名论文|未命名项目|我的论文项目)(（副本）)?$/.test(String(title || '').trim());
+}
+
+function resolvedResearchTitle(design = {}, project = getProject()) {
+  const title = String(design.title || project.title || '').trim();
+  return title && !isPlaceholderTitle(title) ? title : '';
+}
+
 function normalizeResearchDesign(design = {}, project = getProject()) {
+  const designTitle = isPlaceholderTitle(design.title) ? '' : design.title;
+  const projectTitle = isPlaceholderTitle(project.title) ? '' : project.title;
   return {
     currentStep: Number(design.currentStep) || 1,
     stepTouched: !!design.stepTouched,
     initialIdea: design.initialIdea || '',
-    title: design.title || project.title || '',
+    title: designTitle || projectTitle || '',
     keywords: design.keywords || '',
     constraints: design.constraints || '',
     population: design.population || '',
@@ -127,8 +138,8 @@ function saveDesignPatch(patch) {
       ...(patch.feasibility || {}),
     },
   };
-  const title = patch.title ?? current.title ?? project.title;
-  saveProject({ researchDesign: next, ...(title ? { title } : {}) });
+  const title = patch.title ?? current.title ?? (isPlaceholderTitle(project.title) ? '' : project.title);
+  saveProject({ researchDesign: next, ...(title && !isPlaceholderTitle(title) ? { title } : {}) });
   return next;
 }
 
@@ -143,7 +154,7 @@ function planReady(design) {
 function maxAvailableStep(design, project) {
   if ((project.outline || []).length) return 3;
   if (planReady(design)) return 3;
-  if ((design.title || project.title || '').trim()) return 2;
+  if (resolvedResearchTitle(design, project)) return 2;
   return 1;
 }
 
@@ -392,7 +403,7 @@ function renderStepNav(step, maxStep, project, design) {
     ${labels.map((label, idx) => {
       const n = idx + 1;
       const enabled = n <= maxStep;
-      const status = step === n ? 'current' : (n < step || (n === 1 && (design.title || project.title)) || (n === 2 && planReady(design)) || (n === 3 && (project.outline || []).length)) ? 'done' : '';
+      const status = step === n ? 'current' : (n < step || (n === 1 && resolvedResearchTitle(design, project)) || (n === 2 && planReady(design)) || (n === 3 && (project.outline || []).length)) ? 'done' : '';
       return `<button class="topic-stage-tab ${status}" data-go-step="${n}" ${enabled ? '' : 'disabled'} type="button">
         <span class="topic-stage-index">${n}</span>
         <span>${label}</span>
@@ -488,6 +499,7 @@ function mockOutline(current) {
 function render(el) {
   const project = getProject();
   const design = normalizeResearchDesign(project.researchDesign, project);
+  const activeTitle = resolvedResearchTitle(design, project);
   const step = currentStep(design, project);
   const maxStep = maxAvailableStep(design, project);
 
@@ -507,7 +519,7 @@ function render(el) {
         </div>
         <div class="topic-wizard-grid">
           <div class="topic-primary-panel">
-            ${(design.title || project.title) ? `<div class="topic-already">你已定题：<b>${escapeHtml(design.title || project.title)}</b>。可在此基础上细化研究想法，或直接进入下一步。</div>` : ''}
+            ${activeTitle ? `<div class="topic-already">你已定题：<b>${escapeHtml(activeTitle)}</b>。可在此基础上细化研究想法，或直接进入下一步。</div>` : ''}
             <label class="field-label">研究想法</label>
             <textarea id="rd-idea" class="topic-idea-box" placeholder="例如：通过 AI 助力装修行业标准化、规范化、数字化">${escapeHtml(design.initialIdea)}</textarea>
             <div class="form-row">
@@ -564,7 +576,7 @@ function render(el) {
         </div>
         <div class="topic-current-line">
           <span class="chip done">当前题目</span>
-          <strong>${escapeHtml(design.title || project.title)}</strong>
+          <strong>${escapeHtml(activeTitle)}</strong>
         </div>
         ${design.planStatus === 'loading' ? '<div class="topic-empty">正在根据已选题目生成研究方案建议…</div>' : ''}
         ${design.planStatus === 'error' ? `<div class="topic-empty">研究方案生成失败：${escapeHtml(design.planError || '请稍后重试')}<div class="result-actions topic-retry-actions"><button class="btn btn-ai-solid" id="rd-plan-retry">重新生成研究方案</button></div></div>` : ''}
@@ -804,7 +816,7 @@ researchGap: 1段研究空白
 hypotheses: [2-3条待验证判断]
 feasibility: {score, risks[], suggestions[]}
 
-论文题目：${current.title || getProject().title}
+论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}
 研究想法：${current.initialIdea || '未提供'}
 关键词：${current.keywords || '未提供'}
 约束：${current.constraints || '无'}
@@ -918,7 +930,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
     }
 
     function mockPlan(current, feedback = '') {
-      const baseTitle = current.title || getProject().title || '未命名论文';
+      const baseTitle = resolvedResearchTitle(current, getProject()) || '论文题目';
       const practical = /采购|标准|规范|管理|数字化|企业|流程/.test(`${baseTitle} ${feedback}`);
       return {
         questions: practical ? [
@@ -1030,7 +1042,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         const reply = shouldUseLiveAI()
           ? await chat([
               { role: 'system', content: SYSTEM },
-              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法和数据来源一致。\n论文题目：${current.title || getProject().title}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `\n用户对上一版大纲的修改意见：${feedback}\n请根据这个意见重组章节，不要只改个别字。` : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
+              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法和数据来源一致。\n论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `\n用户对上一版大纲的修改意见：${feedback}\n请根据这个意见重组章节，不要只改个别字。` : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
             ], { temperature: 0.4, signal: topicSignal() })
           : mockOutline(current);
         syncOutlineUI(reply);
@@ -1088,7 +1100,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         confirmedAt: current.confirmedAt || new Date().toISOString(),
         currentStep: 3,
       });
-      updateBasics({ title: current.title || getProject().title, degreeType: getProject().degreeType });
+      updateBasics({ title: resolvedResearchTitle(current, getProject()), degreeType: getProject().degreeType });
       toast(`已采用大纲（${chapters.length} 章），正在进入论文写作`, 'ok');
       document.dispatchEvent(new Event('tm:projects-changed')); // 研究设计完成 -> 从导航隐藏
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'writing' }));
@@ -1100,7 +1112,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       if (ocPlan) {
         ocPlan.innerHTML = `
           <div class="oc-plan-grid">
-            <div class="oc-plan-item"><span>论文题目</span><b>${escapeHtml(current.title || getProject().title)}</b></div>
+            <div class="oc-plan-item"><span>论文题目</span><b>${escapeHtml(resolvedResearchTitle(current, getProject()) || '未设定')}</b></div>
             <div class="oc-plan-item"><span>研究问题</span><b>${escapeHtml(selectedQuestion(current)?.question || '未单独设定')}</b></div>
             <div class="oc-plan-item"><span>研究方法</span><b>${escapeHtml(selectedMethod(current) || '未单独设定')}</b></div>
             <div class="oc-plan-item"><span>数据来源</span><b>${escapeHtml(selectedDataSource(current) || '未单独设定')}</b></div>

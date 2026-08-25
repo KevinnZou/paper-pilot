@@ -1067,7 +1067,16 @@ kbd {
 }
 
 /* 功能入口：一行 4 卡（icon + 名称 + 描述），主页主导航 */
-.tool-band { padding-top: 18px; }
+.tool-band {
+  padding: 2px 0 0;
+}
+.tool-band .hero-top {
+  margin-bottom: 10px;
+}
+.tool-band h2,
+.tool-band .desc {
+  margin-bottom: 0;
+}
 .dash-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: stretch; }
 @media (max-width: 980px) { .dash-grid { grid-template-columns: 1fr; } }
 .dash-card {
