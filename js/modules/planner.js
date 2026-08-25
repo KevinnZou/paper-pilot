@@ -1,6 +1,9 @@
 import { toast, escapeHtml, calGridHtml } from '../ui.js';
 import { getProject, updateBasics, saveProject, setChapterProgress, calcStreak, isoLocal, getPlan, savePlan, getEvidence } from '../project.js';
 
+let weekExpanded = false;
+const WEEK_PREVIEW = 3;
+
 const TEMPLATES = [
   {
     name: '本科毕业论文（12周）',
@@ -215,7 +218,10 @@ function render(el) {
       </div>
       <details class="planner-collapse" open>
         <summary>本周任务（${weekTasks.length}）</summary>
-        <div class="planner-collapse-body">${renderTaskList(weekTasks, plan, '本周自动任务还不多，可以补充一个手动任务。')}</div>
+        <div class="planner-collapse-body">
+          ${renderTaskList(weekExpanded ? weekTasks : weekTasks.slice(0, WEEK_PREVIEW), plan, '本周自动任务还不多，可以补充一个手动任务。')}
+          ${!weekExpanded && weekTasks.length > WEEK_PREVIEW ? `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" id="plan-week-more">查看全部（${weekTasks.length} 条）▾</button></div>` : ''}
+        </div>
       </details>
     </div>
     </div>
@@ -248,6 +254,7 @@ function render(el) {
       </div>
     </details>
   `;
+  el.querySelector('#plan-week-more')?.addEventListener('click', () => { weekExpanded = true; render(el); });
   el.querySelector('#plan-gen').addEventListener('click', () => {
     const dueVal = el.querySelector('#plan-due').value;
     if (!dueVal) {
