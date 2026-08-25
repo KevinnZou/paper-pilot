@@ -331,6 +331,9 @@ function dedupe(groups) {
 
 /** 在容器内渲染「查找文献」组件 */
 export function renderLitSearch(container, { defaultQuery = '', batchFrom = null, compact = false, onDone } = {}) {
+  const sourceNote = shouldUseLiveAI()
+    ? '数据来源：CrossRef / OpenAlex；先看推荐理由和题名，再按需打开原文核对。'
+    : '当前为演示模式，使用内置模拟文献结果，不会请求外部数据库。';
   container.innerHTML = `
     <div class="lit-search-shell">
       <div class="lit-search-bar">
@@ -345,7 +348,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
           </div>
           <button class="btn btn-ai-solid" id="lit-batch">一键批量推荐</button>
         </div>` : ''}
-      <p class="hint lit-search-note">数据来源：CrossRef / OpenAlex；先看推荐理由和题名，再按需打开原文核对。</p>
+      <p class="hint lit-search-note">${sourceNote}</p>
       <div id="lit-results"></div>
     </div>
   `;

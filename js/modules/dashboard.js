@@ -7,7 +7,7 @@ import { ICONS } from '../icons.js';
 
 const CARDS = [
   { id: 'topic', title: '研究设计', desc: '研究想法 → 研究问题 → 可行性检查 → 论文大纲' },
-  { id: 'writing', title: '写作工作台', desc: '一份完整论文文档：目录定位、AI 动作、规范引用' },
+  { id: 'writing', title: '写作工作台', desc: '目录定位、润色续写、规范引用都在一处完成' },
   { id: 'citation', title: '文献与证据', desc: '智能推荐中英文文献，核对理由后勾选入库' },
   { id: 'planner', title: '计划与进度', desc: '今日任务、本周任务、时间轴与写作记录' },
 ];
@@ -26,10 +26,10 @@ function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapte
   const totalWords = Object.values(drafts).reduce((sum, d) => sum + wordCount(d?.content), 0);
   const chapterWords = nextChapter ? wordCount(drafts[nextChapter]?.content || '') : 0;
   const chapterStatus = nextChapter ? (project.chapterProgress[nextChapter] || '未开始') : '';
-  if (!cfg?.apiKey) {
+  if (cfg?.enableLiveAI && !cfg?.apiKey) {
     return {
-      title: '今天先打通 AI 能力',
-      goal: '完成 API 配置，解锁研究设计、文献检索和写作辅助。',
+      title: '今天先完成真实 AI 配置',
+      goal: '你已打开真实调用开关，补上 API Key 后即可使用模型服务。',
       bullets: ['填写 API Key', '测试连接', '返回项目主页继续主线'],
       eta: '5 分钟',
       nav: 'settings',
@@ -142,7 +142,7 @@ export default {
 
     // 五步写作之旅（onboarding 流程条）
     const steps = [
-      { label: '填入 API Key', done: !!(cfg?.apiKey), extra: cfg?.apiKey ? '已配置' : '', nav: 'settings' },
+      { label: '选择 AI 模式', done: !cfg?.enableLiveAI || !!cfg?.apiKey, extra: cfg?.enableLiveAI ? (cfg?.apiKey ? '已配置' : '待配置') : '演示模式', nav: 'settings' },
       { label: '明确研究题目', done: !!p.title, extra: p.title ? shortName(p.title, 8) : '', nav: 'topic' },
       { label: '补齐研究设计', done: researchReadyCount >= 4, extra: `${researchReadyCount}/6`, nav: 'topic' },
       { label: '采用章节大纲', done: chapters.length > 0, extra: chapters.length ? `${chapters.length} 章` : '', nav: 'topic' },
@@ -171,7 +171,7 @@ export default {
 
     // 主行动按钮 = 下一步
     let heroAction = '';
-    if (!cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">第一步：填入 API Key</button>';
+    if (cfg?.enableLiveAI && !cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">配置真实 AI</button>';
     else if (!p.title) heroAction = '<button class="btn btn-lg" data-nav="topic">去确定研究题目</button>';
     else if (researchReadyCount < 4) heroAction = '<button class="btn btn-lg" data-nav="topic">补齐研究设计</button>';
     else if (!chapters.length) heroAction = '<button class="btn btn-lg" data-nav="topic">去生成并采用大纲</button>';
@@ -192,7 +192,7 @@ export default {
             ${chapters.length ? `<span class="chip">${chapters.length} 章大纲</span>` : ''}
             ${doneCount ? `<span class="chip done">已完成 ${doneCount} 章</span>` : ''}
             ${p.materials.length ? `<span class="chip">素材 ${p.materials.length} 条</span>` : ''}
-            ${doneSteps === steps.length ? '<span class="chip done">旅程五步全部完成</span>' : ''}
+            ${doneSteps === steps.length ? '<span class="chip done">写作旅程已完成</span>' : ''}
           </div>
         </div>
         <p class="hero-lead">${p.title

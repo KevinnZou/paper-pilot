@@ -110,7 +110,7 @@ export default {
 
       <div class="card settings-card settings-danger-card">
         <h2><span class="mark"></span>本地数据</h2>
-        <p class="desc">AI 请求发送至模型服务商；文献检索请求发送至 CrossRef / OpenAlex；PaperPilot 自身无服务器存储正文。</p>
+        <p class="desc">只有开启真实 AI 调用后，模型请求才会发送至模型服务商，文献检索才会请求 CrossRef / OpenAlex；PaperPilot 自身无服务器存储正文。</p>
         <button class="btn btn-danger" id="cfg-clear">清除全部本地数据</button>
       </div>
       </div>`;
