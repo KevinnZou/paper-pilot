@@ -2639,25 +2639,49 @@ kbd {
 .planner-metric b.danger {
   color: var(--cinnabar);
 }
-.planner-checkin-panel {
+.planner-checkin-strip {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
 }
-.planner-paired-grid {
+.planner-checkin-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+}
+.planner-checkin-copy strong {
+  font-size: 14px;
+  font-family: var(--font-serif);
+  font-weight: 700;
+}
+.planner-checkin-copy span {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.planner-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, .95fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, .9fr);
   gap: 18px;
   align-items: start;
+}
+.planner-primary-stack,
+.planner-secondary-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
 }
 .planner-card {
   margin-bottom: 0;
 }
 .planner-today-card {
   border-color: #D9D5C8;
-}
-.planner-secondary-grid {
-  align-items: stretch;
 }
 .planner-capture-card {
   padding-bottom: 20px;
@@ -2671,14 +2695,24 @@ kbd {
 .planner-history-card .planner-cal {
   margin-top: 10px;
 }
+.planner-history-card .cal-grid {
+  max-width: 100%;
+}
 .planner-checkin-list {
   margin-top: 14px;
 }
 .planner-seal-lite {
   font-size: 11px;
 }
+.planner-strip-seal {
+  flex: 0 0 auto;
+}
 .planner-timeline-card .form-row {
   margin-top: 4px;
+}
+.planner-timeline-controls {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
 }
 .planner-timeline-shell {
   margin-top: 14px;
@@ -2760,13 +2794,19 @@ kbd {
   .planner-hero-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .planner-paired-grid {
+  .planner-workspace {
     grid-template-columns: 1fr;
   }
 }
 @media (max-width: 760px) {
   .planner-hero-metrics {
     grid-template-columns: 1fr;
+  }
+  .planner-checkin-strip {
+    align-items: stretch;
+  }
+  .planner-checkin-copy {
+    min-width: 0;
   }
   .task-item {
     grid-template-columns: 1fr;
