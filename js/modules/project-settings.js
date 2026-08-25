@@ -1,5 +1,7 @@
 import { toast, escapeHtml } from '../ui.js';
 import { getProject, updateBasics, hasActiveProject } from '../project.js';
+import { ICONS } from '../icons.js';
+import { meaningfulTitle } from '../title-utils.js';
 
 export default {
   id: 'project-settings',
@@ -12,7 +14,7 @@ export default {
     if (!hasActiveProject()) {
       el.innerHTML = `
         <div class="card empty">
-          <div class="empty-icon">文</div>
+          <div class="empty-icon">${ICONS.projects}</div>
           <p>还没有打开的论文项目。先去项目中心创建或选择一个项目。</p>
           <button class="btn" data-nav="projects">去项目中心</button>
         </div>`;
@@ -22,6 +24,7 @@ export default {
     }
 
     const p = getProject();
+    const projectTitle = meaningfulTitle(p.researchDesign?.title, p.title);
     const researchQuestion = p.researchDesign?.researchQuestions?.[0]?.question || '未单独设定';
     const researchMethod = p.researchDesign?.methods?.[0] || '未单独设定';
     const dataSource = p.researchDesign?.dataSources?.[0] || '未单独设定';
@@ -44,7 +47,7 @@ export default {
           </div>
 
           <label class="field-label">论文题目</label>
-          <input type="text" id="ps-title" value="${escapeHtml(p.title || '')}" placeholder="例如：基于大语言模型的智能客服满意度研究">
+          <input type="text" id="ps-title" value="${escapeHtml(projectTitle)}" placeholder="例如：基于大语言模型的智能客服满意度研究">
 
           <div class="form-row">
             <div>

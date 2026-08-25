@@ -75,14 +75,18 @@ export default {
           <input type="text" id="cfg-baseurl" class="mono-input" value="${escapeHtml(cfg.baseURL || '')}" placeholder="https://api.example.com">
         </div>
 
+        <label class="settings-mode-card">
+          <input type="checkbox" id="cfg-live-ai" ${cfg.enableLiveAI ? 'checked' : ''}>
+          <span class="settings-mode-copy">
+            <strong>真实 AI 调用</strong>
+            <span>${cfg.enableLiveAI ? '已开启。生成、润色、文献检索会使用你配置的服务。' : '默认关闭。当前所有 AI 流程使用模拟结果，不消耗额度。'}</span>
+          </span>
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
         <div class="settings-actions">
           <button class="btn" id="cfg-save">保存配置</button>
           <button class="btn btn-ai" id="cfg-test">测试连接</button>
         </div>
-        <label class="settings-check">
-          <input type="checkbox" id="cfg-live-ai" ${cfg.enableLiveAI ? 'checked' : ''}>
-          启用真实 AI 调用（默认关闭，先用测试数据验证流程）
-        </label>
         <div class="result-box" id="cfg-test-out"><span class="placeholder">测试结果将显示在这里</span></div>
       </div>
 

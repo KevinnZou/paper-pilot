@@ -1207,6 +1207,70 @@ kbd {
   flex-wrap: wrap;
   margin-top: 16px;
 }
+.settings-mode-card {
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  cursor: pointer;
+}
+.settings-mode-card input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand);
+}
+.settings-mode-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-mode-copy strong {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.settings-mode-copy span {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+.settings-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: #E2DFD6;
+  border: 1px solid var(--line-strong);
+  transition: background .15s, border-color .15s;
+}
+.settings-switch::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(38,48,59,.18);
+  transition: transform .15s;
+}
+.settings-mode-card:has(input:checked) {
+  border-color: #C9D8E2;
+  background: var(--brand-soft);
+}
+.settings-mode-card:has(input:checked) .settings-switch {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+.settings-mode-card:has(input:checked) .settings-switch::after {
+  transform: translateX(16px);
+}
 .settings-check {
   display: flex;
   align-items: center;
