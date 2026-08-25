@@ -188,7 +188,6 @@ function render(el) {
 
   const doneChapters = chapters.filter(c => (project.chapterProgress?.[c.chapter] || '未开始') === '已完成').length;
   el.innerHTML = `
-    <div class="grid-2 planner-top">
     <div class="card planner-overview">
       <div class="planner-overview-head">
         <div>
@@ -202,29 +201,29 @@ function render(el) {
         <input type="text" id="ck-note" placeholder="今日小结（可选）">
         ${checkedToday ? '<span class="seal">已打卡</span>' : ''}
       </div>
-      <div class="planner-cal">${calHtml}</div>
-      ${checkins.length ? `<details class="planner-collapse">
-          <summary>打卡记录（最近 7 次）</summary>
-          <div class="planner-collapse-body">${checkins.slice(0, 7).map(c => `<div class="item"><div class="item-main"><div class="item-title mono">${escapeHtml(c.date)}${c.chapter ? ` · ${escapeHtml(c.chapter)}` : ''}</div>${c.note ? `<div class="item-meta">${escapeHtml(c.note)}</div>` : ''}</div>${c.chapter ? '<span class="chip doing">进行中</span>' : '<span class="seal" style="font-size:11px">已打卡</span>'}</div>`).join('')}</div>
-        </details>` : ''}
-    </div>
-
-    <div class="planner-right">
-      <div class="card">
-        <h2><span class="mark"></span>今日任务 <span class="chip ${overdueTasks.length ? 'doing' : ''}">${overdueTasks.length ? `${overdueTasks.length} 逾期` : todayTasks.length}</span></h2>
-        <p class="desc">${overdueTasks.length ? `默认先清逾期：当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '先推进今天最该做的事；暂无逾期。'}</p>
-        ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
-        ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
-      </div>
-      <details class="planner-collapse" open>
-        <summary>本周任务（${weekTasks.length}）</summary>
+      <details class="planner-collapse">
+        <summary>打卡记录（近 70 天热力图）</summary>
         <div class="planner-collapse-body">
-          ${renderTaskList(weekExpanded ? weekTasks : weekTasks.slice(0, WEEK_PREVIEW), plan, '本周自动任务还不多，可以补充一个手动任务。')}
-          ${!weekExpanded && weekTasks.length > WEEK_PREVIEW ? `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" id="plan-week-more">查看全部（${weekTasks.length} 条）▾</button></div>` : ''}
+          <div class="planner-cal">${calHtml}</div>
+          ${checkins.length ? checkins.slice(0, 7).map(c => `<div class="item"><div class="item-main"><div class="item-title mono">${escapeHtml(c.date)}${c.chapter ? ` · ${escapeHtml(c.chapter)}` : ''}</div>${c.note ? `<div class="item-meta">${escapeHtml(c.note)}</div>` : ''}</div>${c.chapter ? '<span class="chip doing">进行中</span>' : '<span class="seal" style="font-size:11px">已打卡</span>'}</div>`).join('') : '<p class="desc">还没有打卡记录。</p>'}
         </div>
       </details>
     </div>
+
+    <div class="card">
+      <h2><span class="mark"></span>今日任务 <span class="chip ${overdueTasks.length ? 'doing' : ''}">${overdueTasks.length ? `${overdueTasks.length} 逾期` : todayTasks.length}</span></h2>
+      <p class="desc">${overdueTasks.length ? `默认先清逾期：当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '先推进今天最该做的事；暂无逾期。'}</p>
+      ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
+      ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
     </div>
+
+    <details class="planner-collapse" open>
+      <summary>本周任务（${weekTasks.length}）</summary>
+      <div class="planner-collapse-body">
+        ${renderTaskList(weekExpanded ? weekTasks : weekTasks.slice(0, WEEK_PREVIEW), plan, '本周自动任务还不多，可以补充一个手动任务。')}
+        ${!weekExpanded && weekTasks.length > WEEK_PREVIEW ? `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" id="plan-week-more">查看全部（${weekTasks.length} 条）▾</button></div>` : ''}
+      </div>
+    </details>
 
     <details class="planner-collapse">
       <summary>手动补充任务</summary>

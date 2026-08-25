@@ -2577,7 +2577,7 @@ kbd {
 .planner-collapse-body { padding: 0 16px 16px; }
 
 /* 计划页顶部两列：进度总览 + 今日任务 */
-.planner-top { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.planner-top { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: stretch; }
 @media (max-width: 980px) { .planner-top { grid-template-columns: minmax(0, 1fr); } }
 
 /* 计划页右列：今日任务 + 本周任务 堆叠 */
