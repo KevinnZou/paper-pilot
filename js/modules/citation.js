@@ -6,6 +6,7 @@ import { renderLitSearch } from '../litsearch.js';
 import { getProject, getEvidence, saveEvidence } from '../project.js';
 import { ensureCitationIds, normalizeCitationEntry, formatCitationEntry } from '../citation-utils.js';
 import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../document-model.js';
+import { ICONS } from '../icons.js';
 
 // ---------- GB/T 7714 格式化：规则引擎抽至 gbt7714.js（供文献查找等模块复用） ----------
 // 注意：`export ... from` 不建立本地绑定，必须先 import 再 re-export（历史 bug 修复）
@@ -177,8 +178,8 @@ function renderList(list, citedNums, keyword = '', ctx = citationContext(list)) 
         <div class="citation-row-links">${escapeHtml([c.doi ? `DOI ${c.doi}` : '', c.url || ''].filter(Boolean).join(' · '))}</div>
       </div>
       <div class="citation-row-actions">
-        <button class="btn btn-ghost btn-sm" data-cit-copy="${escapeHtml(c.formatted || '')}" title="复制 GB/T 7714 格式">📋</button>
-        <button class="btn btn-danger btn-sm" data-cit-del="${escapeHtml(c.id)}" title="删除该文献">🗑</button>
+        <button class="btn btn-ghost btn-sm icon-only" data-cit-copy="${escapeHtml(c.formatted || '')}" title="复制 GB/T 7714 格式" aria-label="复制 GB/T 7714 格式">${ICONS.copy}</button>
+        <button class="btn btn-danger btn-sm icon-only" data-cit-del="${escapeHtml(c.id)}" title="删除该文献" aria-label="删除该文献">${ICONS.trash}</button>
       </div>
     </article>`;
   }).join('');
@@ -235,8 +236,8 @@ function renderEvidenceList(items, chapters) {
           ].filter(Boolean).join(' · '))}</div>
         </div>
         <div class="evidence-row-actions">
-          <button class="btn btn-ghost btn-sm" data-evi-copy="${escapeHtml(item.content || '')}" title="复制证据内容">📋</button>
-          <button class="btn btn-danger btn-sm" data-evi-del="${escapeHtml(item.id)}" title="删除证据卡">🗑</button>
+          <button class="btn btn-ghost btn-sm icon-only" data-evi-copy="${escapeHtml(item.content || '')}" title="复制证据内容" aria-label="复制证据内容">${ICONS.copy}</button>
+          <button class="btn btn-danger btn-sm icon-only" data-evi-del="${escapeHtml(item.id)}" title="删除证据卡" aria-label="删除证据卡">${ICONS.trash}</button>
         </div>
       </div>
       <div class="evidence-row-content">${escapeHtml(item.content || '')}</div>
@@ -253,7 +254,7 @@ function renderEvidenceModal(list, prj) {
             <h3 id="evi-modal-title">新增证据卡</h3>
             <p class="desc">从已入库文献里摘一条后面写作时能直接拿来支撑论证的内容。</p>
           </div>
-          <button class="btn btn-ghost btn-sm" type="button" id="evi-cancel-top">关闭</button>
+          <button class="btn btn-ghost btn-sm icon-only" type="button" id="evi-cancel-top" aria-label="关闭">${ICONS.close}</button>
         </div>
         <label class="field-label">关联文献</label>
         <select id="evi-citation">
@@ -426,7 +427,7 @@ function renderLibraryTab(list, citedNums) {
         <div id="cit-cite-stats">${citedStatsHtml(citedNums, list)}</div>
         <div class="cit-search-row">
           <input type="search" id="cit-search" placeholder="搜索标题 / 作者 / 出处…" aria-label="搜索文献库">
-          <button class="btn btn-ghost btn-sm" id="cit-search-clear" title="清空搜索" ${list.length ? '' : 'disabled'}>✕</button>
+          <button class="btn btn-ghost btn-sm icon-only" id="cit-search-clear" title="清空搜索" aria-label="清空搜索" ${list.length ? '' : 'disabled'}>${ICONS.close}</button>
           <span class="cit-search-count" id="cit-search-count" aria-live="polite"></span>
         </div>
         <div class="citation-list-shell">
