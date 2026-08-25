@@ -196,12 +196,44 @@ function collectIssues(project, doc, citations) {
   return issues;
 }
 
+function issueActionLabel(item) {
+  if (item.nav === 'topic') return '去研究设计';
+  if (item.nav === 'writing') return item.chapter ? '去对应章节' : '去写作台';
+  if (item.nav === 'citation') return '去文献库';
+  if (item.nav === 'planner') return '去计划页';
+  return '去处理';
+}
+
+function exportReadiness(issues) {
+  const high = issues.filter(item => item.level === 'high').length;
+  const medium = issues.filter(item => item.level === 'medium').length;
+  if (high) {
+    return {
+      tone: 'danger',
+      title: '暂不建议导出定稿',
+      desc: `还有 ${high} 个关键问题需要先处理。可以导出过程稿，但不建议作为最终提交版本。`,
+    };
+  }
+  if (medium) {
+    return {
+      tone: 'warn',
+      title: '可以导出过程稿',
+      desc: `还有 ${medium} 个中等风险问题。导出前建议再检查一次结构、引用和格式。`,
+    };
+  }
+  return {
+    tone: 'ready',
+    title: '已具备导出基础',
+    desc: '当前没有发现关键问题，可以导出 DOCX 做最终排版和人工校对。',
+  };
+}
+
 function issueHtml(item, idx) {
   return `<div class="issue-row">
     <div class="item-main">
       <div class="issue-title"><span class="chip ${severityChip(item.level)}">${item.group}</span> ${escapeHtml(item.text)}</div>
     </div>
-    <button class="btn btn-ghost btn-sm" data-issue-go="${idx}">去处理</button>
+    <button class="btn btn-ghost btn-sm" data-issue-go="${idx}">${issueActionLabel(item)}</button>
   </div>`;
 }
 
@@ -223,6 +255,7 @@ export default {
     const exportFilename = (exportTitle || '论文全文').replace(/[\\/:*?"<>|]/g, '_');
     const totalWords = Object.values(state.drafts || {}).reduce((s, d) => s + String(d?.content || '').replace(/\s/g, '').length, 0);
     const previewHtml = buildPreviewHtml(project, doc, citations);
+    const readiness = exportReadiness(issues);
     const summary = {
       structure: issues.filter(item => item.group === '结构检查').length,
       logic: issues.filter(item => item.group === '逻辑检查').length,
@@ -260,6 +293,10 @@ export default {
           <aside class="card export-panel">
             <h2><span class="mark"></span>导出与预览</h2>
             <p class="desc">优先导出 DOCX 做最终排版；Markdown 和 HTML 适合备份或迁移。</p>
+            <div class="export-readiness ${readiness.tone}">
+              <strong>${escapeHtml(readiness.title)}</strong>
+              <span>${escapeHtml(readiness.desc)}</span>
+            </div>
             <div class="export-action-grid">
               <button class="btn" id="ce-docx">导出 DOCX</button>
               <button class="btn btn-ghost" id="ce-pdf">排版预览 / PDF</button>

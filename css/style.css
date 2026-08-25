@@ -842,6 +842,7 @@ input::placeholder, textarea::placeholder { color: #A9B0B5; }
   font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
   transition: background .15s, border-color .15s, color .15s, transform .05s;
   background: var(--brand); color: #fff;
+  white-space: nowrap;
 }
 .btn:hover { background: var(--brand-strong); }
 .btn:active { transform: translateY(1px); }
@@ -2247,6 +2248,10 @@ kbd {
   display: flex;
   gap: 8px;
 }
+.lit-search-bar .btn {
+  flex: 0 0 auto;
+  min-width: 70px;
+}
 .lit-query-input {
   flex: 1 1 auto;
   min-width: 0;
@@ -2410,6 +2415,30 @@ kbd {
   font-size: 13px; cursor: pointer; font-family: inherit; color: var(--ink-soft);
 }
 .tab.active { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+
+.citation-quick-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.citation-quick-stats span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.citation-quick-stats b {
+  color: var(--brand);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
 
 /* ---------- toast ---------- */
 .toast-wrap { position: fixed; top: 18px; right: 18px; z-index: 99; display: flex; flex-direction: column; gap: 8px; }
@@ -2932,6 +2961,39 @@ kbd {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin: 14px 0 0;
+}
+.export-readiness {
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.export-readiness strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.export-readiness span {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.export-readiness.danger {
+  border-left-color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+}
+.export-readiness.warn {
+  border-left-color: var(--amber);
+  background: var(--amber-soft);
+}
+.export-readiness.ready {
+  border-left-color: var(--jade);
+  background: var(--jade-soft);
 }
 .export-action-grid .btn {
   width: 100%;

@@ -302,12 +302,17 @@ function renderEvidenceModal(list, prj) {
     </div>`;
 }
 
-function renderTabNav(activeTab) {
+function renderTabNav(activeTab, stats = {}) {
   return `
     <div class="citation-shell-head">
       <div>
-        <h2>文献与证据</h2>
+        <h2><span class="mark"></span>文献与证据</h2>
         <p class="desc">把“找文献、管文献、摘证据”拆开处理，当前页面只保留一类任务。</p>
+        <div class="citation-quick-stats">
+          <span><b>${stats.total || 0}</b> 文献</span>
+          <span><b>${stats.cited || 0}</b> 已引用</span>
+          <span><b>${stats.evidence || 0}</b> 证据卡</span>
+        </div>
       </div>
       <div class="citation-tabbar" role="tablist" aria-label="文献与证据分区">
         ${CITATION_TABS.map(tab => `
@@ -544,10 +549,16 @@ function render(el) {
   const citedNums = collectCitedNums();
   const prj = getProject();
   const activeTab = getActiveTab();
+  const ctx = citationContext(list);
+  const citationStats = {
+    total: list.length,
+    cited: prj.documentV2 ? ctx.citedIds.size : list.filter(c => citedNums.has(c.litNo)).length,
+    evidence: getEvidence().length,
+  };
 
   el.innerHTML = `
     <div class="citation-shell">
-      ${renderTabNav(activeTab)}
+      ${renderTabNav(activeTab, citationStats)}
       <div class="citation-shell-body">
         ${activeTab === 'discover' ? renderDiscoverTab(prj) : ''}
         ${activeTab === 'library' ? renderLibraryTab(list, citedNums) : ''}
