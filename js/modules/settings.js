@@ -45,13 +45,14 @@ export default {
     const backupDays = daysSinceLastBackup();
 
     el.innerHTML = `
-      <div class="card">
+      <div class="settings-shell">
+      <div class="card settings-card">
         <h2><span class="mark"></span>大模型 API 配置</h2>
         <p class="desc">论文数据默认仅存本机，无需登录。使用 AI 功能时，仅本次处理所需内容会从浏览器直接发送至你配置的模型服务商，PaperPilot 不经过自有服务器。</p>
 
         <label class="field-label">API Key</label>
-        <div style="display:flex;gap:8px">
-          <input type="password" id="cfg-key" value="${escapeHtml(cfg.apiKey)}" placeholder="sk-..." style="flex:1;font-family:var(--font-mono)" autocomplete="off">
+        <div class="settings-key-row">
+          <input type="password" id="cfg-key" class="mono-input" value="${escapeHtml(cfg.apiKey)}" placeholder="sk-..." autocomplete="off">
           <button class="btn btn-ghost" id="cfg-key-toggle">显示</button>
         </div>
         <p class="hint">还没有 Key？去 <a href="https://platform.deepseek.com" target="_blank" rel="noopener">DeepSeek 开放平台</a> 免费注册申请（兼容任何 OpenAI 协议服务商）</p>
@@ -65,52 +66,53 @@ export default {
           </div>
           <div>
             <label class="field-label">模型名称</label>
-            <input type="text" id="cfg-model" value="${escapeHtml(cfg.model)}" placeholder="deepseek-chat" style="font-family:var(--font-mono)">
+            <input type="text" id="cfg-model" class="mono-input" value="${escapeHtml(cfg.model)}" placeholder="deepseek-chat">
           </div>
         </div>
 
-        <div id="cfg-custom-wrap" style="display:none">
+        <div id="cfg-custom-wrap" class="settings-custom-wrap" hidden>
           <label class="field-label">自定义 Base URL</label>
-          <input type="text" id="cfg-baseurl" value="${escapeHtml(cfg.baseURL || '')}" placeholder="https://api.example.com" style="font-family:var(--font-mono)">
+          <input type="text" id="cfg-baseurl" class="mono-input" value="${escapeHtml(cfg.baseURL || '')}" placeholder="https://api.example.com">
         </div>
 
-        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <div class="settings-actions">
           <button class="btn" id="cfg-save">保存配置</button>
           <button class="btn btn-ai" id="cfg-test">测试连接</button>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;color:var(--ink-soft)">
+        <label class="settings-check">
           <input type="checkbox" id="cfg-live-ai" ${cfg.enableLiveAI ? 'checked' : ''}>
           启用真实 AI 调用（默认关闭，先用测试数据验证流程）
         </label>
         <div class="result-box" id="cfg-test-out"><span class="placeholder">测试结果将显示在这里</span></div>
       </div>
 
-      <div class="card">
+      <div class="card settings-card settings-demo-card">
         <h2><span class="mark"></span>演示模式</h2>
         <p class="desc">一键载入示例论文（题目、五章大纲、两章草稿、3 条文献、3 天打卡记录），适合课堂演示或快速体验完整功能。${hasExistingData() ? '⚠️ 当前已有本地数据，载入将覆盖。' : ''}</p>
         <button class="btn" id="cfg-demo">载入演示数据</button>
       </div>
 
-      <div class="card">
+      <div class="card settings-card">
         <h2><span class="mark"></span>数据备份</h2>
         <p class="desc">当前本地：项目 <b>${projects.length}</b> 个 · 文献 <b>${totalCitations}</b> 条 · 打卡 <b>${totalCheckins}</b> 天 · 草稿 <b>${totalDrafts}</b> 章 · 版本 <b>${versionCount()}</b> 份。所有数据存在浏览器本地——导出成文件，换电脑、清缓存都不丢论文。</p>
         ${backupDays >= 7 ? '<div class="integrity-note"><b>备份提醒</b>　距离上次导出备份已超过 7 天，建议现在导出一份。</div>' : ''}
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="settings-actions">
           <button class="btn" id="cfg-export">导出备份文件</button>
           <button class="btn btn-ghost" id="cfg-import-btn">导入并恢复</button>
-          <input type="file" id="cfg-import" accept=".json,application/json" style="display:none">
+          <input type="file" id="cfg-import" accept=".json,application/json" hidden>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--ink-soft)">
+        <label class="settings-check">
           <input type="checkbox" id="cfg-export-key">
           包含 API Key 等敏感信息
         </label>
         <p class="hint">备份默认包含项目数据和应用设置，但不包含 API Key。只有你主动勾选后，才会把 Key 写进备份文件。</p>
       </div>
 
-      <div class="card">
+      <div class="card settings-card settings-danger-card">
         <h2><span class="mark"></span>本地数据</h2>
         <p class="desc">AI 请求发送至模型服务商；文献检索请求发送至 CrossRef / OpenAlex；PaperPilot 自身无服务器存储正文。</p>
         <button class="btn btn-danger" id="cfg-clear">清除全部本地数据</button>
+      </div>
       </div>`;
 
     // 服务商回显：当前 baseURL 不在预设列表则视为自定义
@@ -119,11 +121,11 @@ export default {
     const customInput = el.querySelector('#cfg-baseurl');
     provider.value = PROVIDERS.some(p => p.value === cfg.baseURL) ? cfg.baseURL : '__custom__';
     if (provider.value === '__custom__') {
-      customWrap.style.display = 'block';
+      customWrap.hidden = false;
       customInput.value = cfg.baseURL;
     }
     provider.addEventListener('change', () => {
-      customWrap.style.display = provider.value === '__custom__' ? 'block' : 'none';
+      customWrap.hidden = provider.value !== '__custom__';
     });
 
     el.querySelector('#cfg-key-toggle').addEventListener('click', () => {

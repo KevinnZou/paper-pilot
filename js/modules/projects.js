@@ -79,12 +79,12 @@ export default {
             <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
             <button class="btn btn-ghost" id="pc-empty-trial">开始试用 · 无需配置</button>
           </div>
-          <p class="desc" style="margin-top:10px">「开始试用」会用演示项目走一遍完整流程；AI 结果为内置示例，不消耗额度。要用真实 AI，再到「应用设置」填入你的 API Key。</p>
+          <p class="desc project-empty-note">「开始试用」会用演示项目走一遍完整流程；AI 结果为内置示例，不消耗额度。要用真实 AI，再到「应用设置」填入你的 API Key。</p>
         </div>`}
 
       <div class="modal-backdrop" id="pc-create-modal" hidden>
         <div class="modal-panel">
-          <div class="hero-top modal-head" style="align-items:flex-start">
+          <div class="hero-top modal-head project-create-head">
             <div>
               <h2><span class="mark"></span>创建论文项目</h2>
               <p class="desc">先建立一条论文主线。题目是必填项，学位类型和截止日期可以一起带上，后面继续细化研究设计。</p>
@@ -105,7 +105,7 @@ export default {
               <input type="date" id="pc-due">
             </div>
           </div>
-          <div class="result-actions" style="margin-top:16px">
+          <div class="result-actions project-create-actions">
             <button class="btn" id="pc-create-submit" type="button">创建并进入项目</button>
             <button class="btn btn-ghost" id="pc-create-cancel" type="button">取消</button>
           </div>

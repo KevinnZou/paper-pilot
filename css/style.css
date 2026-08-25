@@ -1127,6 +1127,86 @@ kbd {
 @media (max-width: 980px) {
   .project-grid { grid-template-columns: 1fr; }
 }
+.project-empty-note {
+  margin-top: 10px;
+}
+.project-create-head {
+  align-items: flex-start;
+}
+.project-create-actions {
+  margin-top: 16px;
+}
+
+/* ---------- 应用设置 ---------- */
+.settings-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, .85fr);
+  gap: 18px;
+  align-items: start;
+}
+.settings-card {
+  margin-bottom: 0;
+}
+.settings-card:first-child,
+.settings-card:nth-child(3) {
+  grid-column: 1;
+}
+.settings-demo-card,
+.settings-danger-card {
+  grid-column: 2;
+}
+.settings-danger-card {
+  border-color: #E5C6C0;
+}
+.settings-key-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.mono-input {
+  font-family: var(--font-mono) !important;
+}
+.settings-custom-wrap {
+  margin-top: 2px;
+}
+.settings-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.settings-check input {
+  flex: 0 0 auto;
+}
+@media (max-width: 980px) {
+  .settings-shell {
+    grid-template-columns: 1fr;
+  }
+  .settings-card:first-child,
+  .settings-card:nth-child(3),
+  .settings-demo-card,
+  .settings-danger-card {
+    grid-column: auto;
+  }
+}
+@media (max-width: 560px) {
+  .settings-key-row {
+    grid-template-columns: 1fr;
+  }
+  .settings-key-row .btn {
+    width: 100%;
+  }
+}
 
 /* ---------- 写作工作台 ---------- */
 .workbench { display: grid; grid-template-columns: 200px minmax(0, 1fr) 272px; }
