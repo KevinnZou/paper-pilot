@@ -2,6 +2,7 @@ import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js
 import { chat, shouldUseLiveAI } from '../api.js';
 import { getProject, adoptOutline, updateBasics, saveProject } from '../project.js';
 import { ICONS } from '../icons.js';
+import { meaningfulTitle, isPlaceholderTitle } from '../title-utils.js';
 
 const SYSTEM = '你是一位资深论文研究设计导师，熟悉中国高校论文选题、研究问题设计、方法论、开题与写作规范。回答直接给出内容，不要客套话和多余解释。';
 
@@ -75,13 +76,8 @@ function normalizeQuestionCandidates(list = []) {
     : [];
 }
 
-function isPlaceholderTitle(title) {
-  return /^(未命名论文|未命名项目|我的论文项目)(（副本）)?$/.test(String(title || '').trim());
-}
-
 function resolvedResearchTitle(design = {}, project = getProject()) {
-  const title = String(design.title || project.title || '').trim();
-  return title && !isPlaceholderTitle(title) ? title : '';
+  return meaningfulTitle(design.title, project.title);
 }
 
 function normalizeResearchDesign(design = {}, project = getProject()) {

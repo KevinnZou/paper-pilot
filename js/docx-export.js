@@ -1,5 +1,6 @@
 import { buildRenderableBlocks } from './document-model.js';
 import { citationMap } from './citation-utils.js';
+import { meaningfulTitle } from './title-utils.js';
 
 function xmlEscape(value) {
   return String(value ?? '')
@@ -364,7 +365,7 @@ export function createDocxBlob(project, doc, citations) {
         xmlns:dcterms="http://purl.org/dc/terms/"
         xmlns:dcmitype="http://purl.org/dc/dcmitype/"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <dc:title>${xmlEscape(project.title || '未命名论文')}</dc:title>
+        <dc:title>${xmlEscape(meaningfulTitle(project.title) || '论文全文')}</dc:title>
         <dc:creator>PaperPilot</dc:creator>
       </cp:coreProperties>`,
     },

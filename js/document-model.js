@@ -1,5 +1,6 @@
 import { Schema, Fragment } from 'prosemirror-model';
 import { addListNodes } from 'prosemirror-schema-list';
+import { meaningfulTitle, isPlaceholderTitle } from './title-utils.js';
 
 function makeSectionId() {
   return globalThis.crypto?.randomUUID?.() || `sec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -183,13 +184,16 @@ function textNodes(schema, text) {
 
 export function createDocumentFromProject(project) {
   const blocks = [];
-  const title = project.title || '未命名论文';
+  const title = meaningfulTitle(project.title);
   const byLitNo = new Map((project.citations || []).map(item => [item.litNo, item.id]).filter(([, id]) => !!id));
   const normalizeLegacyRefs = text => String(text || '').replace(/\[(\d+)\]/g, (_, n) => {
     const id = byLitNo.get(Number(n));
     return id ? `[[CIT:${id}]]` : `[${n}]`;
   });
-  blocks.push(paperSchema.nodes.heading.create({ level: 1, role: 'title', sectionId: 'title' }, paperSchema.text(title)));
+  blocks.push(paperSchema.nodes.heading.create(
+    { level: 1, role: 'title', sectionId: 'title' },
+    title ? paperSchema.text(title) : null
+  ));
   blocks.push(paperSchema.nodes.heading.create({ level: 2, role: 'abstract', sectionId: 'abstract' }, paperSchema.text('摘要')));
   blocks.push(...textNodes(paperSchema, normalizeLegacyRefs(project.abstract || '')));
   blocks.push(paperSchema.nodes.heading.create({ level: 2, role: 'keywords', sectionId: 'keywords' }, paperSchema.text('关键词')));
@@ -215,6 +219,17 @@ export function docFromJSON(project) {
   const raw = project.documentV2;
   if (raw?.type === 'doc') {
     try {
+      const firstTitle = raw.content?.find(node => node.type === 'heading' && node.attrs?.role === 'title');
+      if (firstTitle?.content?.length) {
+        const titleText = firstTitle.content.map(node => node.text || '').join('').trim();
+        if (isPlaceholderTitle(titleText)) {
+          const cleanRaw = {
+            ...raw,
+            content: raw.content.map(node => node === firstTitle ? { ...node, content: [] } : node),
+          };
+          return paperSchema.nodeFromJSON(cleanRaw);
+        }
+      }
       return paperSchema.nodeFromJSON(raw);
     } catch {
       return createDocumentFromProject(project);

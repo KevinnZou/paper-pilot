@@ -4,6 +4,7 @@ import { getProject, calcStreak, setCurrentChapter } from '../project.js';
 import { escapeHtml, toast, calGridHtml } from '../ui.js';
 import { loadDemoData, hasExistingData } from '../demo-data.js';
 import { ICONS } from '../icons.js';
+import { meaningfulTitle } from '../title-utils.js';
 
 const CARDS = [
   { id: 'topic', title: '研究设计', desc: '研究想法 → 研究问题 → 可行性检查 → 论文大纲' },
@@ -22,18 +23,11 @@ function wordCount(s) {
   return String(s || '').replace(/\s/g, '').length;
 }
 
-function meaningfulTitle(project, design = project.researchDesign || {}) {
-  const title = String(design.title || project.title || '').trim();
-  if (!title) return '';
-  if (/^(未命名论文|未命名项目|我的论文项目)(（副本）)?$/.test(title)) return '';
-  return title;
-}
-
 function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapter, drafts, daysLeft }) {
   const totalWords = Object.values(drafts).reduce((sum, d) => sum + wordCount(d?.content), 0);
   const chapterWords = nextChapter ? wordCount(drafts[nextChapter]?.content || '') : 0;
   const chapterStatus = nextChapter ? (project.chapterProgress[nextChapter] || '未开始') : '';
-  const titleReady = !!meaningfulTitle(project);
+  const titleReady = !!meaningfulTitle(project.researchDesign?.title, project.title);
   if (cfg?.enableLiveAI && !cfg?.apiKey) {
     return {
       title: '今天先完成真实 AI 配置',
@@ -131,7 +125,7 @@ export default {
     const chapters = p.outline || [];
     const doneCount = chapters.filter(c => p.chapterProgress[c.chapter] === '已完成').length;
     const researchDesign = p.researchDesign || {};
-    const resolvedTitle = meaningfulTitle(p, researchDesign);
+    const resolvedTitle = meaningfulTitle(researchDesign.title, p.title);
     const researchReadyCount = [
       !!(researchDesign.initialIdea || '').trim(),
       !!resolvedTitle,

@@ -3,6 +3,7 @@ import { getProject, setCurrentChapter, getEvidence, getPlan } from '../project.
 import { docFromJSON, extractProjectStateFromDoc, collectCitationUsage, buildCitationNumberMap, fullTextFromDoc, buildRenderableBlocks } from '../document-model.js';
 import { citationMap, ensureCitationIds } from '../citation-utils.js';
 import { createDocxBlob } from '../docx-export.js';
+import { meaningfulTitle } from '../title-utils.js';
 
 function severityChip(level) {
   if (level === 'high') return 'uncited';
@@ -113,7 +114,7 @@ function collectIssues(project, doc, citations) {
     sectionId: section.sectionId,
   }));
 
-  if (!project.title) issues.push({ level: 'high', group: '结构检查', text: '项目还没有正式论文题目。', nav: 'topic' });
+  if (!meaningfulTitle(project.title, state.title)) issues.push({ level: 'high', group: '结构检查', text: '项目还没有正式论文题目。', nav: 'topic' });
   if (!state.abstract) issues.push({ level: 'high', group: '结构检查', text: '摘要为空，导出前应至少形成初稿。', nav: 'writing' });
   if (!state.keywords) issues.push({ level: 'medium', group: '格式检查', text: '关键词为空。', nav: 'writing' });
   if (state.outline.length < 3) issues.push({ level: 'medium', group: '结构检查', text: `当前仅有 ${state.outline.length} 个章节，建议检查是否缺少核心章节。`, nav: 'topic' });
@@ -218,6 +219,8 @@ export default {
     const issues = collectIssues(project, doc, citations);
     const grouped = Array.from(new Set(issues.map(item => item.group)));
     const state = extractProjectStateFromDoc(doc);
+    const exportTitle = meaningfulTitle(project.title, state.title);
+    const exportFilename = (exportTitle || '论文全文').replace(/[\\/:*?"<>|]/g, '_');
     const totalWords = Object.values(state.drafts || {}).reduce((s, d) => s + String(d?.content || '').replace(/\s/g, '').length, 0);
     const previewHtml = buildPreviewHtml(project, doc, citations);
     const summary = {
@@ -266,7 +269,7 @@ export default {
             <div class="export-summary">
               <div class="export-summary-label">导出摘要</div>
               <div class="export-summary-grid">
-                <div class="export-summary-item export-summary-title"><span>标题</span><b>${escapeHtml(project.title || '未命名论文')}</b></div>
+                <div class="export-summary-item export-summary-title"><span>标题</span><b>${escapeHtml(exportTitle || '未设置')}</b></div>
                 <div class="export-summary-item"><span>章节数</span><b>${state.outline.length}</b></div>
                 <div class="export-summary-item"><span>引用数</span><b>${buildCitationNumberMap(doc).size}</b></div>
                 <div class="export-summary-item"><span>证据卡</span><b>${getEvidence().length}</b></div>
@@ -289,24 +292,24 @@ export default {
 
     el.querySelector('#ce-md').addEventListener('click', () => {
       const blob = new Blob([fullTextFromDoc(doc, citationMap(citations))], { type: 'text/markdown;charset=utf-8' });
-      downloadBlob(blob, `${(project.title || '论文全文').replace(/[\\/:*?"<>|]/g, '_')}.md`);
+      downloadBlob(blob, `${exportFilename}.md`);
       toast('Markdown 已导出', 'ok');
     });
 
     el.querySelector('#ce-html').addEventListener('click', () => {
-      const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${escapeHtml(project.title || '论文全文')}</title></head><body>${previewHtml}</body></html>`;
-      downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${(project.title || '论文全文').replace(/[\\/:*?"<>|]/g, '_')}.html`);
+      const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${escapeHtml(exportTitle || '论文全文')}</title></head><body>${previewHtml}</body></html>`;
+      downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${exportFilename}.html`);
       toast('HTML 已导出', 'ok');
     });
 
     el.querySelector('#ce-docx').addEventListener('click', () => {
       const blob = createDocxBlob(project, doc, citations);
-      downloadBlob(blob, `${(project.title || '论文全文').replace(/[\\/:*?"<>|]/g, '_')}.docx`);
+      downloadBlob(blob, `${exportFilename}.docx`);
       toast('DOCX 已导出', 'ok');
     });
 
     el.querySelector('#ce-pdf').addEventListener('click', () => {
-      openPrintPreview(project.title || '论文排版预览', previewHtml);
+      openPrintPreview(exportTitle || '论文排版预览', previewHtml);
     });
   },
 };

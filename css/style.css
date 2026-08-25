@@ -3392,3 +3392,158 @@ kbd {
     width: auto;
   }
 }
+
+/* 计划与进度：最终收束为“总览 / 行动 / 节奏 / 时间轴” */
+.planner-hero {
+  padding: 20px 24px;
+}
+.planner-hero-head {
+  align-items: center;
+}
+.planner-hero-head .desc {
+  max-width: 680px;
+}
+.planner-hero-metrics {
+  margin-top: 14px;
+  grid-template-columns: .85fr 1.65fr .8fr .8fr;
+  gap: 10px;
+}
+.planner-metric {
+  min-height: 68px;
+  padding: 12px 14px;
+  gap: 2px;
+}
+.planner-metric span {
+  letter-spacing: 0;
+}
+.planner-metric b {
+  font-size: 16px;
+}
+.planner-checkin-strip {
+  margin-top: 14px;
+  padding-top: 14px;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+.planner-checkin-strip .checkin-row {
+  grid-template-columns: minmax(160px, 230px) minmax(220px, 1fr) auto;
+  gap: 10px;
+}
+.planner-workspace {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+}
+.planner-agenda-card,
+.planner-history-card,
+.planner-timeline-card {
+  padding: 20px 24px;
+}
+.planner-counts .chip {
+  height: 26px;
+  align-items: center;
+}
+.planner-inline-capture {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.planner-inline-capture summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 13px 0 0;
+  color: var(--brand);
+  font-weight: 700;
+  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.planner-inline-capture summary::-webkit-details-marker {
+  display: none;
+}
+.planner-inline-capture summary::before {
+  content: '+';
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-weight: 600;
+}
+.planner-inline-capture[open] summary::before {
+  content: '-';
+}
+.planner-inline-form {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(150px, .7fr) minmax(160px, .8fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.planner-inline-form .field-label {
+  margin-top: 0;
+}
+.planner-inline-form .btn {
+  height: 41px;
+  white-space: nowrap;
+}
+.planner-inline-wide {
+  grid-column: 1 / 4;
+}
+.planner-subsection {
+  margin-top: 18px;
+  padding-top: 16px;
+}
+.planner-history-card {
+  position: sticky;
+  top: 24px;
+}
+.planner-history-card .planner-cal {
+  padding-top: 2px;
+}
+.planner-history-card .cal-grid {
+  gap: 4px;
+}
+.planner-history-card .cal-cell {
+  min-height: 22px;
+}
+.planner-checkin-list {
+  margin-top: 12px;
+}
+.planner-timeline-controls {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@media (max-width: 1180px) {
+  .planner-hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .planner-workspace,
+  .planner-checkin-strip,
+  .planner-checkin-strip .checkin-row,
+  .planner-timeline-controls {
+    grid-template-columns: 1fr;
+  }
+  .planner-history-card {
+    position: static;
+  }
+  .planner-inline-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .planner-inline-wide {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .planner-hero-metrics,
+  .planner-inline-form {
+    grid-template-columns: 1fr;
+  }
+  .planner-inline-wide {
+    grid-column: auto;
+  }
+  .planner-inline-form .btn {
+    width: 100%;
+  }
+}

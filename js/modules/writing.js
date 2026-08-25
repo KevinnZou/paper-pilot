@@ -23,6 +23,7 @@ import {
 } from '../document-model.js';
 import { ensureCitationIds, citationMap } from '../citation-utils.js';
 import { ICONS } from '../icons.js';
+import { meaningfulTitle } from '../title-utils.js';
 
 const SYSTEM = '你是一位资深论文写作导师，帮助中国高校学生完成论文写作。遵守学术诚信：不代替用户完成整篇论文，只提供局部改写、结构建议和章节草稿辅助。回答直接给出结果，不要客套话和多余解释。';
 
@@ -1884,7 +1885,7 @@ export default {
       try {
         const reply = await chat([
           { role: 'system', content: SYSTEM },
-          { role: 'user', content: `请为论文《${getProject().title || '（未定题）'}》的章节「${section.chapter}」撰写 1000-1500 字初稿。只输出正文。` },
+          { role: 'user', content: `请为论文《${meaningfulTitle(getProject().title) || '（未定题）'}》的章节「${section.chapter}」撰写 1000-1500 字初稿。只输出正文。` },
         ], { temperature: 0.7, signal: writingSignal() });
         viewState.pending = {
           actionId: 'draft',
@@ -1936,7 +1937,7 @@ export default {
       const text = fullTextFromDoc(viewState.view.state.doc, citationMap(citations));
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
-      a.download = `${(getProject().title || '论文全文').replace(/[\\/:*?"<>|]/g, '_')}.md`;
+      a.download = `${(meaningfulTitle(getProject().title) || '论文全文').replace(/[\\/:*?"<>|]/g, '_')}.md`;
       document.body.appendChild(a);
       a.click();
       a.remove();

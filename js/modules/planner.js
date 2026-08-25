@@ -1,5 +1,6 @@
 import { toast, escapeHtml, calGridHtml } from '../ui.js';
 import { getProject, updateBasics, saveProject, setChapterProgress, calcStreak, isoLocal, getPlan, savePlan, getEvidence } from '../project.js';
+import { meaningfulTitle } from '../title-utils.js';
 
 let weekExpanded = false;
 const WEEK_PREVIEW = 3;
@@ -107,7 +108,7 @@ function derivedTasks(project) {
   if (!project.dueDate) {
     tasks.push({ id: 'auto-due', title: '设定论文截止日期', dueDate: plusDays(0), source: 'auto', nav: 'planner', note: '没有截止日期，系统无法准确倒排' });
   }
-  if (!project.title) {
+  if (!meaningfulTitle(project.researchDesign?.title, project.title)) {
     tasks.push({ id: 'auto-title', title: '确定论文题目', dueDate: plusDays(0), source: 'auto', nav: 'topic', note: '先把研究想法落成明确题目' });
   }
   if (!(design.researchQuestions || []).length) {
@@ -235,7 +236,7 @@ function render(el) {
         <div class="card planner-card planner-agenda-card">
           <div class="planner-panel-head">
             <div>
-              <h2><span class="mark"></span>今日行动</h2>
+              <h2><span class="mark"></span>本周行动</h2>
               <p class="desc">${overdueTasks.length ? `先处理逾期任务：当前还有 <b>${overdueTasks.length}</b> 个任务已经过期。` : '只保留当前最该推进的事项，完成后再看后续安排。'}</p>
             </div>
             <div class="planner-counts">
@@ -245,6 +246,28 @@ function render(el) {
           </div>
           ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以从本周任务里挑一项推进。')}
           ${overdueTasks.length ? '<div class="planner-actions-row"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
+          <details class="planner-inline-capture">
+            <summary>新增临时任务</summary>
+            <div class="planner-inline-form">
+              <div>
+                <label class="field-label">任务内容</label>
+                <input type="text" id="plan-task-title" placeholder="例如：补第三章 3 篇近三年中文文献">
+              </div>
+              <div>
+                <label class="field-label">截止日期</label>
+                <input type="date" id="plan-task-due" value="${plusDays(2)}">
+              </div>
+              <div>
+                <label class="field-label">关联章节</label>
+                <select id="plan-task-section"><option value="">暂不关联</option>${chapters.map(item => `<option value="${escapeHtml(item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}</select>
+              </div>
+              <div class="planner-inline-wide">
+                <label class="field-label">备注（可选）</label>
+                <input type="text" id="plan-task-note" placeholder="例如：优先补方法比较和近三年研究现状">
+              </div>
+              <button class="btn" id="plan-task-add">加入任务列表</button>
+            </div>
+          </details>
           <div class="planner-subsection">
             <div class="planner-panel-head">
               <div>
@@ -257,33 +280,17 @@ function render(el) {
           </div>
         </div>
 
-        <aside class="planner-side-stack">
-          <div class="card planner-card planner-history-card">
-            <div class="planner-panel-head">
-              <div>
-                <h2><span class="mark"></span>打卡记录</h2>
-                <p class="desc">近 70 天节奏和最近记录放在一起，回看时更直观。</p>
-              </div>
-            </div>
-            <div class="planner-cal">${calHtml}</div>
-            <div class="item-list planner-checkin-list">
-              ${latestCheckins.length ? latestCheckins.map(c => `<div class="item"><div class="item-main"><div class="item-title mono">${escapeHtml(c.date)}${c.chapter ? ` · ${escapeHtml(c.chapter)}` : ''}</div>${c.note ? `<div class="item-meta">${escapeHtml(c.note)}</div>` : ''}</div>${c.chapter ? '<span class="chip doing">进行中</span>' : '<span class="seal planner-seal-lite">已打卡</span>'}</div>`).join('') : '<p class="desc">还没有打卡记录。</p>'}
+        <aside class="card planner-card planner-history-card">
+          <div class="planner-panel-head">
+            <div>
+              <h2><span class="mark"></span>节奏记录</h2>
+              <p class="desc">近 70 天打卡和最近小结放在这里，主要用于回看节奏。</p>
             </div>
           </div>
-
-          <details class="card planner-card planner-capture-card">
-            <summary>新增手动任务</summary>
-            <p class="desc">导师反馈、补文献、补数据、改某一章这些临时事项可以放进本周节奏里。</p>
-            <label class="field-label">任务内容</label>
-            <input type="text" id="plan-task-title" placeholder="例如：补第三章 3 篇近三年中文文献">
-            <div class="form-row">
-              <div><label class="field-label">截止日期</label><input type="date" id="plan-task-due" value="${plusDays(2)}"></div>
-              <div><label class="field-label">关联章节</label><select id="plan-task-section"><option value="">暂不关联</option>${chapters.map(item => `<option value="${escapeHtml(item.chapter)}">${escapeHtml(item.chapter)}</option>`).join('')}</select></div>
-            </div>
-            <label class="field-label">备注（可选）</label>
-            <input type="text" id="plan-task-note" placeholder="例如：优先补方法比较和近三年研究现状">
-            <div class="planner-actions-row"><button class="btn" id="plan-task-add">加入任务列表</button></div>
-          </details>
+          <div class="planner-cal">${calHtml}</div>
+          <div class="item-list planner-checkin-list">
+            ${latestCheckins.length ? latestCheckins.map(c => `<div class="item"><div class="item-main"><div class="item-title mono">${escapeHtml(c.date)}${c.chapter ? ` · ${escapeHtml(c.chapter)}` : ''}</div>${c.note ? `<div class="item-meta">${escapeHtml(c.note)}</div>` : ''}</div>${c.chapter ? '<span class="chip doing">进行中</span>' : '<span class="seal planner-seal-lite">已打卡</span>'}</div>`).join('') : '<p class="desc">还没有打卡记录。</p>'}
+          </div>
         </aside>
       </section>
 
