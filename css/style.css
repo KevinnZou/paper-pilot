@@ -2582,3 +2582,8 @@ kbd {
 
 /* 计划页右列：今日任务 + 本周任务 堆叠 */
 .planner-right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* 计划页对齐修正 */
+.planner-overview-head .btn { white-space: nowrap; flex: 0 0 auto; }
+.planner-overview .cal-grid { max-width: 100%; margin-left: 0; margin-right: 0; }
+.planner-overview .hero-stats { gap: 22px; }
