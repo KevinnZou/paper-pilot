@@ -9,6 +9,7 @@ import {
   getAppState,
 } from '../project.js';
 import { loadDemoData, hasExistingData } from '../demo-data.js';
+import { ICONS } from '../icons.js';
 
 function fmtDate(iso) {
   if (!iso) return '未编辑';
@@ -73,7 +74,7 @@ export default {
         </div>`
       : `
         <div class="card empty">
-          <div class="empty-icon">文</div>
+          <div class="empty-icon">${ICONS.bookOpen}</div>
           <p>还没有论文项目。V4 会按“项目”而不是“模块”推进整篇论文。</p>
           <div class="empty-actions">
             <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
@@ -89,7 +90,7 @@ export default {
               <h2><span class="mark"></span>创建论文项目</h2>
               <p class="desc">先建立一条论文主线。题目是必填项，学位类型和截止日期可以一起带上，后面继续细化研究设计。</p>
             </div>
-            <button class="btn btn-ghost btn-sm" id="pc-modal-close" type="button">关闭</button>
+            <button class="btn btn-ghost btn-sm icon-only" id="pc-modal-close" type="button" aria-label="关闭">${ICONS.close}</button>
           </div>
           <label class="field-label">论文题目</label>
           <input type="text" id="pc-title" placeholder="例如：基于大语言模型的智能客服满意度研究">
