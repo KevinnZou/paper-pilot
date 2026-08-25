@@ -26,7 +26,12 @@ export default {
     const researchMethod = p.researchDesign?.methods?.[0] || '未单独设定';
     const dataSource = p.researchDesign?.dataSources?.[0] || '未单独设定';
     const keywords = p.researchDesign?.keywords || '未设置';
-    const nextLabel = (p.outline || []).length ? '去写作工作台' : '去研究设计';
+    const hasOutline = !!(p.outline || []).length;
+    const nextLabel = hasOutline ? '去写作工作台' : '去研究设计';
+    const summaryDesc = hasOutline
+      ? '这里展示已采用方案的核心信息。章节结构和正文调整请在写作工作台完成。'
+      : '这里会在研究设计完成后展示方案摘要。先去研究设计生成题目、方案和大纲。';
+    const summaryAction = hasOutline ? '去写作工作台调整' : '去研究设计';
 
     el.innerHTML = `
       <div class="project-settings-shell">
@@ -89,14 +94,14 @@ export default {
         <aside class="project-settings-side">
           <section class="card project-settings-summary">
             <h2><span class="mark"></span>研究方案摘要</h2>
-            <p class="desc">只展示已采用方案的核心信息；如需调整研究路径，回到研究设计页重新生成或修改。</p>
+            <p class="desc">${summaryDesc}</p>
             <dl class="compact-summary-list">
               <div><dt>研究问题</dt><dd>${escapeHtml(researchQuestion)}</dd></div>
               <div><dt>研究方法</dt><dd>${escapeHtml(researchMethod)}</dd></div>
               <div><dt>数据来源</dt><dd>${escapeHtml(dataSource)}</dd></div>
               <div><dt>关键词</dt><dd>${escapeHtml(keywords)}</dd></div>
             </dl>
-            <button class="btn btn-ghost" id="ps-topic">调整研究设计</button>
+            <button class="btn btn-ghost" id="ps-summary-action">${summaryAction}</button>
           </section>
         </aside>
       </div>`;
@@ -119,7 +124,9 @@ export default {
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: target }));
     });
 
-    el.querySelector('#ps-topic').addEventListener('click', () =>
-      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' })));
+    el.querySelector('#ps-summary-action').addEventListener('click', () => {
+      const target = (getProject().outline || []).length ? 'writing' : 'topic';
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: target }));
+    });
   },
 };

@@ -3004,3 +3004,291 @@ kbd {
     margin-left: 0;
   }
 }
+
+/* 计划与进度：整页信息重新收束为行动面板 */
+.planner-shell {
+  gap: 20px;
+}
+.planner-hero {
+  padding: 22px 24px;
+}
+.planner-hero-head h2,
+.planner-panel-head h2 {
+  margin-bottom: 3px;
+}
+.planner-hero-head .btn {
+  flex: 0 0 auto;
+}
+.planner-hero-metrics {
+  grid-template-columns: 1.1fr 1.8fr 1fr 1fr;
+  gap: 12px;
+}
+.planner-metric {
+  min-height: 76px;
+  justify-content: center;
+  background: #FBFAF7;
+}
+.planner-metric b {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
+}
+.planner-checkin-strip {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  align-items: center;
+}
+.planner-checkin-copy strong {
+  font-family: var(--font-sans);
+}
+.planner-checkin-strip .checkin-row {
+  margin-top: 0;
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(180px, 1fr) auto;
+}
+.planner-checkin-strip .checkin-row.no-chapters {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.planner-workspace {
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 20px;
+}
+.planner-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.planner-agenda-card,
+.planner-history-card,
+.planner-timeline-card {
+  padding: 20px 24px;
+}
+.planner-counts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.planner-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.planner-task-list .task-item {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 0;
+  box-shadow: none;
+}
+.planner-task-list .task-item:hover {
+  border-color: var(--line);
+  background: #FCFBF8;
+}
+.planner-task-list .task-title {
+  font-size: 14px;
+}
+.planner-task-list .task-meta {
+  gap: 8px 12px;
+}
+.planner-task-list .task-check {
+  margin-top: 1px;
+  background: var(--surface);
+}
+.planner-task-list .task-check:not(.done) {
+  color: transparent;
+}
+.planner-subsection {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.planner-subsection h3 {
+  margin: 0 0 3px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.planner-empty {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: #FCFBF8;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.planner-history-card .planner-cal {
+  margin-top: 14px;
+}
+.planner-history-card .cal-grid {
+  grid-template-columns: repeat(10, 1fr);
+  gap: 5px;
+}
+.planner-history-card .cal-cell {
+  aspect-ratio: 1;
+  width: auto;
+  height: auto;
+  min-height: 24px;
+}
+.planner-history-card .cal-legend {
+  margin-top: 8px;
+}
+.planner-checkin-list {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.planner-checkin-list .item {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 10px 0;
+  background: transparent;
+}
+.planner-checkin-list .item:last-child {
+  border-bottom: 0;
+}
+.planner-capture-card {
+  padding: 0;
+  overflow: hidden;
+}
+.planner-capture-card summary {
+  padding: 15px 18px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.planner-capture-card summary::-webkit-details-marker {
+  display: none;
+}
+.planner-capture-card summary::after {
+  content: '+';
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand);
+  font-weight: 600;
+}
+.planner-capture-card[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+.planner-capture-card[open] summary::after {
+  content: '-';
+}
+.planner-capture-card > p,
+.planner-capture-card > label,
+.planner-capture-card > input,
+.planner-capture-card > .form-row,
+.planner-capture-card > .planner-actions-row {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+.planner-capture-card > p {
+  margin-top: 14px;
+}
+.planner-capture-card > .planner-actions-row {
+  margin-bottom: 18px;
+}
+.planner-timeline-card {
+  margin-bottom: 0;
+}
+.planner-timeline-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  margin-top: 14px;
+  padding-bottom: 16px;
+}
+.planner-timeline-controls .form-row {
+  margin: 0;
+}
+.planner-timeline-controls .planner-actions-row {
+  margin: 0;
+}
+.planner-timeline-controls .btn {
+  white-space: nowrap;
+}
+.planner-timeline-shell .planner-empty {
+  margin-top: 0;
+}
+.gantt-info {
+  padding: 0 0 10px;
+  margin: 0 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+.gantt-block {
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.gantt-block:last-child {
+  border-bottom: 0;
+}
+.gantt-label {
+  width: 150px;
+}
+.gantt-track {
+  height: 12px;
+  border-radius: 999px;
+}
+.gantt-bar {
+  border-radius: 999px;
+}
+.gantt-tasks {
+  margin-left: 160px;
+}
+
+@media (max-width: 1180px) {
+  .planner-hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .planner-workspace {
+    grid-template-columns: 1fr;
+  }
+  .planner-history-card .cal-grid {
+    grid-template-columns: repeat(14, minmax(18px, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .planner-hero,
+  .planner-agenda-card,
+  .planner-history-card,
+  .planner-timeline-card {
+    padding: 18px;
+  }
+  .planner-checkin-strip,
+  .planner-checkin-strip .checkin-row,
+  .planner-timeline-controls {
+    grid-template-columns: 1fr;
+  }
+  .planner-history-card .cal-grid {
+    grid-template-columns: repeat(10, 1fr);
+  }
+  .planner-task-list .task-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .planner-task-list .task-item .btn {
+    grid-column: 1 / -1;
+  }
+  .gantt-label,
+  .gantt-tasks {
+    margin-left: 0;
+    width: auto;
+  }
+}
