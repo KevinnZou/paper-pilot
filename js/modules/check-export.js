@@ -220,6 +220,7 @@ export default {
     const issues = collectIssues(project, doc, citations);
     const grouped = Array.from(new Set(issues.map(item => item.group)));
     const state = extractProjectStateFromDoc(doc);
+    const totalWords = Object.values(state.drafts || {}).reduce((s, d) => s + String(d?.content || '').replace(/\s/g, '').length, 0);
     const previewHtml = buildPreviewHtml(project, doc, citations);
     const summary = {
       structure: issues.filter(item => item.group === '结构检查').length,
@@ -268,6 +269,7 @@ export default {
               <div class="export-summary-item"><span>章节数</span><b>${state.outline.length}</b></div>
               <div class="export-summary-item"><span>引用数</span><b>${buildCitationNumberMap(doc).size}</b></div>
               <div class="export-summary-item"><span>证据卡</span><b>${getEvidence().length}</b></div>
+              <div class="export-summary-item"><span>总字数</span><b>${totalWords}</b></div>
             </div>
           </div>
         </div>

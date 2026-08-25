@@ -185,6 +185,7 @@ function render(el) {
 
   const doneChapters = chapters.filter(c => (project.chapterProgress?.[c.chapter] || '未开始') === '已完成').length;
   el.innerHTML = `
+    <div class="grid-2 planner-top">
     <div class="card planner-overview">
       <div class="planner-overview-head">
         <div>
@@ -205,17 +206,19 @@ function render(el) {
         </details>` : ''}
     </div>
 
-    <div class="card">
-      <h2><span class="mark"></span>今日任务 <span class="chip ${overdueTasks.length ? 'doing' : ''}">${overdueTasks.length ? `${overdueTasks.length} 逾期` : todayTasks.length}</span></h2>
-      <p class="desc">${overdueTasks.length ? `默认先清逾期：当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '先推进今天最该做的事；暂无逾期。'}</p>
-      ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
-      ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
+    <div class="planner-right">
+      <div class="card">
+        <h2><span class="mark"></span>今日任务 <span class="chip ${overdueTasks.length ? 'doing' : ''}">${overdueTasks.length ? `${overdueTasks.length} 逾期` : todayTasks.length}</span></h2>
+        <p class="desc">${overdueTasks.length ? `默认先清逾期：当前有 <b>${overdueTasks.length}</b> 个逾期任务。` : '先推进今天最该做的事；暂无逾期。'}</p>
+        ${renderTaskList(todayTasks, plan, '今天没有硬性待办，可以去推进本周任务或补证据卡。')}
+        ${overdueTasks.length ? '<div style="margin-top:12px"><button class="btn btn-ghost" id="plan-reschedule">重新调整后续任务</button></div>' : ''}
+      </div>
+      <details class="planner-collapse" open>
+        <summary>本周任务（${weekTasks.length}）</summary>
+        <div class="planner-collapse-body">${renderTaskList(weekTasks, plan, '本周自动任务还不多，可以补充一个手动任务。')}</div>
+      </details>
     </div>
-
-    <details class="planner-collapse">
-      <summary>本周任务（${weekTasks.length}）</summary>
-      <div class="planner-collapse-body">${renderTaskList(weekTasks, plan, '本周自动任务还不多，可以补充一个手动任务。')}</div>
-    </details>
+    </div>
 
     <details class="planner-collapse">
       <summary>手动补充任务</summary>

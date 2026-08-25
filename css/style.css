@@ -1031,24 +1031,18 @@ kbd {
   transition: color .15s;
 }
 .journey-step:hover { color: var(--brand); }
-.journey-step:not(:last-child)::after {
-  content: '→'; position: absolute; right: -8px; top: 6px;
-  color: var(--line-strong); font-size: 11px; z-index: 2;
-}
 .journey-step .js-check {
-  width: 18px; height: 18px; border-radius: 50%; background: var(--surface);
+  width: 22px; height: 22px; border-radius: 50%; background: var(--surface);
   border: 2px solid var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 10px; font-family: var(--font-mono); flex-shrink: 0;
+  font-size: 11px; font-family: var(--font-mono); flex-shrink: 0;
   transition: all .15s;
 }
 .journey-step.done .js-check { background: var(--jade); border-color: var(--jade); color: #fff; font-weight: 700; }
 .journey-step.done .js-label { color: var(--jade); }
-.journey-step.done:not(:last-child)::after { color: var(--jade); }
 .journey-step.current .js-check { background: var(--brand); border-color: var(--brand); color: #fff; }
 .journey-step.current .js-label { color: var(--brand); font-weight: 600; }
-.journey-step.current:not(:last-child)::after { color: var(--brand); }
-.journey-step .js-label { text-align: center; line-height: 1.4; }
+.journey-step .js-label { text-align: center; line-height: 1.5; font-size: 12px; max-width: 96px; }
 .journey-step .js-tag {
   font-size: 10px; background: var(--brand); color: #fff; padding: 1px 7px;
   border-radius: 999px; font-weight: 500;
@@ -2549,7 +2543,7 @@ kbd {
 /* 检查导出：导出摘要（干净网格） */
 .export-summary { margin-top: 16px; }
 .export-summary-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 8px; }
-.export-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.export-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .export-summary-item { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
 .export-summary-item span { display: block; font-size: 11px; color: var(--mute); margin-bottom: 3px; }
 .export-summary-item b { font-size: 12.5px; color: var(--ink); font-weight: 600; line-height: 1.5; }
@@ -2581,3 +2575,10 @@ kbd {
 .planner-collapse summary::before { content: '▸ '; color: var(--brand); }
 .planner-collapse[open] summary::before { content: '▾ '; }
 .planner-collapse-body { padding: 0 16px 16px; }
+
+/* 计划页顶部两列：进度总览 + 今日任务 */
+.planner-top { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+@media (max-width: 980px) { .planner-top { grid-template-columns: minmax(0, 1fr); } }
+
+/* 计划页右列：今日任务 + 本周任务 堆叠 */
+.planner-right { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
