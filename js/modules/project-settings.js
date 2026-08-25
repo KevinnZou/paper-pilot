@@ -3,7 +3,7 @@ import { getProject, updateBasics, hasActiveProject } from '../project.js';
 
 export default {
   id: 'project-settings',
-  icon: '🪪',
+  icon: '',
   title: '项目设置',
   subtitle: '论文题目、学校、导师、截止日期与引用标准',
   projectScoped: true,

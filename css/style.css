@@ -1867,6 +1867,26 @@ kbd {
   border-color: var(--line);
 }
 
+@media (min-width: 1121px) and (max-width: 1350px) {
+  .workbench {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+  .workbench.outline-collapsed {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+  .wb-right {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(220px, 280px) minmax(0, 1fr);
+    align-items: start;
+  }
+  .wb-side-pane {
+    min-height: 100%;
+  }
+}
+
 /* ---------- 文献 ---------- */
 .citation-shell {
   padding: 0;

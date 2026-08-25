@@ -206,7 +206,7 @@ function issueHtml(item, idx) {
 
 export default {
   id: 'checkExport',
-  icon: '🧪',
+  icon: '',
   title: '检查与导出',
   subtitle: '结构、引用、格式检查，以及 Markdown / DOCX / PDF 导出',
   projectScoped: true,

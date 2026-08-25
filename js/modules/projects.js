@@ -20,7 +20,7 @@ function fmtDate(iso) {
 
 export default {
   id: 'projects',
-  icon: '📁',
+  icon: '',
   title: '项目中心',
   subtitle: '按论文项目组织研究、写作、文献和进度',
 

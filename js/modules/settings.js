@@ -32,7 +32,7 @@ const abortSignal = () => window.__tmAbort.signal;
 
 export default {
   id: 'settings',
-  icon: '⚙️',
+  icon: '',
   title: '应用设置',
   subtitle: '模型配置、备份恢复与隐私说明',
 

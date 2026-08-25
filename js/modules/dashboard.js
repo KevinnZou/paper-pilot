@@ -106,7 +106,7 @@ function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapte
 
 export default {
   id: 'dashboard',
-  icon: '🏠',
+  icon: '',
   title: '论文主页',
   subtitle: '你的论文，一条主线看到底',
   projectScoped: true,

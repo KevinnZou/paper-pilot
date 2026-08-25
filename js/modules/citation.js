@@ -780,7 +780,7 @@ function render(el) {
 
 export default {
   id: 'citation',
-  icon: '📚',
+  icon: '',
   title: '文献与证据',
   subtitle: '文献检索、证据卡与 GB/T 7714 引用管理',
   projectScoped: true,

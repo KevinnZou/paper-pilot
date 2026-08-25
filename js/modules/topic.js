@@ -1139,7 +1139,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
 
 export default {
   id: 'topic',
-  icon: '🧭',
+  icon: '',
   title: '研究设计',
   subtitle: '把论文想法变成可执行的研究方案',
   projectScoped: true,

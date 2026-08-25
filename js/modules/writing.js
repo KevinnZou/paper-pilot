@@ -559,7 +559,7 @@ function todoId() {
 
 export default {
   id: 'writing',
-  icon: '✍️',
+  icon: '',
   title: '论文写作',
   subtitle: '结构化写作、AI 写作助手、动态引用编号',
   projectScoped: true,
@@ -602,11 +602,11 @@ export default {
                 <span class="cur-note" id="wb-cur-note">自动保存</span>
               </div>
               <div class="wb-header-actions">
-                <button class="btn btn-ghost btn-sm" id="wb-topic">研究设计</button>
+                <button class="btn btn-ghost btn-sm" id="wb-topic">项目方案</button>
                 <button class="btn btn-ghost btn-sm" id="wb-done">标记完成</button>
                 <button class="btn btn-ghost btn-sm" id="wb-copy">复制全文</button>
                 <details class="wb-toolbar-more">
-                  <summary>工具</summary>
+                  <summary>更多操作</summary>
                   <div class="wb-toolbar-more-panel">
                     <button class="btn btn-ai btn-sm" data-ai="logic">逻辑检查</button>
                     <button class="btn btn-ghost btn-sm" id="wb-save-version">保存整稿版本</button>
@@ -688,7 +688,7 @@ export default {
                 <h3 id="wb-asset-title">插入图片</h3>
                 <p class="desc" id="wb-asset-desc">给内容补上标题和说明，排版预览和导出时会按论文结构带上编号。</p>
               </div>
-              <button class="btn btn-ghost btn-sm" type="button" id="wb-asset-close-top">关闭</button>
+              <button class="btn btn-ghost btn-sm icon-only" type="button" id="wb-asset-close-top" aria-label="关闭">${ICONS.close}</button>
             </div>
             <div id="wb-asset-form"></div>
           </div>
@@ -1150,7 +1150,7 @@ export default {
                 <input type="checkbox" data-todo-toggle="${item.id}" ${item.done ? 'checked' : ''}>
                 <span>${escapeHtml(item.text)}</span>
               </label>
-              <button class="btn btn-ghost btn-sm" type="button" data-todo-remove="${item.id}">删除</button>
+              <button class="btn btn-ghost btn-sm icon-only" type="button" data-todo-remove="${item.id}" title="删除待修改事项" aria-label="删除待修改事项">${ICONS.trash}</button>
             </div>`).join('') : '<p class="desc">这一章还没有待修改事项。可以先记下逻辑问题、补证据点或老师反馈。</p>'}
         </div>`;
       todosBox.querySelector('#wb-todo-add')?.addEventListener('click', () => {
@@ -1719,7 +1719,7 @@ export default {
 
     sideSelect?.addEventListener('change', () => switchRightTab(sideSelect.value));
     el.querySelector('#wb-topic')?.addEventListener('click', () => {
-      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' }));
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'project-settings' }));
     });
     el.querySelector('#wb-save-version')?.addEventListener('click', () => {
       const v = createDocSnapshot(`整稿保存 · ${currentTimestampLabel()}`);

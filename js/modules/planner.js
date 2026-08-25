@@ -408,7 +408,7 @@ function render(el) {
 
 export default {
   id: 'planner',
-  icon: '📅',
+  icon: '',
   title: '计划与进度',
   subtitle: '今日任务、本周任务与时间轴',
   projectScoped: true,
