@@ -638,10 +638,14 @@ export default {
 
           <aside class="wb-right">
             <div class="wb-side-card" id="wb-chapter-card"></div>
-            <div class="wb-side-tabs" role="tablist" aria-label="右侧工具">
-              ${Object.entries(SIDE_PANELS).filter(([id]) => id !== 'todos' && id !== 'versions').map(([id, item]) => `
-                <button class="wb-side-tab ${id === 'assistant' ? 'active' : ''}" type="button" role="tab" aria-selected="${id === 'assistant'}" data-side-tab="${id}" title="${item.hint}">${item.label}</button>
-              `).join('')}
+            <div class="wb-side-select-wrap">
+              <label class="field-label" for="wb-side-select">辅助区</label>
+              <select id="wb-side-select" aria-label="切换右侧辅助区">
+                ${Object.entries(SIDE_PANELS).map(([id, item]) => `
+                  <option value="${id}" ${id === 'assistant' ? 'selected' : ''}>${item.label}</option>
+                `).join('')}
+              </select>
+              <p class="desc" id="wb-side-select-hint">${SIDE_PANELS.assistant.hint}</p>
             </div>
             <div class="wb-side-pane active" data-side-pane="assistant">
               <div id="wb-suggestion"></div>
@@ -704,11 +708,9 @@ export default {
     const outlineRailCount = el.querySelector('#wb-outline-rail-count');
     const outlineRailDots = el.querySelector('#wb-outline-rail-dots');
     const chapterCard = el.querySelector('#wb-chapter-card');
-    const sideTabs = [...el.querySelectorAll('[data-side-tab]')];
     const sidePanes = [...el.querySelectorAll('[data-side-pane]')];
-    const sideSwitcher = el.querySelector('#wb-side-switcher');
-    const sideSwitcherLabel = el.querySelector('#wb-side-switcher-label');
-    const sideSwitcherHint = el.querySelector('#wb-side-switcher-hint');
+    const sideSelect = el.querySelector('#wb-side-select');
+    const sideSelectHint = el.querySelector('#wb-side-select-hint');
     const todosBox = el.querySelector('#wb-todos');
     const versionsBox = el.querySelector('#wb-versions');
     const assetModal = el.querySelector('#wb-asset-modal');
@@ -1303,11 +1305,8 @@ export default {
     function switchRightTab(tab) {
       panelState.activeRightTab = tab;
       const meta = SIDE_PANELS[tab] || SIDE_PANELS.assistant;
-      sideTabs.forEach(btn => {
-        const on = btn.dataset.sideTab === tab;
-        btn.classList.toggle('active', on);
-        btn.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
+      if (sideSelect) sideSelect.value = tab;
+      if (sideSelectHint) sideSelectHint.textContent = meta.hint;
       sidePanes.forEach(pane => pane.classList.toggle('active', pane.dataset.sidePane === tab));
     }
 
@@ -1718,7 +1717,7 @@ export default {
     persistNow();
     switchRightTab(panelState.activeRightTab);
 
-    sideTabs.forEach(btn => btn.addEventListener('click', () => switchRightTab(btn.dataset.sideTab)));
+    sideSelect?.addEventListener('change', () => switchRightTab(sideSelect.value));
     el.querySelector('#wb-topic')?.addEventListener('click', () => {
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' }));
     });

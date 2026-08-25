@@ -1348,6 +1348,23 @@ kbd {
   font-size: 11px; letter-spacing: .06em; color: var(--ink-soft);
 }
 .wb-side-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.wb-side-select-wrap {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.wb-side-select-wrap .field-label {
+  margin-top: 0;
+}
+.wb-side-select-wrap select {
+  min-height: 36px;
+}
+.wb-side-select-wrap .desc {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
 .wb-side-switcher {
   position: relative;
   border: 1px solid var(--line);
@@ -2601,24 +2618,6 @@ kbd {
   border-radius: 4px; padding: 8px 10px; margin-bottom: 12px;
   font-size: 13px; line-height: 1.5;
 }
-
-/* 写作台右侧工具：下划线式标签栏（与内容强关联，作为内容头部） */
-.wb-side-tabs {
-  display: flex; flex-wrap: wrap; gap: 0 2px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 12px;
-}
-.wb-side-tab {
-  padding: 7px 12px 9px;
-  background: transparent; border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--ink-soft);
-  font-size: 12.5px; line-height: 1; cursor: pointer;
-  white-space: nowrap; transition: color .15s, border-color .15s;
-}
-.wb-side-tab:hover { color: var(--brand); }
-.wb-side-tab.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
-@media (max-width: 980px) { .wb-side-tabs { margin-bottom: 8px; } }
 
 /* 写作台右侧「当前章节」紧凑条（替代大面积整卡） */
 .wb-ch-strip { padding: 0 0 4px; }
