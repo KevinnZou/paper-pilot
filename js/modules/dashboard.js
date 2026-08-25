@@ -280,29 +280,13 @@ export default {
 
         <div class="card side-summary-card">
           <h2><span class="mark"></span>近期状态</h2>
-          <p class="desc">把最近节奏和整体检查入口放在一起，避免首页过碎。</p>
-          <div class="item-list side-summary-list">
-            <div class="item">
-              <div class="item-main">
-                <div class="item-title">打卡记录</div>
-                <div class="item-meta">累计 ${checkins.length} 天${streak ? ` · 连续 ${streak} 天` : ''}</div>
-              </div>
-            </div>
-            <div class="item">
-              <div class="item-main">
-                <div class="item-title">最近编辑</div>
-                <div class="item-meta">${lastText ? escapeHtml(lastText) : '还没有打卡记录'}</div>
-              </div>
-            </div>
-            <div class="item">
-              <div class="item-main">
-                <div class="item-title">整体验收</div>
-                <div class="item-meta">结构、引用、格式和导出都在一个入口里。</div>
-              </div>
-            </div>
+          <p class="desc">打卡节奏一览：累计、连续与近 70 天热力图。</p>
+          <div class="hero-stats" style="margin-top:4px">
+            <div class="stat"><span class="stat-num">${checkins.length}</span><span class="stat-label">累计打卡</span></div>
+            <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续天数</span></div>
           </div>
           ${calGridHtml(checkins)}
-          <div class="hero-action-row">
+          <div class="hero-action-row" style="margin-top:10px">
             <button class="btn btn-ghost" data-nav="planner">去打卡</button>
             <button class="btn btn-ghost" data-nav="checkExport">去检查与导出</button>
           </div>
