@@ -1,6 +1,7 @@
 import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js';
 import { chat, shouldUseLiveAI } from '../api.js';
 import { getProject, adoptOutline, updateBasics, saveProject } from '../project.js';
+import { ICONS } from '../icons.js';
 
 const SYSTEM = '你是一位资深论文研究设计导师，熟悉中国高校论文选题、研究问题设计、方法论、开题与写作规范。回答直接给出内容，不要客套话和多余解释。';
 
@@ -595,7 +596,7 @@ function render(el) {
           <strong>${escapeHtml(design.title || project.title)}</strong>
         </div>
         ${design.planStatus === 'loading' ? '<div class="topic-empty">正在根据已选题目生成研究方案建议…</div>' : ''}
-        ${design.planStatus === 'error' ? `<div class="topic-empty">❌ ${escapeHtml(design.planError || '研究方案生成失败')}<div class="result-actions topic-retry-actions"><button class="btn btn-ai-solid" id="rd-plan-retry">重新生成研究方案</button></div></div>` : ''}
+        ${design.planStatus === 'error' ? `<div class="topic-empty">研究方案生成失败：${escapeHtml(design.planError || '请稍后重试')}<div class="result-actions topic-retry-actions"><button class="btn btn-ai-solid" id="rd-plan-retry">重新生成研究方案</button></div></div>` : ''}
         ${hasPlanSuggestions ? `
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
@@ -668,7 +669,7 @@ function render(el) {
               <h2>确认方案与大纲</h2>
               <p class="desc">确认后将一次性应用到写作工作台。</p>
             </div>
-            <button class="btn btn-ghost btn-sm" id="oc-close" type="button" aria-label="关闭">✕</button>
+            <button class="btn btn-ghost btn-sm icon-only" id="oc-close" type="button" aria-label="关闭">${ICONS.close}</button>
           </div>
           <div id="oc-conflict"></div>
           <div class="oc-modal-label">研究方案</div>
@@ -755,7 +756,7 @@ function render(el) {
         render(el);
       } catch (e) {
         if (isAbort(e)) return;
-        titleOut.innerHTML = `<div class="topic-empty">❌ ${escapeHtml(e.message)}</div>`;
+        titleOut.innerHTML = `<div class="topic-empty">题目候选生成失败：${escapeHtml(e.message)}</div>`;
         toast(e.message, 'err', 3600);
       } finally {
         setLoading(btn, false);
@@ -1064,7 +1065,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         syncOutlineUI(reply);
       } catch (e) {
         if (isAbort(e)) return;
-        outlineOut.innerHTML = `<div class="topic-empty">❌ ${escapeHtml(e.message)}</div>`;
+        outlineOut.innerHTML = `<div class="topic-empty">论文大纲生成失败：${escapeHtml(e.message)}</div>`;
         toast(e.message, 'err', 3600);
       } finally {
         setLoading(btn, false);

@@ -88,7 +88,7 @@ export default {
 
       <div class="card settings-card settings-demo-card">
         <h2><span class="mark"></span>演示模式</h2>
-        <p class="desc">一键载入示例论文（题目、五章大纲、两章草稿、3 条文献、3 天打卡记录），适合课堂演示或快速体验完整功能。${hasExistingData() ? '⚠️ 当前已有本地数据，载入将覆盖。' : ''}</p>
+        <p class="desc">一键载入示例论文（题目、五章大纲、两章草稿、3 条文献、3 天打卡记录），适合课堂演示或快速体验完整功能。${hasExistingData() ? '注意：当前已有本地数据，载入将覆盖。' : ''}</p>
         <button class="btn" id="cfg-demo">载入演示数据</button>
       </div>
 

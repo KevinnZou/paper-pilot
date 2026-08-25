@@ -725,7 +725,7 @@ function render(el) {
       refreshLibrary(el); // 解析结果保留在页面上，不整页重渲染
     } catch (e) {
       if (e?.code === 'aborted') return; // 主动取消（切页），不打扰
-      out.innerHTML = `<span class="placeholder">❌ ${escapeHtml(e.message)}</span>`;
+      out.innerHTML = `<span class="placeholder">解析失败：${escapeHtml(e.message)}</span>`;
       toast(e.message, 'err', 3600);
     } finally {
       setLoading(btn, false);

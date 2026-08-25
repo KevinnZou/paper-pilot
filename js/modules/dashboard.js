@@ -272,9 +272,9 @@ export default {
               }).join('')}
             </div>` : `
             <div class="empty">
-              <div class="empty-icon">📖</div>
+              <div class="empty-icon">${ICONS.bookOpen}</div>
               <p>还没有大纲——生成大纲并「采用」后，这里会显示每章进度</p>
-              <button class="btn btn-ghost btn-sm" data-nav="topic">去生成大纲 →</button>
+              <button class="btn btn-ghost btn-sm" data-nav="topic">去生成大纲</button>
             </div>`}
         </div>
 

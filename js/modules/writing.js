@@ -22,6 +22,7 @@ import {
   fullTextFromDoc,
 } from '../document-model.js';
 import { ensureCitationIds, citationMap } from '../citation-utils.js';
+import { ICONS } from '../icons.js';
 
 const SYSTEM = '你是一位资深论文写作导师，帮助中国高校学生完成论文写作。遵守学术诚信：不代替用户完成整篇论文，只提供局部改写、结构建议和章节草稿辅助。回答直接给出结果，不要客套话和多余解释。';
 
@@ -580,12 +581,12 @@ export default {
                   <h3><span class="mark"></span>论文目录</h3>
                   <p class="desc" id="wb-outline-desc">按章节快速跳转与切换</p>
                 </div>
-                <button class="btn btn-ghost btn-sm icon-only" id="wb-toggle-outline" title="收起目录" aria-label="收起目录">⇤</button>
+                <button class="btn btn-ghost btn-sm icon-only" id="wb-toggle-outline" title="收起目录" aria-label="收起目录">${ICONS.panelLeftClose}</button>
               </div>
               <div class="chapter-list" id="wb-outline"></div>
             </div>
             <div class="wb-left-collapsed" id="wb-outline-peek" title="展开目录" aria-label="展开目录" role="button" tabindex="0">
-              <button class="btn btn-ghost btn-sm icon-only wb-outline-rail-btn" type="button" id="wb-outline-rail-trigger" title="展开目录" aria-label="展开目录">⇥</button>
+              <button class="btn btn-ghost btn-sm icon-only wb-outline-rail-btn" type="button" id="wb-outline-rail-trigger" title="展开目录" aria-label="展开目录">${ICONS.panelLeftOpen}</button>
               <div class="wb-outline-rail-meta">
                 <span class="wb-outline-rail-label">目录</span>
                 <span class="wb-outline-rail-count" id="wb-outline-rail-count">0</span>
@@ -955,7 +956,7 @@ export default {
     function syncOutlineCollapse() {
       workbench.classList.toggle('outline-collapsed', panelState.outlineCollapsed);
       if (outlineToggle) {
-        outlineToggle.textContent = panelState.outlineCollapsed ? '⇥' : '⇤';
+        outlineToggle.innerHTML = panelState.outlineCollapsed ? ICONS.panelLeftOpen : ICONS.panelLeftClose;
         outlineToggle.title = panelState.outlineCollapsed ? '展开目录' : '收起目录';
         outlineToggle.setAttribute('aria-label', panelState.outlineCollapsed ? '展开目录' : '收起目录');
       }

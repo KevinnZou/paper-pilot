@@ -20,7 +20,7 @@ const sidebarToggleEl = document.getElementById('sidebar-toggle');
 function applySidebarCollapsed(collapsed) {
   document.body.classList.toggle('sidebar-collapsed', collapsed);
   if (sidebarToggleEl) {
-    sidebarToggleEl.textContent = collapsed ? '⇥' : '⇤';
+    sidebarToggleEl.innerHTML = collapsed ? ICONS.panelLeftOpen : ICONS.panelLeftClose;
     sidebarToggleEl.title = collapsed ? '展开导航栏' : '收起导航栏';
     sidebarToggleEl.setAttribute('aria-label', collapsed ? '展开导航栏' : '收起导航栏');
   }
