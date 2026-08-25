@@ -339,73 +339,79 @@ function renderDiscoverTab(prj) {
         <div id="cit-lit"></div>
       </div>
 
-      <div class="citation-split">
-        <div class="card citation-panel">
-          <div class="citation-panel-head">
+      <details class="card citation-supplement">
+        <summary>
+          <span>补录文献</span>
+          <small>已有引用文本或少量条目时再展开</small>
+        </summary>
+        <div class="citation-supplement-grid">
+          <div class="citation-supplement-panel">
+            <div class="citation-panel-head">
             <div>
               <h4>批量解析引用</h4>
               <p class="desc">把从知网、Google Scholar 等处复制的引用信息清洗成结构化条目，再统一入库。</p>
             </div>
+            </div>
+            <label class="field-label">粘贴引用信息</label>
+            <textarea id="cit-parse" placeholder="例如：&#10;张伟, 李娜. 大语言模型在教育领域的应用研究[J]. 现代教育技术, 2024, 34(3): 45-52."></textarea>
+            <div class="result-actions citation-inline-actions">
+              <button class="btn btn-ai-solid" id="cit-parse-btn">解析并保存</button>
+              <button class="btn btn-ghost" id="cit-parse-demo">填入示例</button>
+            </div>
+            <div class="result-box" id="cit-parse-out"><span class="placeholder">解析结果会显示在这里</span></div>
           </div>
-          <label class="field-label">粘贴引用信息</label>
-          <textarea id="cit-parse" placeholder="例如：&#10;张伟, 李娜. 大语言模型在教育领域的应用研究[J]. 现代教育技术, 2024, 34(3): 45-52."></textarea>
-          <div class="result-actions citation-inline-actions">
-            <button class="btn btn-ai-solid" id="cit-parse-btn">解析并保存</button>
-            <button class="btn btn-ghost" id="cit-parse-demo">填入示例</button>
-          </div>
-          <div class="result-box" id="cit-parse-out"><span class="placeholder">解析结果会显示在这里</span></div>
-        </div>
 
-        <div class="card citation-panel">
-          <div class="citation-panel-head">
+          <div class="citation-supplement-panel">
+            <div class="citation-panel-head">
             <div>
               <h4>手动录入</h4>
               <p class="desc">适合补录少量文献。填写题名后会实时生成 GB/T 7714 预览。</p>
             </div>
-          </div>
-          <div class="form-row">
-            <div>
-              <label class="field-label">文献类型</label>
-              <select id="cit-type">
-                <option value="J">期刊 [J]</option><option value="D">学位论文 [D]</option>
-                <option value="M">专著 [M]</option><option value="C">会议论文 [C]</option>
-                <option value="R">报告 [R]</option><option value="S">标准 [S]</option>
-                <option value="P">专利 [P]</option><option value="N">报纸 [N]</option>
-                <option value="EB/OL">电子资源 [EB/OL]</option>
-              </select>
             </div>
-            <div>
-              <label class="field-label">年份</label>
-              <input type="number" id="cit-year" placeholder="2024">
-            </div>
-          </div>
-          <label class="field-label">作者（逗号分隔）</label>
-          <input type="text" id="cit-author" placeholder="张伟, 李娜">
-          <label class="field-label">题名</label>
-          <input type="text" id="cit-title" placeholder="文章或书名">
-          <label class="field-label">出处（期刊名 / 学校 / 出版社）</label>
-          <input type="text" id="cit-source" placeholder="现代教育技术">
-          <div class="form-row">
-            <div>
-              <label class="field-label">卷 / 期 / 页码</label>
-              <div class="form-row">
-                <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
-                <div><input type="text" id="cit-issue" placeholder="期 3"></div>
+            <div class="form-row">
+              <div>
+                <label class="field-label">文献类型</label>
+                <select id="cit-type">
+                  <option value="J">期刊 [J]</option><option value="D">学位论文 [D]</option>
+                  <option value="M">专著 [M]</option><option value="C">会议论文 [C]</option>
+                  <option value="R">报告 [R]</option><option value="S">标准 [S]</option>
+                  <option value="P">专利 [P]</option><option value="N">报纸 [N]</option>
+                  <option value="EB/OL">电子资源 [EB/OL]</option>
+                </select>
               </div>
-              <input type="text" id="cit-pages" class="stacked-input" placeholder="页码 45-52">
+              <div>
+                <label class="field-label">年份</label>
+                <input type="number" id="cit-year" placeholder="2024">
+              </div>
             </div>
-            <div>
-              <label class="field-label">DOI / URL</label>
-              <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
-              <input type="text" id="cit-url" class="stacked-input" placeholder="https://...">
+            <label class="field-label">作者（逗号分隔）</label>
+            <input type="text" id="cit-author" placeholder="张伟, 李娜">
+            <label class="field-label">题名</label>
+            <input type="text" id="cit-title" placeholder="文章或书名">
+            <label class="field-label">出处（期刊名 / 学校 / 出版社）</label>
+            <input type="text" id="cit-source" placeholder="现代教育技术">
+            <div class="form-row">
+              <div>
+                <label class="field-label">卷 / 期 / 页码</label>
+                <div class="form-row">
+                  <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
+                  <div><input type="text" id="cit-issue" placeholder="期 3"></div>
+                </div>
+                <input type="text" id="cit-pages" class="stacked-input" placeholder="页码 45-52">
+              </div>
+              <div>
+                <label class="field-label">DOI / URL</label>
+                <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
+                <input type="text" id="cit-url" class="stacked-input" placeholder="https://...">
+              </div>
             </div>
+            <div class="citation-inline-actions block-actions">
+              <button class="btn" id="cit-add">生成并保存</button>
+            </div>
+            <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
           </div>
-          <div class="citation-inline-actions block-actions">
-            <button class="btn" id="cit-add">生成并保存</button>
-          </div>
-          <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>
         </div>
-      </div>
+      </details>
     </section>`;
 }
 
