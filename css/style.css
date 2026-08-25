@@ -929,6 +929,9 @@ kbd {
 .hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px 16px; flex-wrap: wrap; }
 .project-hero .meta { display: flex; gap: 8px; flex-wrap: wrap; }
 .hero-action-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.dash-focus-actions { margin-top: 14px; }
+.dash-status-stats { margin-top: 4px; }
+.dash-status-actions { margin-top: 10px; }
 .btn-lg { padding: 11px 24px; font-size: 15px; }
 .hero-stats {
   display: flex; gap: 34px; flex-wrap: wrap;
@@ -2002,6 +2005,8 @@ kbd {
   gap: 10px;
   flex-wrap: wrap;
 }
+.citation-inline-actions.block-actions { margin-top: 16px; }
+.stacked-input { margin-top: 8px; }
 .btn-danger-soft {
   border-color: #E3C4BB;
   color: var(--cinnabar);
@@ -2619,6 +2624,22 @@ kbd {
 /* 当前章节条：「⋯」低调入口（结构操作收纳在菜单里） */
 .wb-ch-more { padding: 2px 9px; }
 .wb-side-card { margin-bottom: 10px; }
+.wb-shell-card {
+  padding: 0;
+  overflow: hidden;
+}
+.wb-citation-picker-row {
+  display: flex;
+  gap: 6px;
+}
+.wb-citation-picker-row select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.wb-section-note-label,
+.wb-empty-actions {
+  margin-top: 12px;
+}
 
 /* 结构操作菜单：默认收起（hidden 需压过 display:grid） */
 .wb-ch-ops[hidden] { display: none; }
@@ -2651,6 +2672,9 @@ kbd {
 .topic-candidate-head-actions .desc { margin: 0; font-size: 12.5px; color: var(--ink-soft); }
 .topic-outline-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 @media (max-width: 640px) { .topic-outline-actions { width: 100%; } }
+.topic-form-actions { margin-top: 16px; }
+.topic-retry-actions { margin-top: 12px; }
+.topic-adopted-actions { margin: 16px 0 8px; }
 
 /* 研究设计：采用大纲确认弹窗内的数据冲突警告 */
 .oc-conflict-warning {

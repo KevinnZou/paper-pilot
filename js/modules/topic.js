@@ -560,7 +560,7 @@ function render(el) {
                 <input type="text" id="rd-population" placeholder="例如：中小型装修企业 / 采购流程案例" value="${escapeHtml(design.population)}">
               </div>
             </div>
-            <div class="result-actions" style="margin-top:16px">
+            <div class="result-actions topic-form-actions">
               <button class="btn btn-ai-solid" id="rd-title-gen">生成题目候选</button>
               <button class="btn btn-ghost" id="rd-save-idea">保存当前输入</button>
             </div>
@@ -595,7 +595,7 @@ function render(el) {
           <strong>${escapeHtml(design.title || project.title)}</strong>
         </div>
         ${design.planStatus === 'loading' ? '<div class="topic-empty">正在根据已选题目生成研究方案建议…</div>' : ''}
-        ${design.planStatus === 'error' ? `<div class="topic-empty">❌ ${escapeHtml(design.planError || '研究方案生成失败')}<div class="result-actions" style="margin-top:12px"><button class="btn btn-ai-solid" id="rd-plan-retry">重新生成研究方案</button></div></div>` : ''}
+        ${design.planStatus === 'error' ? `<div class="topic-empty">❌ ${escapeHtml(design.planError || '研究方案生成失败')}<div class="result-actions topic-retry-actions"><button class="btn btn-ai-solid" id="rd-plan-retry">重新生成研究方案</button></div></div>` : ''}
         ${hasPlanSuggestions ? `
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
@@ -619,7 +619,7 @@ function render(el) {
           </div>
           <div class="topic-head-side"><span class="chip done">大纲已采用</span></div>
         </div>
-        <div class="result-actions" style="margin:16px 0 8px">
+        <div class="result-actions topic-adopted-actions">
           <button class="btn" id="adopted-go-writing">去写作工作台</button>
         </div>
         <details class="topic-outline-preview" open>

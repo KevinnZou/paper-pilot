@@ -571,7 +571,7 @@ export default {
     const panelState = { outlineCollapsed: false, activeRightTab: 'assistant' };
 
     el.innerHTML = `
-      <div class="card" style="padding:0;overflow:hidden">
+      <div class="card wb-shell-card">
         <div class="workbench">
           <aside class="wb-left">
             <div class="wb-left-expanded">
@@ -748,7 +748,7 @@ export default {
               <textarea id="wb-image-note" placeholder="例如：资料来源为国家统计局 2025 年公开数据，作者整理。">${escapeHtml(payload?.note || '')}</textarea>
             </div>
           </div>
-          <div class="citation-inline-actions" style="margin-top:16px">
+          <div class="citation-inline-actions block-actions">
             <button class="btn" type="button" id="wb-asset-save">保存图片</button>
             ${payload?.pos != null ? '<button class="btn btn-ghost btn-danger-soft" type="button" id="wb-asset-delete">删除图片</button>' : ''}
             <button class="btn btn-ghost" type="button" id="wb-asset-cancel">取消</button>
@@ -768,13 +768,13 @@ export default {
           <div class="wb-table-grid" id="wb-table-grid">
             ${rows.map((row, rowIndex) => `<div class="wb-table-row">${row.map((cell, cellIndex) => `<input type="text" class="wb-table-cell" data-row="${rowIndex}" data-col="${cellIndex}" value="${escapeHtml(cell)}" placeholder="${rowIndex === 0 ? `表头 ${cellIndex + 1}` : `内容 ${rowIndex}-${cellIndex + 1}`}">`).join('')}</div>`).join('')}
           </div>
-          <div class="citation-inline-actions" style="margin-top:16px">
+          <div class="citation-inline-actions block-actions">
             <button class="btn" type="button" id="wb-table-add-row">增加一行</button>
             <button class="btn btn-ghost" type="button" id="wb-table-add-col">增加一列</button>
             <button class="btn btn-ghost" type="button" id="wb-table-remove-row">删除一行</button>
             <button class="btn btn-ghost" type="button" id="wb-table-remove-col">删除一列</button>
           </div>
-          <div class="citation-inline-actions" style="margin-top:16px">
+          <div class="citation-inline-actions block-actions">
             <button class="btn" type="button" id="wb-asset-save">保存表格</button>
             <button class="btn btn-ghost" type="button" id="wb-asset-cancel">取消</button>
           </div>`;
@@ -820,7 +820,7 @@ export default {
           <textarea id="wb-formula-latex" placeholder="例如：\\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i">${escapeHtml(payload?.latex || '')}</textarea>
           <label class="field-label">公式说明（可选）</label>
           <textarea id="wb-formula-note" placeholder="例如：其中 x_i 表示第 i 个样本观测值。">${escapeHtml(payload?.note || '')}</textarea>
-          <div class="citation-inline-actions" style="margin-top:16px">
+          <div class="citation-inline-actions block-actions">
             <button class="btn" type="button" id="wb-asset-save">保存公式</button>
             <button class="btn btn-ghost" type="button" id="wb-asset-cancel">取消</button>
           </div>`;
@@ -831,7 +831,7 @@ export default {
         assetForm.innerHTML = `
           <label class="field-label">注释内容</label>
           <textarea id="wb-note-text" placeholder="例如：此处样本指 2024 年 1 月至 6 月完成全部数据回收的企业样本。">${escapeHtml(payload?.noteText || '')}</textarea>
-          <div class="citation-inline-actions" style="margin-top:16px">
+          <div class="citation-inline-actions block-actions">
             <button class="btn" type="button" id="wb-asset-save">保存注释</button>
             <button class="btn btn-ghost" type="button" id="wb-asset-cancel">取消</button>
           </div>`;
@@ -1029,8 +1029,8 @@ export default {
         return (a.litNo || 0) - (b.litNo || 0);
       });
       citationBox.innerHTML = citations.length ? `
-        <div style="display:flex;gap:6px">
-          <select id="wb-cit-select" style="flex:1">
+        <div class="wb-citation-picker-row">
+          <select id="wb-cit-select">
             ${pickerItems.map(item => {
               const currentNo = map.get(item.id);
               const info = usage.get(item.id);
@@ -1138,7 +1138,7 @@ export default {
           <input type="text" id="wb-todo-input" placeholder="例如：补上这一段的数据来源，或重写结论过渡">
           <button class="btn btn-sm" type="button" id="wb-todo-add">加入</button>
         </div>
-        <label class="field-label" style="margin-top:12px">章节备注</label>
+        <label class="field-label wb-section-note-label">章节备注</label>
         <textarea id="wb-chapter-note" class="wb-chapter-note" placeholder="把这一章目前的问题、老师反馈、后续修改方向记在这里。">${escapeHtml(entry.note || '')}</textarea>
         <div class="wb-todo-list">
           ${entry.todos.length ? entry.todos.map(item => `
@@ -1497,7 +1497,7 @@ export default {
             <h3><span class="mark"></span>当前章节</h3>
             <p class="desc">还没有章节。新增第一章后即可开始写作，或在「研究设计」生成大纲。</p>
           </div>
-          <div class="result-actions" style="margin-top:12px">
+          <div class="result-actions wb-empty-actions">
             <button class="btn btn-sm" type="button" data-add-first-section>新增第一章</button>
             <button class="btn btn-ghost btn-sm" type="button" data-nav-topic>去研究设计</button>
           </div>`;

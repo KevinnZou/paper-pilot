@@ -293,7 +293,7 @@ function renderEvidenceModal(list, prj) {
         </div>
         <label class="field-label">我的笔记</label>
         <textarea id="evi-note" placeholder="这条证据更适合支撑哪一章、哪一个论点？"></textarea>
-        <div class="citation-inline-actions" style="margin-top:16px">
+        <div class="citation-inline-actions block-actions">
           <button class="btn" id="evi-save">保存证据卡</button>
           <button class="btn btn-ghost" type="button" id="evi-cancel">取消</button>
         </div>
@@ -391,15 +391,15 @@ function renderDiscoverTab(prj) {
                 <div><input type="text" id="cit-volume" placeholder="卷 34"></div>
                 <div><input type="text" id="cit-issue" placeholder="期 3"></div>
               </div>
-              <input type="text" id="cit-pages" placeholder="页码 45-52" style="margin-top:8px">
+              <input type="text" id="cit-pages" class="stacked-input" placeholder="页码 45-52">
             </div>
             <div>
               <label class="field-label">DOI / URL</label>
               <input type="text" id="cit-doi" placeholder="10.xxxx/xxxx">
-              <input type="text" id="cit-url" placeholder="https://..." style="margin-top:8px">
+              <input type="text" id="cit-url" class="stacked-input" placeholder="https://...">
             </div>
           </div>
-          <div class="citation-inline-actions" style="margin-top:16px">
+          <div class="citation-inline-actions block-actions">
             <button class="btn" id="cit-add">生成并保存</button>
           </div>
           <div class="result-box" id="cit-preview"><span class="placeholder">格式预览将显示在这里</span></div>

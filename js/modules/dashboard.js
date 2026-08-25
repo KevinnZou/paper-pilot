@@ -229,7 +229,7 @@ export default {
         <div class="focus-checks">
           ${nextAction.bullets.map(item => `<div class="focus-check">${escapeHtml(item)}</div>`).join('')}
         </div>
-        <div class="hero-action-row" style="margin-top:14px">
+        <div class="hero-action-row dash-focus-actions">
           <button class="btn btn-lg" data-nav="${nextAction.nav}" ${nextAction.nav === 'writing' && nextChapter ? `data-write="${escapeHtml(nextChapter)}"` : ''}>${escapeHtml(nextAction.cta)}</button>
           ${p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : '<button class="btn btn-ghost" data-nav="checkExport">检查整体状态</button>'}
         </div>
@@ -281,12 +281,12 @@ export default {
         <div class="card side-summary-card">
           <h2><span class="mark"></span>近期状态</h2>
           <p class="desc">打卡节奏一览：累计、连续与近 70 天热力图。</p>
-          <div class="hero-stats" style="margin-top:4px">
+          <div class="hero-stats dash-status-stats">
             <div class="stat"><span class="stat-num">${checkins.length}</span><span class="stat-label">累计打卡</span></div>
             <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续天数</span></div>
           </div>
           ${calGridHtml(checkins)}
-          <div class="hero-action-row" style="margin-top:10px">
+          <div class="hero-action-row dash-status-actions">
             <button class="btn btn-ghost" data-nav="planner">去打卡</button>
             <button class="btn btn-ghost" data-nav="checkExport">去检查与导出</button>
           </div>
