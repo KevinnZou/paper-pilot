@@ -11,6 +11,7 @@ import settings from './modules/settings.js';
 import { ICONS } from './icons.js';
 import { getConfig, shouldUseLiveAI } from './api.js';
 import { getProject, hasActiveProject, projectStoreReady } from './project.js';
+import { meaningfulTitle } from './title-utils.js';
 
 const MODULES = [projects, dashboard, topic, citation, writing, planner, checkExport, projectSettings, settings];
 const container = document.getElementById('module-container');
@@ -109,9 +110,9 @@ function updateProjectBadge() {
     return;
   }
   const p = getProject();
-  const t = p.title.trim();
-  badge.textContent = t ? `项目 · ${t.length > 12 ? t.slice(0, 12) + '…' : t}` : '未命名项目';
-  badge.title = t || '未命名项目';
+  const t = meaningfulTitle(p.researchDesign?.title, p.title);
+  badge.textContent = t ? `项目 · ${t.length > 12 ? t.slice(0, 12) + '…' : t}` : '项目 · 未定题';
+  badge.title = t || '当前项目还没有确定论文题目';
   badge.classList.add('ready');
 }
 

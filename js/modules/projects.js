@@ -10,6 +10,7 @@ import {
 } from '../project.js';
 import { loadDemoData, hasExistingData } from '../demo-data.js';
 import { ICONS } from '../icons.js';
+import { meaningfulTitle } from '../title-utils.js';
 
 function fmtDate(iso) {
   if (!iso) return '未编辑';
@@ -43,11 +44,12 @@ export default {
         <div class="project-grid">
           ${projects.map(project => {
             const stats = projectStats(project.id);
+            const displayTitle = meaningfulTitle(project.researchDesign?.title, project.title) || '未定题项目';
             return `
               <div class="card project-card ${project.id === activeId ? 'active' : ''}">
                 <div class="project-card-head">
                   <div>
-                    <h2>${escapeHtml(project.title || '未命名论文')}</h2>
+                    <h2>${escapeHtml(displayTitle)}</h2>
                     <p class="desc">${escapeHtml(project.degreeType || '未设置类型')}${project.currentStage ? ` · ${escapeHtml(project.currentStage)}` : ''}</p>
                   </div>
                   ${project.id === activeId ? '<span class="seal">当前项目</span>' : ''}
@@ -186,6 +188,7 @@ export default {
       btn.addEventListener('click', () => {
         const project = projects.find(x => x.id === btn.dataset.export);
         if (!project) return;
+        const displayTitle = meaningfulTitle(project.researchDesign?.title, project.title) || '论文项目';
         const blob = new Blob([JSON.stringify({
           app: 'paperpilot',
           version: 4,
@@ -194,7 +197,7 @@ export default {
         }, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `${(project.title || '论文项目').replace(/[\\/:*?"<>|]/g, '_')}.paperpilot.json`;
+        a.download = `${displayTitle.replace(/[\\/:*?"<>|]/g, '_')}.paperpilot.json`;
         a.click();
         URL.revokeObjectURL(a.href);
         toast('项目备份已导出', 'ok');
@@ -203,7 +206,8 @@ export default {
       btn.addEventListener('click', () => {
         const project = projects.find(x => x.id === btn.dataset.del);
         if (!project) return;
-        if (!confirm(`确定删除「${project.title || '未命名论文'}」吗？草稿、文献、打卡和版本历史都会一起删除。`)) return;
+        const displayTitle = meaningfulTitle(project.researchDesign?.title, project.title) || '未定题项目';
+        if (!confirm(`确定删除「${displayTitle}」吗？草稿、文献、打卡和版本历史都会一起删除。`)) return;
         deleteProject(project.id);
         toast('项目已删除', 'ok');
         document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'projects' }));

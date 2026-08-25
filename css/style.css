@@ -340,15 +340,14 @@ body.sidebar-collapsed .module-writing .main-header {
   border-style: dashed;
 }
 .topic-shell-card {
-  padding-top: 18px;
-  padding-bottom: 18px;
+  padding: 16px 18px;
 }
 .topic-shell-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .topic-shell-status {
   font-size: 12px;
@@ -357,39 +356,45 @@ body.sidebar-collapsed .module-writing .main-header {
   white-space: nowrap;
 }
 .topic-stage-nav {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .topic-stage-tab {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: var(--radius);
+  gap: 8px;
+  width: auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 999px;
   border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--ink);
+  background: var(--surface);
+  color: var(--ink-soft);
   cursor: pointer;
   text-align: left;
   font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
 }
 .topic-stage-tab:disabled {
   opacity: .55;
   cursor: not-allowed;
 }
 .topic-stage-tab.current {
-  border-color: #C9D8E2;
   background: var(--brand-soft);
+  border-color: #C9D8E2;
+  color: var(--brand-strong);
 }
 .topic-stage-tab.done {
-  border-color: #CFE0D4;
   background: var(--jade-soft);
+  border-color: #CFE0D4;
+  color: var(--jade);
 }
 .topic-stage-index {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -399,6 +404,16 @@ body.sidebar-collapsed .module-writing .main-header {
   font-size: 11px;
   font-family: var(--font-mono);
   flex-shrink: 0;
+}
+.topic-stage-tab.current .topic-stage-index {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.topic-stage-tab.done .topic-stage-index {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #fff;
 }
 .topic-wizard-card {
   padding-top: 20px;
@@ -2493,6 +2508,61 @@ kbd {
 .hint a:hover, .desc a:hover { color: var(--brand-strong); }
 
 /* ---------- 响应式 ---------- */
+@media (max-width: 1280px) {
+  .sidebar {
+    width: 204px;
+  }
+  .brand {
+    padding-inline: 14px;
+  }
+  .brand-name {
+    font-size: 17px;
+  }
+  .nav-item {
+    padding: 9px 10px;
+    font-size: 13.5px;
+  }
+  .main {
+    padding: 28px 28px 52px;
+  }
+  .module-container,
+  .main-header,
+  .page-foot {
+    max-width: 1080px;
+  }
+  .module-writing .module-container,
+  .module-writing .main-header {
+    max-width: 1240px;
+  }
+}
+@media (max-width: 1040px) and (min-width: 761px) {
+  .sidebar {
+    width: 76px;
+  }
+  .brand {
+    padding-inline: 12px;
+  }
+  .brand-copy,
+  .nav-item span:not(.nav-icon),
+  .btn-side span:not(.nav-icon),
+  .side-note {
+    display: none;
+  }
+  .brand-main {
+    justify-content: center;
+  }
+  .nav {
+    padding-inline: 8px;
+  }
+  .nav-item,
+  .btn-side {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .sidebar-foot {
+    padding-inline: 8px;
+  }
+}
 @media (max-width: 1120px) {
   /* minmax(0,1fr)：1fr 的隐式最小轨道=min-content，会被长文本/长选项撑爆导致横向溢出 */
   .workbench { grid-template-columns: minmax(0, 1fr); }

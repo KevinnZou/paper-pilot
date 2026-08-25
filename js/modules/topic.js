@@ -394,7 +394,7 @@ function renderOutlinePreview(text) {
 }
 
 function renderStepNav(step, maxStep, project, design) {
-  const labels = ['定题', '定方案', '出大纲'];
+  const labels = ['确定题目', '确定方案', '生成大纲'];
   return `<div class="topic-stage-nav">
     ${labels.map((label, idx) => {
       const n = idx + 1;
