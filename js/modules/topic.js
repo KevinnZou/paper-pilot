@@ -334,16 +334,10 @@ function renderPromptProgress(design) {
 function renderQuestionOptions(design) {
   return `<div class="topic-option-list">${design.questionCandidates.map((item, idx) => `
     <button class="topic-option-card ${design.selectedQuestionId === item.id ? 'selected' : ''}" data-select-question="${escapeHtml(item.id)}" type="button">
-      <div class="topic-option-top">
-        <span class="chip ref-no">${idx + 1}</span>
-        ${design.selectedQuestionId === item.id ? '<span class="chip done">当前选择</span>' : ''}
-      </div>
-      <strong>${escapeHtml(item.question)}</strong>
-      <div class="topic-meta-pills">
-        ${item.object ? `<span class="topic-meta-pill">${escapeHtml(item.object)}</span>` : ''}
-        ${item.variable ? `<span class="topic-meta-pill">${escapeHtml(item.variable)}</span>` : ''}
-        ${item.method ? `<span class="topic-meta-pill">${escapeHtml(item.method)}</span>` : ''}
-        ${item.dataNeed ? `<span class="topic-meta-pill">${escapeHtml(item.dataNeed)}</span>` : ''}
+      <div class="topic-option-line">
+        <span class="topic-option-no">${idx + 1}</span>
+        <strong>${escapeHtml(item.question)}</strong>
+        ${design.selectedQuestionId === item.id ? '<span class="chip done">已选</span>' : ''}
       </div>
     </button>`).join('')}</div>`;
 }
