@@ -196,13 +196,11 @@ function collectIssues(project, doc, citations) {
 }
 
 function issueHtml(item, idx) {
-  return `<div class="item issue-item">
+  return `<div class="issue-row">
     <div class="item-main">
-      <div class="item-title"><span class="chip ${severityChip(item.level)}">${item.group}</span> ${escapeHtml(item.text)}</div>
+      <div class="issue-title"><span class="chip ${severityChip(item.level)}">${item.group}</span> ${escapeHtml(item.text)}</div>
     </div>
-    <div class="card-actions-rail">
-      <button class="btn btn-ghost btn-sm" data-issue-go="${idx}">去处理</button>
-    </div>
+    <button class="btn btn-ghost btn-sm" data-issue-go="${idx}">去处理</button>
   </div>`;
 }
 
@@ -230,48 +228,52 @@ export default {
     };
 
     el.innerHTML = `
-      <div class="card check-summary-card">
-        <h2><span class="mark"></span>检查概览</h2>
-        <p class="desc">进入页面时已按当前数据自动检查一次；改动后可点「重新检查」。</p>
-        <div class="hero-stats">
-          <div class="stat"><span class="stat-num">${summary.structure}</span><span class="stat-label">结构问题</span></div>
-          <div class="stat"><span class="stat-num">${summary.logic}</span><span class="stat-label">逻辑问题</span></div>
-          <div class="stat"><span class="stat-num">${summary.citation}</span><span class="stat-label">引用问题</span></div>
-          <div class="stat"><span class="stat-num">${summary.format}</span><span class="stat-label">格式问题</span></div>
-        </div>
-        <div class="result-actions" style="margin-top:16px">
-          <button class="btn btn-ghost btn-sm" id="ce-recheck">重新检查</button>
-        </div>
-      </div>
-
-      <div class="grid-2 check-layout">
-        <div class="card">
-          <h2><span class="mark"></span>检查结果</h2>
-          <p class="desc">${issues.length ? `共发现 ${issues.length} 个值得处理的问题，点击可直接跳转。` : '当前没有明显问题，已经具备导出基础。'}</p>
-          <div class="item-list">
-            ${issues.length ? issues.map(issueHtml).join('') : '<div class="result-box filled">目前未发现明显结构、引用或格式问题，可以继续做细修或直接导出。</div>'}
-          </div>
-        </div>
-
-        <div class="card side-summary-card">
-          <h2><span class="mark"></span>导出与预览</h2>
-          <p class="desc">先导出可继续编辑的 Word，再用排版预览去看 PDF 效果。</p>
-          <div class="result-actions" style="margin-top:8px">
-            <button class="btn" id="ce-docx">导出 DOCX</button>
-            <button class="btn btn-ghost" id="ce-md">导出 Markdown</button>
-            <button class="btn btn-ghost" id="ce-html">导出 HTML</button>
-            <button class="btn btn-ghost" id="ce-pdf">排版预览 / PDF</button>
-          </div>
-          <div class="export-summary">
-            <div class="export-summary-label">导出摘要</div>
-            <div class="export-summary-grid">
-              <div class="export-summary-item export-summary-title"><span>标题</span><b>${escapeHtml(project.title || '未命名论文')}</b></div>
-              <div class="export-summary-item"><span>章节数</span><b>${state.outline.length}</b></div>
-              <div class="export-summary-item"><span>引用数</span><b>${buildCitationNumberMap(doc).size}</b></div>
-              <div class="export-summary-item"><span>证据卡</span><b>${getEvidence().length}</b></div>
-              <div class="export-summary-item"><span>总字数</span><b>${totalWords}</b></div>
+      <div class="check-export-shell">
+        <section class="card check-overview-card">
+          <div class="section-head">
+            <div>
+              <h2><span class="mark"></span>检查与导出</h2>
+              <p class="desc">页面会基于当前论文自动检查结构、逻辑、引用和格式；处理完主要问题后再导出更稳。</p>
             </div>
+            <button class="btn btn-ghost btn-sm" id="ce-recheck">重新检查</button>
           </div>
+          <div class="check-metric-grid">
+            <div class="check-metric"><span>${summary.structure}</span><b>结构问题</b></div>
+            <div class="check-metric"><span>${summary.logic}</span><b>逻辑问题</b></div>
+            <div class="check-metric"><span>${summary.citation}</span><b>引用问题</b></div>
+            <div class="check-metric"><span>${summary.format}</span><b>格式问题</b></div>
+          </div>
+        </section>
+
+        <div class="check-main-grid">
+          <section class="card check-results-card">
+            <h2><span class="mark"></span>检查结果</h2>
+            <p class="desc">${issues.length ? `共发现 ${issues.length} 个值得处理的问题，点击可直接跳转。` : '当前没有明显问题，已经具备导出基础。'}</p>
+            <div class="issue-list">
+              ${issues.length ? issues.map(issueHtml).join('') : '<div class="result-box filled">目前未发现明显结构、引用或格式问题，可以继续做细修或直接导出。</div>'}
+            </div>
+          </section>
+
+          <aside class="card export-panel">
+            <h2><span class="mark"></span>导出与预览</h2>
+            <p class="desc">优先导出 DOCX 做最终排版；Markdown 和 HTML 适合备份或迁移。</p>
+            <div class="export-action-grid">
+              <button class="btn" id="ce-docx">导出 DOCX</button>
+              <button class="btn btn-ghost" id="ce-pdf">排版预览 / PDF</button>
+              <button class="btn btn-ghost" id="ce-md">导出 Markdown</button>
+              <button class="btn btn-ghost" id="ce-html">导出 HTML</button>
+            </div>
+            <div class="export-summary">
+              <div class="export-summary-label">导出摘要</div>
+              <div class="export-summary-grid">
+                <div class="export-summary-item export-summary-title"><span>标题</span><b>${escapeHtml(project.title || '未命名论文')}</b></div>
+                <div class="export-summary-item"><span>章节数</span><b>${state.outline.length}</b></div>
+                <div class="export-summary-item"><span>引用数</span><b>${buildCitationNumberMap(doc).size}</b></div>
+                <div class="export-summary-item"><span>证据卡</span><b>${getEvidence().length}</b></div>
+                <div class="export-summary-item"><span>总字数</span><b>${totalWords}</b></div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>`;
 
