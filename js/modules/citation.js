@@ -539,7 +539,7 @@ function render(el) {
   const activeTab = getActiveTab();
 
   el.innerHTML = `
-    <div class="card citation-shell">
+    <div class="citation-shell">
       ${renderTabNav(activeTab)}
       <div class="citation-shell-body">
         ${activeTab === 'discover' ? renderDiscoverTab(prj) : ''}

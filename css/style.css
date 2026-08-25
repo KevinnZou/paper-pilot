@@ -918,11 +918,6 @@ kbd {
   margin: 0;
 }
 .hero { position: relative; overflow: hidden; }
-.hero::after {
-  content: ''; position: absolute; right: -46px; top: -46px; width: 150px; height: 150px;
-  border-radius: 50%; background: radial-gradient(circle, rgba(192,59,45,.05), transparent 70%);
-  pointer-events: none;
-}
 .project-hero h2 { font-size: 22px; overflow-wrap: anywhere; }  /* 超长题防撑破（r26） */
 .project-hero .hero-lead { color: var(--ink-soft); font-size: 14px; margin: 8px 0 0; line-height: 1.7; }
 .project-hero .hero-lead b { color: var(--cinnabar); font-family: var(--font-serif-latin), var(--font-serif); font-size: 15px; }
@@ -1632,9 +1627,10 @@ kbd {
 }
 .wb-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 12px 18px;
+  gap: 10px;
   padding-bottom: 12px;
   margin-bottom: 14px;
   border-bottom: 1px solid var(--line);
@@ -1643,15 +1639,16 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  white-space: normal;
 }
 .wb-current {
   display: flex; align-items: baseline; gap: 8px;
   flex: 1 1 0; min-width: 0; overflow: hidden;
   font-family: var(--font-serif); font-size: 15px; letter-spacing: .4px;
 }
-.wb-current .cur-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.wb-current .cur-title { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .wb-current .cur-note { font-family: var(--font-sans); font-size: 12px; color: var(--ink-soft); margin-left: 8px; flex: 0 0 auto; }
 
 /* 章节目录 */
@@ -1919,14 +1916,15 @@ kbd {
 
 /* ---------- 文献 ---------- */
 .citation-shell {
-  padding: 22px 24px 24px;
+  padding: 0;
 }
 .citation-shell-head {
   display: flex;
   justify-content: space-between;
   gap: 18px;
   align-items: flex-start;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
+  padding: 0 2px;
 }
 .citation-shell-head h2 {
   margin: 0;
@@ -2463,7 +2461,6 @@ kbd {
   .wb-center select { max-width: 100%; }
   /* 页眉长文本允许换行收缩，不撑宽轨道 */
   .wb-current .cur-note { min-width: 0; }
-  .wb-header { flex-direction: column; align-items: flex-start; }
   /* 移动端：章节目录横排滑动，避免竖排占屏 */
   .chapter-list { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
   .chapter-item { flex-shrink: 0; width: auto; }
@@ -2503,7 +2500,7 @@ kbd {
   .focus-side { text-align: left; }
   .focus-checks { grid-template-columns: 1fr; }
   .citation-shell {
-    padding: 18px 16px 20px;
+    padding: 0;
   }
   .citation-shell-head,
   .citation-section-head,
