@@ -146,6 +146,15 @@ function taskChip(task) {
   return task.dueDate < isoLocal(Date.now()) ? 'uncited' : task.dueDate === isoLocal(Date.now()) ? 'doing' : '';
 }
 
+function taskActionLabel(task, done) {
+  if (done) return '查看';
+  if (task.nav === 'topic') return '去研究设计';
+  if (task.nav === 'writing') return task.chapter ? '去写这一章' : '去写作台';
+  if (task.nav === 'citation') return '去整理文献';
+  if (task.nav === 'planner') return '去排计划';
+  return '继续';
+}
+
 function renderTaskList(tasks, plan, emptyText) {
   if (!tasks.length) return `<div class="planner-empty">${emptyText}</div>`;
   return `<div class="planner-task-list">${tasks.map(task => {
@@ -157,7 +166,7 @@ function renderTaskList(tasks, plan, emptyText) {
         <div class="task-title">${escapeHtml(task.title)} ${done ? '<span class="chip done">已完成</span>' : ''}</div>
         <div class="task-meta">${task.dueDate ? `<span class="task-date">${escapeHtml(task.dueDate)}</span>` : ''}${task.note ? `<span>${escapeHtml(task.note)}</span>` : ''}</div>
       </div>
-      <button class="btn ${done ? 'btn-ghost' : 'btn'} btn-sm" data-task-go="${escapeHtml(task.id)}">${done ? '查看' : '去处理'}</button>
+      <button class="btn ${done ? 'btn-ghost' : 'btn'} btn-sm" data-task-go="${escapeHtml(task.id)}">${taskActionLabel(task, done)}</button>
     </div>`;}).join('')}</div>`;
 }
 
@@ -196,7 +205,7 @@ function render(el) {
       <section class="card planner-hero">
         <div class="planner-hero-head">
           <div>
-            <h2><span class="mark"></span>计划与进度</h2>
+            <h2><span class="mark"></span>今日节奏</h2>
             <p class="desc">把今天要做什么、是否打卡、阶段是否合理放在同一条工作线上。</p>
           </div>
           <button class="btn btn-sm" id="checkin-btn" ${checkedToday ? 'disabled title="今天已经打过卡，明天再来"' : ''}>${checkedToday ? '今日已打卡 ✓' : '今日打卡'}</button>

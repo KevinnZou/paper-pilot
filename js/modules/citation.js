@@ -306,7 +306,7 @@ function renderTabNav(activeTab, stats = {}) {
   return `
     <div class="citation-shell-head">
       <div>
-        <h2><span class="mark"></span>文献与证据</h2>
+        <h2><span class="mark"></span>资料工作台</h2>
         <p class="desc">把“找文献、管文献、摘证据”拆开处理，当前页面只保留一类任务。</p>
         <div class="citation-quick-stats">
           <span><b>${stats.total || 0}</b> 文献</span>

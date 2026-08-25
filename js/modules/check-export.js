@@ -268,7 +268,7 @@ export default {
         <section class="card check-overview-card">
           <div class="section-head">
             <div>
-              <h2><span class="mark"></span>检查与导出</h2>
+              <h2><span class="mark"></span>导出前检查</h2>
               <p class="desc">页面会基于当前论文自动检查结构、逻辑、引用和格式；处理完主要问题后再导出更稳。</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="ce-recheck">重新检查</button>
