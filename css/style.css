@@ -1714,7 +1714,12 @@ kbd {
 .wb-current .cur-note { font-family: var(--font-sans); font-size: 12px; color: var(--ink-soft); margin-left: 8px; flex: 0 0 auto; }
 
 /* 章节目录 */
-.chapter-list { display: flex; flex-direction: column; gap: 3px; }
+.chapter-list { display: flex; flex-direction: column; gap: 5px; }
+.chapter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .chapter-item {
   display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px;
   border: 1px solid transparent; border-radius: var(--radius); background: transparent;
@@ -1731,6 +1736,35 @@ kbd {
 .chapter-item .dot.st-done { background: var(--jade); }
 .chapter-item .chip { margin-left: auto; }
 .chapter-item.flash { animation: flash-bg 1s ease; }
+.chapter-subsection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: -1px 0 3px 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+.chapter-subsection {
+  display: block;
+  width: 100%;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chapter-subsection:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
 @keyframes flash-bg { 0% { background: var(--brand); color: #fff; } 100% { background: transparent; } }
 
 /* 工具栏：分组（AI 动作组 / 文档组） */
@@ -1831,6 +1865,12 @@ kbd {
 .pm-editor .ProseMirror h2[data-role="abstract"],
 .pm-editor .ProseMirror h2[data-role="keywords"] { text-align: center; font-size: 16px; color: var(--ink-soft); margin: 28px 0 8px; }
 .pm-editor .ProseMirror h2[data-role="section"] { margin-top: 28px; }
+.pm-editor .ProseMirror h3[data-role="subsection"] {
+  font-size: 15px;
+  margin: 18px 0 8px;
+  color: var(--ink);
+  font-weight: 700;
+}
 .pm-editor .ProseMirror h2[data-role="references"],
 .pm-editor .ProseMirror h2[data-role="ack"] { font-size: 17px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
 .pm-editor .ProseMirror p { margin: 0 0 12px; }
@@ -1841,6 +1881,63 @@ kbd {
 .pm-editor .ProseMirror ul,
 .pm-editor .ProseMirror ol { margin: 10px 0 14px 24px; padding: 0; }
 .pm-editor .ProseMirror li { margin: 4px 0; }
+.wb-draft-preview {
+  margin: 14px 0 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.wb-draft-preview[hidden] { display: none; }
+.wb-draft-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.wb-draft-preview-head h3 {
+  margin: 0 0 3px;
+  font-size: 16px;
+  font-family: var(--font-serif);
+}
+.wb-draft-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 12px;
+}
+.wb-draft-column {
+  min-width: 0;
+}
+.wb-draft-text {
+  min-height: 180px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+}
+.wb-draft-text.muted {
+  color: var(--ink-soft);
+  background: #FBFAF7;
+}
+.wb-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
 .pm-citation {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 24px; padding: 0 4px; margin: 0 1px;
@@ -2686,7 +2783,12 @@ kbd {
   .wb-current .cur-note { min-width: 0; }
   /* 移动端：章节目录横排滑动，避免竖排占屏 */
   .chapter-list { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+  .chapter-group { flex: 0 0 220px; }
+  .chapter-subsection-list { display: none; }
   .chapter-item { flex-shrink: 0; width: auto; }
+  .wb-draft-compare { grid-template-columns: 1fr; }
+  .wb-draft-preview-head { flex-direction: column; }
+  .wb-draft-actions { justify-content: flex-start; }
   .wb-toolbar-more { flex: 1 1 100%; width: 100%; }
   .wb-toolbar-more summary { width: 100%; }
   .wb-toolbar-more-panel { position: static; min-width: 0; width: 100%; }

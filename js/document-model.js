@@ -206,6 +206,17 @@ export function createDocumentFromProject(project) {
         paperSchema.text(chapter.chapter)
       )
     );
+    (chapter.sections || []).forEach((section, subIdx) => {
+      const title = String(section || '').trim();
+      if (!title) return;
+      blocks.push(
+        paperSchema.nodes.heading.create(
+          { level: 3, role: 'subsection', sectionId: `${sectionId}-sub-${subIdx + 1}` },
+          paperSchema.text(title)
+        )
+      );
+      blocks.push(paperSchema.nodes.paragraph.create());
+    });
     blocks.push(...textNodes(paperSchema, normalizeLegacyRefs(project.drafts?.[chapter.chapter]?.content || '')));
   });
   blocks.push(paperSchema.nodes.heading.create({ level: 2, role: 'references', sectionId: 'references' }, paperSchema.text('参考文献')));
@@ -309,6 +320,7 @@ export function buildRenderableBlocks(doc, citationsById) {
       blocks.push({
         type: node.attrs.role === 'title' ? 'title' : 'heading',
         role: node.attrs.role,
+        level: node.attrs.level || 2,
         text: node.textContent.trim(),
       });
       if (node.attrs.role === 'references') {
@@ -425,8 +437,18 @@ export function extractProjectStateFromDoc(doc) {
 
   doc.forEach(node => {
     if (node.type.name === 'heading') {
+      const nextRole = node.attrs.role;
+      if (nextRole === 'subsection' && currentSection) {
+        const title = node.textContent.trim();
+        if (title) {
+          currentSection.sections.push(title);
+          buffer.push(title);
+        }
+        currentRole = 'section';
+        return;
+      }
       flush();
-      currentRole = node.attrs.role;
+      currentRole = nextRole;
       if (currentRole === 'title') title = node.textContent.trim();
       if (currentRole === 'section') {
         currentSection = {

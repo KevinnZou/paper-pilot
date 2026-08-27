@@ -65,6 +65,7 @@ function sectionMetaFromProject(project) {
   return (project.outline || []).map((item, index) => ({
     chapter: item.chapter,
     sectionId: item.sectionId || `chapter-${index + 1}`,
+    sections: Array.isArray(item.sections) ? item.sections : [],
   }));
 }
 
@@ -92,6 +93,107 @@ function sectionForPos(doc, pos) {
   return topLevelSections(doc).find(sec => pos >= sec.headingFrom && pos <= sec.bodyTo) || null;
 }
 
+function specialSectionRange(doc, role, label) {
+  let found = null;
+  const headings = [];
+  doc.forEach((node, offset, index) => {
+    if (node.type.name === 'heading') {
+      headings.push({
+        role: node.attrs.role,
+        title: node.textContent.trim(),
+        index,
+        headingFrom: offset + 1,
+        bodyFrom: offset + node.nodeSize,
+      });
+    }
+  });
+  headings.forEach((item, idx) => {
+    if (item.role !== role) return;
+    const next = headings.slice(idx + 1).find(head => head.role !== 'subsection');
+    found = {
+      kind: role,
+      title: item.title || label,
+      label,
+      headingFrom: item.headingFrom,
+      bodyFrom: item.bodyFrom,
+      bodyTo: next ? next.headingFrom - 1 : doc.content.size,
+    };
+  });
+  return found;
+}
+
+function currentWritingTarget(view) {
+  const { doc, selection } = view.state;
+  const section = sectionForPos(doc, selection.from);
+  if (section) return { ...section, kind: 'chapter', title: section.chapter, label: section.chapter };
+  const abstract = specialSectionRange(doc, 'abstract', '摘要');
+  if (abstract && selection.from >= abstract.headingFrom && selection.from <= abstract.bodyTo) return abstract;
+  const keywords = specialSectionRange(doc, 'keywords', '关键词');
+  if (keywords && selection.from >= keywords.headingFrom && selection.from <= keywords.bodyTo) return keywords;
+  return null;
+}
+
+function subsectionsForSection(doc, section) {
+  const items = [];
+  if (!section) return items;
+  doc.nodesBetween(section.bodyFrom, section.bodyTo, (node, pos) => {
+    if (node.type.name === 'heading' && node.attrs.role === 'subsection') {
+      items.push({
+        title: node.textContent.trim(),
+        pos: pos + 1,
+      });
+    }
+  });
+  return items;
+}
+
+function plainTextFragment(text) {
+  const chunks = String(text || '')
+    .trim()
+    .split(/\n{2,}/)
+    .map(item => item.replace(/\n/g, ' ').trim())
+    .filter(Boolean);
+  const paragraphs = chunks.length ? chunks : [''];
+  return Fragment.fromArray(paragraphs.map(item =>
+    item ? paperSchema.nodes.paragraph.create(null, paperSchema.text(item)) : paperSchema.nodes.paragraph.create()
+  ));
+}
+
+function ensureOutlineSubsections(doc, project) {
+  const outline = Array.isArray(project?.outline) ? project.outline : [];
+  if (!outline.some(item => Array.isArray(item.sections) && item.sections.length)) return doc;
+  const sections = topLevelSections(doc);
+  const existingBySection = new Map(sections.map(sec => [
+    sec.sectionId || sec.chapter,
+    new Set(subsectionsForSection(doc, sec).map(item => item.title)),
+  ]));
+  const outlineBySection = new Map(outline.map((item, index) => [
+    item.sectionId || item.chapter || `chapter-${index + 1}`,
+    item,
+  ]));
+  const blocks = [];
+  let changed = false;
+  doc.forEach(node => {
+    blocks.push(node);
+    if (node.type.name !== 'heading' || node.attrs.role !== 'section') return;
+    const key = node.attrs.sectionId || node.textContent.trim();
+    const outlineItem = outlineBySection.get(key) || outline.find(item => item.chapter === node.textContent.trim());
+    const existing = existingBySection.get(key) || new Set();
+    const missing = (outlineItem?.sections || [])
+      .map(item => String(item || '').trim())
+      .filter(item => item && !existing.has(item));
+    missing.forEach((title, index) => {
+      blocks.push(paperSchema.nodes.heading.create(
+        { level: 3, role: 'subsection', sectionId: `${node.attrs.sectionId || makeSectionId()}-sub-${index + 1}` },
+        paperSchema.text(title)
+      ));
+      blocks.push(paperSchema.nodes.paragraph.create());
+      changed = true;
+    });
+  });
+  return changed ? doc.type.create(doc.attrs, Fragment.fromArray(blocks)) : doc;
+}
+
 function serializeProjectDoc(doc, currentChapter, project) {
   const extracted = extractProjectStateFromDoc(doc);
   const oldProgress = project.chapterProgress || {};
@@ -100,7 +202,10 @@ function serializeProjectDoc(doc, currentChapter, project) {
   extracted.outline.forEach((item, index) => {
     const old = oldOutline.find(x => x.sectionId === item.sectionId) || oldOutline.find(x => x.chapter === item.chapter);
     progress[item.chapter] = old ? (oldProgress[old.chapter] || '未开始') : '未开始';
-    extracted.outline[index] = { ...item, sections: [] };
+    extracted.outline[index] = {
+      ...item,
+      sections: item.sections?.length ? item.sections : (old?.sections || []),
+    };
   });
   return {
     documentV2: doc.toJSON(),
@@ -144,7 +249,11 @@ function buildPreviewHtml(doc, citations) {
   const blocks = buildRenderableBlocks(doc, citationMap(citations));
   return blocks.map(block => {
     if (block.type === 'title') return `<h1 class="title">${escapeHtml(block.text)}</h1>`;
-    if (block.type === 'heading') return `<h2 class="sec">${escapeHtml(block.text)}</h2>`;
+    if (block.type === 'heading') {
+      const tag = block.level >= 3 ? 'h3' : 'h2';
+      const cls = block.level >= 3 ? 'subsec' : 'sec';
+      return `<${tag} class="${cls}">${escapeHtml(block.text)}</${tag}>`;
+    }
     if (block.type === 'paragraph') return `<p>${escapeHtml(block.text)}</p>`;
     if (block.type === 'blockquote') return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
     if (block.type === 'reference') return `<p class="ref">${escapeHtml(block.text)}</p>`;
@@ -198,6 +307,7 @@ function openPrintPreview(doc, citations) {
     .title { text-align: center; font-size: 22px; margin: 0 0 20px; }
     .sec { font-size: 17px; margin: 28px 0 10px; border-bottom: 1px solid #E4E1D8; padding-bottom: 6px; }
     .sec::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #C03B2D; margin-right: 9px; }
+    .subsec { font-size: 15px; margin: 18px 0 8px; color: #26303B; }
     p { text-indent: 2em; margin: 6px 0; font-size: 15px; }
     p.ref { text-indent: -2em; padding-left: 2em; font-size: 12.5px; line-height: 1.8; color: #4A5560; }
     .pp-note-row { text-indent: 0; padding-left: 0; }
@@ -568,8 +678,8 @@ export default {
   render(el) {
     const project = getProject();
     const citations = normalizeCitations();
-    const doc = docFromJSON({ ...project, citations });
-    const viewState = { pending: null, rerun: null, view: null, currentChapter: project.currentChapter || project.outline?.[0]?.chapter || '' };
+    const doc = ensureOutlineSubsections(docFromJSON({ ...project, citations }), project);
+    const viewState = { pending: null, rerun: null, draftPreview: null, view: null, currentChapter: project.currentChapter || project.outline?.[0]?.chapter || '' };
     const panelState = { outlineCollapsed: false, activeRightTab: 'assistant' };
 
     el.innerHTML = `
@@ -626,9 +736,10 @@ export default {
             </div>
             <div class="wb-toolbar wb-toolbar-primary">
               ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="btn ${item.id === 'academic' ? 'btn-ai-solid' : 'btn-ai'} btn-sm" data-ai="${item.id}">${item.label}</button>`).join('')}
-              <button class="btn btn-ghost btn-sm" id="wb-draft">生成本章草稿</button>
+              <button class="btn btn-ghost btn-sm" id="wb-draft">生成当前部分草稿</button>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
+            <div id="wb-draft-preview" class="wb-draft-preview" hidden></div>
             <div class="wb-meta">
               <span id="wb-count">全文字数 0</span>
               <span id="wb-saved">已载入</span>
@@ -697,6 +808,7 @@ export default {
       </div>`;
 
     const suggestionBox = el.querySelector('#wb-suggestion');
+    const draftPreviewBox = el.querySelector('#wb-draft-preview');
     const outlineBox = el.querySelector('#wb-outline');
     const citationBox = el.querySelector('#wb-citations');
     const evidenceBox = el.querySelector('#wb-evidence');
@@ -1008,9 +1120,15 @@ export default {
             const active = sec.chapter === viewState.currentChapter;
             const st = getProject().chapterProgress?.[sec.chapter] || '未开始';
             const chip = st === '已完成' ? '<span class="chip done">已完成</span>' : st === '进行中' ? '<span class="chip doing">进行中</span>' : '';
-            return `<button class="chapter-item ${active ? 'active' : ''}" data-section="${escapeHtml(sec.sectionId)}">
-              <span class="name">${escapeHtml(sec.chapter)}</span>${chip}
-            </button>`;
+            const subs = subsectionsForSection(viewState.view.state.doc, sec);
+            return `<div class="chapter-group ${active ? 'active' : ''}">
+              <button class="chapter-item ${active ? 'active' : ''}" data-section="${escapeHtml(sec.sectionId)}">
+                <span class="name">${escapeHtml(sec.chapter)}</span>${chip}
+              </button>
+              ${subs.length ? `<div class="chapter-subsection-list">
+                ${subs.map(sub => `<button class="chapter-subsection" data-subsection-pos="${sub.pos}" title="${escapeHtml(sub.title)}">${escapeHtml(sub.title)}</button>`).join('')}
+              </div>` : ''}
+            </div>`;
           }).join('')
         : '<p class="desc">先在研究设计里生成大纲，或者直接在编辑器中新增章节标题。</p>';
       outlineBox.querySelectorAll('[data-section]').forEach(btn => {
@@ -1018,6 +1136,14 @@ export default {
           const section = topLevelSections(viewState.view.state.doc).find(x => x.sectionId === btn.dataset.section);
           if (!section) return;
           viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, section.headingFrom)).scrollIntoView());
+          viewState.view.focus();
+        });
+      });
+      outlineBox.querySelectorAll('[data-subsection-pos]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pos = Number(btn.dataset.subsectionPos);
+          if (!Number.isFinite(pos)) return;
+          viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, pos)).scrollIntoView());
           viewState.view.focus();
         });
       });
@@ -1800,6 +1926,112 @@ export default {
       }
     }
 
+    function renderDraftPreview() {
+      const item = viewState.draftPreview;
+      if (!draftPreviewBox) return;
+      if (!item) {
+        draftPreviewBox.hidden = true;
+        draftPreviewBox.innerHTML = '';
+        return;
+      }
+      draftPreviewBox.hidden = false;
+      draftPreviewBox.innerHTML = `
+        <div class="wb-draft-preview-head">
+          <div>
+            <h3><span class="mark"></span>${escapeHtml(item.label)}</h3>
+            <p class="desc">原文仍保留在上方编辑器中，读完后再决定是否写回。</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="draft-dismiss">先不采用</button>
+        </div>
+        <div class="wb-draft-compare">
+          <section class="wb-draft-column">
+            <label class="field-label">当前内容</label>
+            <div class="wb-draft-text muted">${escapeHtml(item.original || '这一部分目前还没有正文。')}</div>
+          </section>
+          <section class="wb-draft-column">
+            <label class="field-label">新生成草稿</label>
+            <div class="wb-draft-text">${escapeHtml(item.suggestion)}</div>
+          </section>
+        </div>
+        <div class="wb-draft-actions">
+          <button class="btn" id="draft-replace">替换当前部分</button>
+          <button class="btn btn-ghost" id="draft-insert-after">追加到当前部分后面</button>
+          <button class="btn btn-ai" id="draft-regenerate">重新生成</button>
+        </div>
+        ${integrityNote()}`;
+      bindDraftPreviewActions();
+      draftPreviewBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function applyDraftPreview(mode) {
+      const item = viewState.draftPreview;
+      if (!item?.suggestion) return;
+      const fragment = plainTextFragment(item.suggestion);
+      const tr = viewState.view.state.tr;
+      if (mode === 'replace') {
+        tr.replaceWith(item.replaceFrom, item.replaceTo, fragment).scrollIntoView();
+      } else {
+        tr.insert(item.replaceTo, fragment).scrollIntoView();
+      }
+      viewState.view.dispatch(tr);
+      viewState.view.focus();
+      viewState.draftPreview = null;
+      renderDraftPreview();
+      toast(mode === 'replace' ? '已替换当前部分' : '已追加到当前部分后面', 'ok');
+    }
+
+    function bindDraftPreviewActions() {
+      draftPreviewBox.querySelector('#draft-dismiss')?.addEventListener('click', () => {
+        viewState.draftPreview = null;
+        renderDraftPreview();
+        toast('已保留原文，本次草稿未写回', 'ok', 1600);
+      });
+      draftPreviewBox.querySelector('#draft-replace')?.addEventListener('click', () => applyDraftPreview('replace'));
+      draftPreviewBox.querySelector('#draft-insert-after')?.addEventListener('click', () => applyDraftPreview('append'));
+      draftPreviewBox.querySelector('#draft-regenerate')?.addEventListener('click', () => runDraftGeneration(viewState.draftPreview?.target));
+    }
+
+    async function runDraftGeneration(existingTarget = null) {
+      const target = existingTarget || currentWritingTarget(viewState.view);
+      if (!target) {
+        toast('请先把光标放到摘要、关键词或某个章节正文里', 'err');
+        return;
+      }
+      const currentText = viewState.view.state.doc.textBetween(target.bodyFrom, target.bodyTo, '\n').trim();
+      const btn = el.querySelector('#wb-draft');
+      const title = meaningfulTitle(getProject().title) || '（未定题）';
+      const subsections = target.kind === 'chapter' ? subsectionsForSection(viewState.view.state.doc, target).map(item => item.title).filter(Boolean) : [];
+      const userPrompt = (() => {
+        if (target.kind === 'abstract') {
+          return `请为论文《${title}》生成一版中文摘要，300-500 字，覆盖研究背景、目的、方法、主要发现和结论。只输出摘要正文。\n\n已有摘要：\n${currentText || '暂无'}`;
+        }
+        if (target.kind === 'keywords') {
+          return `请为论文《${title}》生成 3-5 个中文关键词，用中文分号分隔。只输出关键词，不要解释。\n\n已有关键词：\n${currentText || '暂无'}`;
+        }
+        return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subsections.length ? `请按这些小节展开：${subsections.join('；')}。` : '请按章节主题自行组织清晰小节。'}只输出正文，不要输出客套说明。\n\n当前已有内容：\n${currentText || '暂无'}`;
+      })();
+      setLoading(btn, true, '生成中…');
+      try {
+        const reply = await chat([
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: userPrompt },
+        ], { temperature: target.kind === 'keywords' ? 0.35 : 0.68, signal: writingSignal() });
+        viewState.draftPreview = {
+          target,
+          label: `AI 生成草稿 · ${target.label}`,
+          original: currentText,
+          suggestion: cleanAiText(reply),
+          replaceFrom: target.bodyFrom,
+          replaceTo: target.bodyTo,
+        };
+        renderDraftPreview();
+      } catch (e) {
+        if (e?.code !== 'aborted') toast(e.message || '生成失败，请稍后重试', 'err', 3600);
+      } finally {
+        setLoading(btn, false);
+      }
+    }
+
     function bindSuggestionActions() {
       suggestionBox.querySelector('#sg-accept')?.addEventListener('click', () => {
         if (!viewState.pending) return;
@@ -1872,39 +2104,7 @@ export default {
       runSuggestion(action, content, from, to, action.id);
     }));
 
-    el.querySelector('#wb-draft').addEventListener('click', async () => {
-      const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
-      if (!section) {
-        toast('请先把光标放到某个章节里', 'err');
-        return;
-      }
-      const currentText = viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n').trim();
-      if (currentText && !confirm(`「${section.chapter}」已有内容，接受草稿建议后会覆盖本章内容。继续生成吗？`)) return;
-      const btn = el.querySelector('#wb-draft');
-      setLoading(btn, true, '生成中…');
-      try {
-        const reply = await chat([
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: `请为论文《${meaningfulTitle(getProject().title) || '（未定题）'}》的章节「${section.chapter}」撰写 1000-1500 字初稿。只输出正文。` },
-        ], { temperature: 0.7, signal: writingSignal() });
-        viewState.pending = {
-          actionId: 'draft',
-          label: `本章草稿建议 · ${section.chapter}`,
-          original: currentText,
-          suggestion: cleanAiText(reply),
-          replaceFrom: section.bodyFrom,
-          replaceTo: section.bodyTo,
-        };
-        viewState.rerun = () => el.querySelector('#wb-draft').click();
-        renderSuggestionBox(suggestionBox, viewState);
-        bindSuggestionActions();
-        switchRightTab('assistant');
-      } catch (e) {
-        if (e?.code !== 'aborted') toast(e.message, 'err', 3600);
-      } finally {
-        setLoading(btn, false);
-      }
-    });
+    el.querySelector('#wb-draft').addEventListener('click', () => runDraftGeneration());
 
     el.querySelector('#wb-done').addEventListener('click', () => {
       if (!viewState.currentChapter) {
