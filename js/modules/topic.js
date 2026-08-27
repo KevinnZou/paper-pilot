@@ -86,6 +86,11 @@ function planFromAI(data) {
   return (source && typeof source === 'object') ? source : {};
 }
 
+function stableId(value, fallback) {
+  const text = textFromUnknown(value);
+  return text || fallback;
+}
+
 function fallbackScopeOptions(current, questions = []) {
   const title = resolvedResearchTitle(current, getProject()) || current.title || '当前题目';
   const firstQuestion = questions[0]?.question || selectedQuestion(current)?.question || title;
@@ -131,28 +136,42 @@ function normalizeOptionStrings(list = []) {
 
 function normalizeTitleCandidates(list = []) {
   const items = arrayFromAI(list, ['titles', 'titleCandidates', 'candidates', 'options', 'items']);
+  const seen = new Set();
   return items.length
-    ? items.map((item, idx) => ({
-        id: item?.id || `title-${idx + 1}`,
-        title: textFromUnknown(item?.title || item?.name || item),
-        feasibility: textFromUnknown(item?.feasibility || item?.note || item?.reason || item?.rationale),
-        innovation: textFromUnknown(item?.innovation || item?.highlight || item?.novelty),
-      })).filter(item => item.title)
+    ? items.map((item, idx) => {
+        const title = textFromUnknown(item?.title || item?.name || item);
+        const rawId = stableId(item?.id, `title-${idx + 1}`);
+        const id = seen.has(rawId) ? `title-${idx + 1}` : rawId;
+        seen.add(id);
+        return {
+          id,
+          title,
+          feasibility: textFromUnknown(item?.feasibility || item?.note || item?.reason || item?.rationale),
+          innovation: textFromUnknown(item?.innovation || item?.highlight || item?.novelty),
+        };
+      }).filter(item => item.title)
     : [];
 }
 
 function normalizeQuestionCandidates(list = []) {
   const items = arrayFromAI(list, ['questions', 'researchQuestions', 'questionCandidates', 'candidates', 'options', 'items']);
+  const seen = new Set();
   return items.length
-    ? items.map((item, idx) => ({
-        id: item?.id || `rq-${idx + 1}`,
-        question: textFromUnknown(item?.question || item?.title || item),
-        object: textFromUnknown(item?.object || item?.population),
-        variable: textFromUnknown(item?.variable || item?.variables),
-        answerability: textFromUnknown(item?.answerability || item?.feasibility),
-        dataNeed: textFromUnknown(item?.dataNeed || item?.data || item?.dataSource),
-        method: textFromUnknown(item?.method),
-      })).filter(item => item.question)
+    ? items.map((item, idx) => {
+        const question = textFromUnknown(item?.question || item?.title || item);
+        const rawId = stableId(item?.id, `rq-${idx + 1}`);
+        const id = seen.has(rawId) ? `rq-${idx + 1}` : rawId;
+        seen.add(id);
+        return {
+          id,
+          question,
+          object: textFromUnknown(item?.object || item?.population),
+          variable: textFromUnknown(item?.variable || item?.variables),
+          answerability: textFromUnknown(item?.answerability || item?.feasibility),
+          dataNeed: textFromUnknown(item?.dataNeed || item?.data || item?.dataSource),
+          method: textFromUnknown(item?.method),
+        };
+      }).filter(item => item.question)
     : [];
 }
 
@@ -172,7 +191,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     constraints: design.constraints || '',
     population: design.population || '',
     titleCandidates: normalizeTitleCandidates(design.titleCandidates),
-    selectedTitleId: design.selectedTitleId || '',
+    selectedTitleId: textFromUnknown(design.selectedTitleId),
     planStatus: design.planStatus || 'idle',
     planError: design.planError || '',
     planCursor: Number.isFinite(Number(design.planCursor)) ? Number(design.planCursor) : 0,
@@ -180,7 +199,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     outlineError: design.outlineError || '',
     researchQuestions: normalizeQuestionCandidates(design.researchQuestions),
     questionCandidates: normalizeQuestionCandidates(design.questionCandidates),
-    selectedQuestionId: design.selectedQuestionId || '',
+    selectedQuestionId: textFromUnknown(design.selectedQuestionId),
     researchGap: textFromUnknown(design.researchGap),
     gapSources: normalizeOptionStrings(design.gapSources),
     objectives: normalizeOptionStrings(design.objectives),
@@ -245,7 +264,8 @@ function currentStep(design, project) {
 }
 
 function selectedQuestion(design) {
-  return design.questionCandidates.find(item => item.id === design.selectedQuestionId)
+  const selectedId = textFromUnknown(design.selectedQuestionId);
+  return design.questionCandidates.find(item => textFromUnknown(item.id) === selectedId)
     || design.researchQuestions[0]
     || (customPromptValue(design, 'question') ? { id: 'rq-custom', question: customPromptValue(design, 'question'), object: '自定义主问题', variable: '', dataNeed: '', method: '' } : null)
     || null;
@@ -272,10 +292,10 @@ function renderTitleCards(design) {
     return '<div class="topic-empty">生成后会在这里出现 4-5 个候选题目，每个都能直接设为主线。</div>';
   }
   return `<div class="topic-choice-list">${design.titleCandidates.map((item, idx) => `
-    <article class="topic-choice-card ${design.selectedTitleId === item.id ? 'selected' : ''}">
+    <article class="topic-choice-card ${textFromUnknown(design.selectedTitleId) === textFromUnknown(item.id) ? 'selected' : ''}">
       <div class="topic-choice-head">
         <span class="chip ref-no">${idx + 1}</span>
-        ${design.selectedTitleId === item.id ? '<span class="chip done">当前主线</span>' : ''}
+        ${textFromUnknown(design.selectedTitleId) === textFromUnknown(item.id) ? '<span class="chip done">当前主线</span>' : ''}
       </div>
       <h3>${escapeHtml(item.title)}</h3>
       ${item.feasibility ? `<p><b>可行性</b>${escapeHtml(item.feasibility)}</p>` : ''}
@@ -395,11 +415,11 @@ function renderPromptProgress(design) {
 
 function renderQuestionOptions(design) {
   return `<div class="topic-option-list">${design.questionCandidates.map((item, idx) => `
-    <button class="topic-option-card ${design.selectedQuestionId === item.id ? 'selected' : ''}" data-select-question="${escapeHtml(item.id)}" type="button">
+    <button class="topic-option-card ${textFromUnknown(design.selectedQuestionId) === textFromUnknown(item.id) ? 'selected' : ''}" data-select-question="${escapeHtml(item.id)}" type="button">
       <div class="topic-option-line">
         <span class="topic-option-no">${idx + 1}</span>
         <strong>${escapeHtml(item.question)}</strong>
-        ${design.selectedQuestionId === item.id ? '<span class="chip done">已选</span>' : ''}
+        ${textFromUnknown(design.selectedQuestionId) === textFromUnknown(item.id) ? '<span class="chip done">已选</span>' : ''}
       </div>
     </button>`).join('')}</div>`;
 }
