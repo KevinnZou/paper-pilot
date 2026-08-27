@@ -39,39 +39,119 @@ function linesToArray(text) {
     .filter(Boolean);
 }
 
+const TEXT_KEYS = [
+  'label', 'name', 'title', 'value', 'text', 'content', 'summary',
+  'focus', 'objective', 'strategy', 'suggestion', 'scope', 'answer',
+  'question', 'method', 'dataSource', 'data', 'description',
+];
+
+function textFromUnknown(value) {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map(textFromUnknown).filter(Boolean).join('；');
+  if (value && typeof value === 'object') {
+    for (const key of TEXT_KEYS) {
+      const text = textFromUnknown(value[key]);
+      if (text) return text;
+    }
+    for (const item of Object.values(value)) {
+      const text = textFromUnknown(item);
+      if (text) return text;
+    }
+  }
+  return '';
+}
+
+function objectFromWrappedAI(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+  for (const key of ['data', 'result', 'results', 'payload', 'researchDesign', 'plan']) {
+    if (data[key] && typeof data[key] === 'object') return data[key];
+  }
+  return data;
+}
+
+function arrayFromAI(data, keys = []) {
+  if (Array.isArray(data)) return data;
+  const source = objectFromWrappedAI(data);
+  if (!source || typeof source !== 'object') return [];
+  for (const key of keys) {
+    if (Array.isArray(source[key])) return source[key];
+  }
+  return [];
+}
+
+function planFromAI(data) {
+  const source = objectFromWrappedAI(data);
+  if (Array.isArray(source)) return { questions: source };
+  return (source && typeof source === 'object') ? source : {};
+}
+
+function fallbackScopeOptions(current, questions = []) {
+  const title = resolvedResearchTitle(current, getProject()) || current.title || '当前题目';
+  const firstQuestion = questions[0]?.question || selectedQuestion(current)?.question || title;
+  if (/采购|供应链/.test(`${title} ${firstQuestion}`)) {
+    return ['只聚焦采购规范化环节', '只比较 2-3 家装修企业的采购流程', '只讨论 AI 对采购执行效率和合规性的影响'];
+  }
+  if (/流程|标准|规范/.test(`${title} ${firstQuestion}`)) {
+    return ['只聚焦标准化流程执行效果', '只分析施工交付前后的流程变化', '只选 2-3 个高频业务流程做案例'];
+  }
+  return ['只聚焦一个核心业务场景', '只比较 2-3 个可获得资料的案例', '只讨论最容易被数据支撑的影响路径'];
+}
+
+function outlineTextFromAI(reply) {
+  const raw = String(reply || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = parseJson(raw);
+    const source = objectFromWrappedAI(parsed);
+    const direct = textFromUnknown(source?.outlineText || source?.outline || source?.content);
+    if (direct) return direct;
+    const chapters = arrayFromAI(source, ['chapters', 'outline', 'items']);
+    if (chapters.length) {
+      return chapters.map((chapter, idx) => {
+        const title = textFromUnknown(chapter?.chapter || chapter?.title || chapter?.name || chapter);
+        const heading = /^第.+章/.test(title) ? title : `第${idx + 1}章 ${title || '章节'}`;
+        const sections = normalizeOptionStrings(chapter?.sections || chapter?.subsections || chapter?.items || []);
+        return `${heading}${sections.length ? `\n${sections.map(section => `  ${section}`).join('\n')}` : ''}`;
+      }).join('\n');
+    }
+  } catch {
+    // 纯文本大纲是最常见返回，JSON 解析失败时直接按原文处理。
+  }
+  return raw;
+}
+
 function normalizeOptionStrings(list = []) {
   return Array.isArray(list)
     ? list.map(item => {
-        if (typeof item === 'string') return item.trim();
-        if (item && typeof item === 'object') {
-          return String(item.label || item.name || item.title || item.value || '').trim();
-        }
-        return '';
+        return textFromUnknown(item);
       }).filter(Boolean)
     : [];
 }
 
 function normalizeTitleCandidates(list = []) {
-  return Array.isArray(list)
-    ? list.map((item, idx) => ({
-        id: item.id || `title-${idx + 1}`,
-        title: item.title || item.name || '',
-        feasibility: item.feasibility || item.note || '',
-        innovation: item.innovation || item.highlight || '',
+  const items = arrayFromAI(list, ['titles', 'titleCandidates', 'candidates', 'options', 'items']);
+  return items.length
+    ? items.map((item, idx) => ({
+        id: item?.id || `title-${idx + 1}`,
+        title: textFromUnknown(item?.title || item?.name || item),
+        feasibility: textFromUnknown(item?.feasibility || item?.note || item?.reason || item?.rationale),
+        innovation: textFromUnknown(item?.innovation || item?.highlight || item?.novelty),
       })).filter(item => item.title)
     : [];
 }
 
 function normalizeQuestionCandidates(list = []) {
-  return Array.isArray(list)
-    ? list.map((item, idx) => ({
-        id: item.id || `rq-${idx + 1}`,
-        question: item.question || item.title || '',
-        object: item.object || '',
-        variable: item.variable || '',
-        answerability: item.answerability || '',
-        dataNeed: item.dataNeed || '',
-        method: item.method || '',
+  const items = arrayFromAI(list, ['questions', 'researchQuestions', 'questionCandidates', 'candidates', 'options', 'items']);
+  return items.length
+    ? items.map((item, idx) => ({
+        id: item?.id || `rq-${idx + 1}`,
+        question: textFromUnknown(item?.question || item?.title || item),
+        object: textFromUnknown(item?.object || item?.population),
+        variable: textFromUnknown(item?.variable || item?.variables),
+        answerability: textFromUnknown(item?.answerability || item?.feasibility),
+        dataNeed: textFromUnknown(item?.dataNeed || item?.data || item?.dataSource),
+        method: textFromUnknown(item?.method),
       })).filter(item => item.question)
     : [];
 }
@@ -96,29 +176,31 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     planStatus: design.planStatus || 'idle',
     planError: design.planError || '',
     planCursor: Number.isFinite(Number(design.planCursor)) ? Number(design.planCursor) : 0,
-    researchQuestions: Array.isArray(design.researchQuestions) ? design.researchQuestions : [],
+    outlineStatus: design.outlineStatus || 'idle',
+    outlineError: design.outlineError || '',
+    researchQuestions: normalizeQuestionCandidates(design.researchQuestions),
     questionCandidates: normalizeQuestionCandidates(design.questionCandidates),
     selectedQuestionId: design.selectedQuestionId || '',
-    researchGap: design.researchGap || '',
-    gapSources: Array.isArray(design.gapSources) ? design.gapSources : [],
-    objectives: Array.isArray(design.objectives) ? design.objectives : [],
-    objectiveOptions: Array.isArray(design.objectiveOptions) ? design.objectiveOptions : [],
-    selectedObjectiveFocus: design.selectedObjectiveFocus || '',
+    researchGap: textFromUnknown(design.researchGap),
+    gapSources: normalizeOptionStrings(design.gapSources),
+    objectives: normalizeOptionStrings(design.objectives),
+    objectiveOptions: normalizeOptionStrings(design.objectiveOptions),
+    selectedObjectiveFocus: textFromUnknown(design.selectedObjectiveFocus),
     customPromptValues: (design.customPromptValues && typeof design.customPromptValues === 'object') ? design.customPromptValues : {},
-    variables: Array.isArray(design.variables) ? design.variables : [],
-    hypotheses: Array.isArray(design.hypotheses) ? design.hypotheses : [],
-    methods: Array.isArray(design.methods) ? design.methods : [],
+    variables: normalizeOptionStrings(design.variables),
+    hypotheses: normalizeOptionStrings(design.hypotheses),
+    methods: normalizeOptionStrings(design.methods),
     methodOptions: normalizeOptionStrings(design.methodOptions),
-    selectedMethod: design.selectedMethod || '',
-    dataSources: Array.isArray(design.dataSources) ? design.dataSources : [],
+    selectedMethod: textFromUnknown(design.selectedMethod),
+    dataSources: normalizeOptionStrings(design.dataSources),
     dataOptions: normalizeOptionStrings(design.dataOptions),
-    selectedDataSource: design.selectedDataSource || '',
+    selectedDataSource: textFromUnknown(design.selectedDataSource),
     feasibility: {
-      score: design.feasibility?.score || '',
-      risks: Array.isArray(design.feasibility?.risks) ? design.feasibility.risks : [],
-      suggestions: Array.isArray(design.feasibility?.suggestions) ? design.feasibility.suggestions : [],
+      score: textFromUnknown(design.feasibility?.score),
+      risks: normalizeOptionStrings(design.feasibility?.risks),
+      suggestions: normalizeOptionStrings(design.feasibility?.suggestions),
     },
-    selectedRiskStrategy: design.selectedRiskStrategy || '',
+    selectedRiskStrategy: textFromUnknown(design.selectedRiskStrategy),
     confirmedAt: design.confirmedAt || '',
   };
 }
@@ -140,7 +222,7 @@ function saveDesignPatch(patch) {
 }
 
 function customPromptValue(design, key) {
-  return (design.customPromptValues && typeof design.customPromptValues === 'object' && design.customPromptValues[key]) || '';
+  return textFromUnknown(design.customPromptValues && typeof design.customPromptValues === 'object' && design.customPromptValues[key]);
 }
 
 function planReady(design) {
@@ -277,21 +359,13 @@ function planPrompts(design) {
       summary: design.selectedDataSource,
       customPlaceholder: '例如：行业报告、企业内部数据、访谈纪要',
     },
-    ...(design.objectiveOptions.length ? [{
-      key: 'objective',
-      title: '你更希望这篇论文最终强调什么？',
-      desc: '这一步是在确定写作侧重点，不是在补充新任务。',
-      answered: !!design.selectedObjectiveFocus,
-      summary: design.selectedObjectiveFocus,
-      customPlaceholder: '例如：更强调管理机制优化 / 更强调采购规范化',
-    }] : []),
     ...(design.feasibility.suggestions.length ? [{
       key: 'strategy',
-      title: '如果要收敛范围，你更接受哪种方式？',
-      desc: '选一个更顺手的收敛策略，后面出大纲会按这个方向走。',
+      title: '你希望论文范围主要收在哪一处？',
+      desc: '最后只定写作边界，避免题目太散；大纲会按这个范围展开。',
       answered: !!design.selectedRiskStrategy,
       summary: design.selectedRiskStrategy,
-      customPlaceholder: '例如：只聚焦采购环节 / 只做两家案例企业',
+      customPlaceholder: '例如：只聚焦采购环节 / 只分析两家案例企业',
     }] : []),
   ];
 }
@@ -310,7 +384,7 @@ function renderPromptProgress(design) {
     ${prompts.map((item, idx) => `
       <div class="topic-prompt-chip ${item.answered ? 'done' : (idx === index ? 'current' : '')}">
         <span class="topic-prompt-no">${idx + 1}</span>
-        <span>${escapeHtml(item.key === 'question' ? '主问题' : item.key === 'method' ? '方法' : item.key === 'data' ? '数据' : item.key === 'objective' ? '侧重点' : '收敛')}</span>
+        <span>${escapeHtml(item.key === 'question' ? '主问题' : item.key === 'method' ? '方法' : item.key === 'data' ? '数据' : item.key === 'objective' ? '侧重点' : '范围')}</span>
       </div>`).join('')}
   </div>`;
 }
@@ -630,6 +704,8 @@ function render(el) {
               <button class="btn btn-sm" id="outline-adopt">采用大纲</button>
             </div>
           </div>
+          ${design.outlineStatus === 'loading' ? '<div class="topic-empty topic-state-note">正在根据已选方案生成论文大纲，请稍等…</div>' : ''}
+          ${design.outlineStatus === 'error' ? `<div class="topic-empty topic-state-note">大纲生成失败：${escapeHtml(design.outlineError || '请稍后重试')}<div class="result-actions topic-retry-actions"><button class="btn btn-ai-solid btn-sm" id="outline-gen-retry">重新生成大纲</button></div></div>` : ''}
           <details class="topic-outline-preview">
             <summary>预览大纲结构</summary>
             <div id="outline-out">${renderOutlinePreview('')}</div>
@@ -803,7 +879,7 @@ function render(el) {
         if (shouldUseLiveAI()) {
           const reply = await chat([
           { role: 'system', content: `${SYSTEM} 只输出严格 JSON 对象。` },
-          { role: 'user', content: `请基于下面的论文题目生成一个“低输入”的研究方案建议包。输出 JSON 对象，字段包括：
+          { role: 'user', content: `请基于下面的论文题目生成一个“低输入”的研究方案建议包。必须紧扣论文题目，不要给泛泛的管理建议。输出 JSON 对象，字段包括：
 questions: [{id, question, object, variable, dataNeed, method}]
 methods: [3个方法选项]
 dataSources: [3个数据来源选项]
@@ -811,6 +887,8 @@ objectives: [3个研究目标]
 researchGap: 1段研究空白
 hypotheses: [2-3条待验证判断]
 feasibility: {score, risks[], suggestions[]}
+
+其中 feasibility.suggestions 必须是 3 个“范围边界选项”，例如“只聚焦采购规范化环节”“只比较 2-3 家中小型装修企业”“只讨论标准化流程执行效果”。不要输出对象嵌套对象；每个选项尽量是一句可点击的短文本。
 
 论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}
 研究想法：${current.initialIdea || '未提供'}
@@ -824,9 +902,12 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         } else {
           parsed = mockPlan(current, feedback);
         }
-        const questions = normalizeQuestionCandidates(parsed.questions || []);
-        const methodOptions = normalizeOptionStrings(parsed.methods || []);
-        const dataOptions = normalizeOptionStrings(parsed.dataSources || []);
+        const plan = planFromAI(parsed);
+        const questions = normalizeQuestionCandidates(plan.questions || plan.researchQuestions || plan.questionCandidates || []);
+        const methodOptions = normalizeOptionStrings(plan.methods || plan.methodOptions || []);
+        const dataOptions = normalizeOptionStrings(plan.dataSources || plan.dataOptions || []);
+        const feasibility = plan.feasibility && typeof plan.feasibility === 'object' ? plan.feasibility : {};
+        const scopeOptions = normalizeOptionStrings(feasibility.suggestions || plan.scopeOptions || plan.boundaries);
         if (!questions.length) throw new Error('AI 未返回有效研究问题');
         saveDesignPatch({
           planStatus: 'ready',
@@ -838,14 +919,14 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
           selectedMethod: '',
           dataOptions,
           selectedDataSource: '',
-          objectiveOptions: Array.isArray(parsed.objectives) ? parsed.objectives.filter(Boolean) : [],
+          objectiveOptions: normalizeOptionStrings(plan.objectives || plan.objectiveOptions),
           selectedObjectiveFocus: '',
-          researchGap: parsed.researchGap || current.researchGap,
-          hypotheses: Array.isArray(parsed.hypotheses) ? parsed.hypotheses.filter(Boolean) : current.hypotheses,
+          researchGap: textFromUnknown(plan.researchGap) || current.researchGap,
+          hypotheses: normalizeOptionStrings(plan.hypotheses).length ? normalizeOptionStrings(plan.hypotheses) : current.hypotheses,
           feasibility: {
-            score: parsed.feasibility?.score || '',
-            risks: Array.isArray(parsed.feasibility?.risks) ? parsed.feasibility.risks : [],
-            suggestions: Array.isArray(parsed.feasibility?.suggestions) ? parsed.feasibility.suggestions : [],
+            score: textFromUnknown(feasibility.score),
+            risks: normalizeOptionStrings(feasibility.risks),
+            suggestions: scopeOptions.length ? scopeOptions : fallbackScopeOptions(current, questions),
           },
           selectedRiskStrategy: '',
           customPromptValues: {},
@@ -959,8 +1040,8 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
             ? ['企业一手资料获取需要提前沟通', '案例过少会削弱结论说服力']
             : ['样本边界可能不够清晰', '问题范围若继续扩大，后续写作会发散'],
           suggestions: practical
-            ? ['优先锁定 2-3 家企业做访谈', '把研究问题收敛到标准化流程或采购规范化其中一条主线']
-            : ['尽快明确研究对象边界', '优先采用案例或访谈型方法，避免方案过空'],
+            ? ['只聚焦装修企业标准化流程执行效果', '只比较 2-3 家中小型装修企业案例', '只讨论采购规范化这一条主线']
+            : ['只聚焦一个核心业务场景', '只比较 2-3 个可获得资料的案例', '只讨论最容易被数据支撑的影响路径'],
         },
       };
     }
@@ -1033,25 +1114,39 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
       const btn = el.querySelector('#outline-gen');
       setLoading(btn, true, '生成中…');
+      saveDesignPatch({ outlineStatus: 'loading', outlineError: '', currentStep: 3 });
       outlineOut.innerHTML = '<div class="topic-empty">AI 正在生成论文大纲…</div>';
+      if (outlineEditor) {
+        outlineEditor.disabled = true;
+        outlineEditor.placeholder = 'AI 正在生成论文大纲…';
+      }
       try {
         const reply = shouldUseLiveAI()
           ? await chat([
               { role: 'system', content: SYSTEM },
-              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法和数据来源一致。\n论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `\n用户对上一版大纲的修改意见：${feedback}\n请根据这个意见重组章节，不要只改个别字。` : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
-            ], { temperature: 0.4, signal: topicSignal() })
+              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：只输出纯文本大纲，不要 JSON，不要 Markdown 代码块；输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法、数据来源和范围边界一致。\n论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n范围边界：${selectedRiskStrategy(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `\n用户对上一版大纲的修改意见：${feedback}\n请根据这个意见重组章节，不要只改个别字。` : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
+            ], { temperature: 0.4, signal: topicSignal(), timeoutMs: 60000 })
           : mockOutline(current);
-        syncOutlineUI(reply);
+        const outlineText = outlineTextFromAI(reply);
+        if (!outlineText.trim()) throw new Error('模型返回了空大纲，请重试');
+        syncOutlineUI(outlineText);
+        saveDesignPatch({ outlineStatus: 'ready', outlineError: '', currentStep: 3 });
       } catch (e) {
         if (isAbort(e)) return;
         outlineOut.innerHTML = `<div class="topic-empty">论文大纲生成失败：${escapeHtml(e.message)}</div>`;
+        saveDesignPatch({ outlineStatus: 'error', outlineError: e.message, currentStep: 3 });
         toast(e.message, 'err', 3600);
       } finally {
+        if (outlineEditor) {
+          outlineEditor.disabled = false;
+          outlineEditor.placeholder = '可直接粘贴或编辑大纲，例如：第1章 绪论';
+        }
         setLoading(btn, false);
       }
     }
 
     el.querySelector('#outline-gen')?.addEventListener('click', () => generateOutline());
+    el.querySelector('#outline-gen-retry')?.addEventListener('click', () => generateOutline());
     if (!(getProject().outline || []).length && !String(outlineEditor?.value || '').trim()) {
       generateOutline();
     }
