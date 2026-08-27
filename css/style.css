@@ -542,6 +542,12 @@ body.sidebar-collapsed .module-writing .main-header {
   background: var(--surface-2);
   color: var(--ink-soft);
   font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.topic-prompt-chip:hover {
+  border-color: var(--line-strong);
+  background: var(--surface);
 }
 .topic-prompt-chip.current {
   border-color: #C9D8E2;

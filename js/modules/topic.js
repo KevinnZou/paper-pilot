@@ -247,23 +247,24 @@ function currentStep(design, project) {
 function selectedQuestion(design) {
   return design.questionCandidates.find(item => item.id === design.selectedQuestionId)
     || design.researchQuestions[0]
+    || (customPromptValue(design, 'question') ? { id: 'rq-custom', question: customPromptValue(design, 'question'), object: '自定义主问题', variable: '', dataNeed: '', method: '' } : null)
     || null;
 }
 
 function selectedMethod(design) {
-  return design.selectedMethod || design.methods[0] || '';
+  return design.selectedMethod || customPromptValue(design, 'method') || design.methods[0] || '';
 }
 
 function selectedDataSource(design) {
-  return design.selectedDataSource || design.dataSources[0] || '';
+  return design.selectedDataSource || customPromptValue(design, 'data') || design.dataSources[0] || '';
 }
 
 function selectedObjectiveFocus(design) {
-  return design.selectedObjectiveFocus || design.objectiveOptions[0] || '';
+  return design.selectedObjectiveFocus || customPromptValue(design, 'objective') || design.objectiveOptions[0] || '';
 }
 
 function selectedRiskStrategy(design) {
-  return design.selectedRiskStrategy || design.feasibility.suggestions[0] || '';
+  return design.selectedRiskStrategy || customPromptValue(design, 'strategy') || design.feasibility.suggestions[0] || '';
 }
 
 function renderTitleCards(design) {
@@ -339,7 +340,7 @@ function planPrompts(design) {
       key: 'question',
       title: '你这篇论文最想回答哪个主问题？',
       desc: '先定主问题，后面的方法、数据和大纲都会围绕它展开。',
-      answered: !!design.selectedQuestionId,
+      answered: !!selectedQuestion(design)?.question,
       summary: selectedQuestion(design)?.question || '',
       customPlaceholder: '例如：AI 如何提升装修企业标准化流程的执行效率？',
     },
@@ -347,24 +348,24 @@ function planPrompts(design) {
       key: 'method',
       title: '你打算怎么研究这个问题？',
       desc: '优先选你最容易真的做出来的方法。',
-      answered: !!design.selectedMethod,
-      summary: design.selectedMethod,
+      answered: !!selectedMethod(design),
+      summary: selectedMethod(design),
       customPlaceholder: '例如：文本分析法 / 扎根理论 / 问卷调查',
     },
     {
       key: 'data',
       title: '你最有把握拿到哪类数据？',
       desc: '数据可获得性比“看起来高级”更重要。',
-      answered: !!design.selectedDataSource,
-      summary: design.selectedDataSource,
+      answered: !!selectedDataSource(design),
+      summary: selectedDataSource(design),
       customPlaceholder: '例如：行业报告、企业内部数据、访谈纪要',
     },
     ...(design.feasibility.suggestions.length ? [{
       key: 'strategy',
       title: '你希望论文范围主要收在哪一处？',
       desc: '最后只定写作边界，避免题目太散；大纲会按这个范围展开。',
-      answered: !!design.selectedRiskStrategy,
-      summary: design.selectedRiskStrategy,
+      answered: !!selectedRiskStrategy(design),
+      summary: selectedRiskStrategy(design),
       customPlaceholder: '例如：只聚焦采购环节 / 只分析两家案例企业',
     }] : []),
   ];
@@ -382,10 +383,10 @@ function renderPromptProgress(design) {
   const { prompts, index } = currentPlanPrompt(design);
   return `<div class="topic-prompt-progress">
     ${prompts.map((item, idx) => `
-      <div class="topic-prompt-chip ${item.answered ? 'done' : (idx === index ? 'current' : '')}">
+      <button class="topic-prompt-chip ${item.answered ? 'done' : (idx === index ? 'current' : '')}" data-go-plan-prompt="${idx}" type="button" title="${escapeHtml(item.summary || item.title)}">
         <span class="topic-prompt-no">${idx + 1}</span>
         <span>${escapeHtml(item.key === 'question' ? '主问题' : item.key === 'method' ? '方法' : item.key === 'data' ? '数据' : item.key === 'objective' ? '侧重点' : '范围')}</span>
-      </div>`).join('')}
+      </button>`).join('')}
   </div>`;
 }
 
@@ -419,6 +420,7 @@ function renderPlanQuestionnaire(design) {
   else if (current.key === 'objective') optionsHtml = renderTextOptions(design.objectiveOptions, selectedObjectiveFocus(design), 'select-objective');
   else if (current.key === 'strategy') optionsHtml = renderTextOptions(design.feasibility.suggestions, selectedRiskStrategy(design), 'select-strategy');
   const customValue = customPromptValue(design, current.key);
+  const customSelected = customValue && customValue === current.summary;
   return `
     ${renderPromptProgress(design)}
     <section class="topic-prompt-card">
@@ -429,7 +431,7 @@ function renderPlanQuestionnaire(design) {
       </div>
       ${optionsHtml}
       <div class="topic-custom-answer">
-        <label class="field-label" for="rd-custom-${escapeHtml(current.key)}">或者直接写你自己的答案</label>
+        <label class="field-label" for="rd-custom-${escapeHtml(current.key)}">或者直接写你自己的答案 ${customSelected ? '<span class="chip done">已使用</span>' : ''}</label>
         <div class="topic-custom-row">
           <input id="rd-custom-${escapeHtml(current.key)}" type="text" value="${escapeHtml(customValue)}" placeholder="${escapeHtml(current.customPlaceholder || '输入你的自定义答案')}">
           <button class="btn btn-ghost btn-sm" data-custom-submit="${escapeHtml(current.key)}">使用这个答案</button>
@@ -1085,6 +1087,11 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       return;
     }
 
+    el.querySelectorAll('[data-go-plan-prompt]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        saveDesignPatch({ planCursor: Number(btn.dataset.goPlanPrompt), currentStep: 2 });
+        render(el);
+      }));
     el.querySelectorAll('[data-select-question]').forEach(btn =>
       btn.addEventListener('click', () => {
         maybeAdvancePlanFlow(saveDesignPatch({ selectedQuestionId: btn.dataset.selectQuestion, currentStep: 2 }));
