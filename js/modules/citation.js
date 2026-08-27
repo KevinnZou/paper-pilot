@@ -696,7 +696,7 @@ function render(el) {
       const reply = await chat([
         { role: 'system', content: PARSE_SYSTEM },
         { role: 'user', content: raw },
-      ], { temperature: 0, signal: abortSignal() });
+      ], { temperature: 0, signal: abortSignal(), timeoutMs: 60000 });
       let entries;
       try {
         // 容错解析（对齐 litsearch.parseJson）：代码围栏 → 直接解析 → 失败则提取数组子串 + 去尾随逗号 + 解包装对象

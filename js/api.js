@@ -130,6 +130,15 @@ function mockWritingSuggestion(prompt) {
   if (/逻辑结构|论证跳跃/.test(prompt)) {
     return '1. 第二段从现状直接跳到结论，中间缺少机制解释。\n2. 对“效率提升”的判断还没有具体证据支撑。\n3. 建议补一段案例或数据说明，再进入管理建议。';
   }
+  if (/撰写 1000-1500 字中文初稿|中文摘要，300-500 字|可引用文献/.test(prompt)) {
+    const refs = [...prompt.matchAll(/\[\[CIT:([a-zA-Z0-9-]+)\]\]/g)].map(match => match[1]);
+    const c1 = refs[0] ? `[[CIT:${refs[0]}]]` : '';
+    const c2 = refs[1] ? `[[CIT:${refs[1]}]]` : c1;
+    if (/中文摘要，300-500 字/.test(prompt)) {
+      return `本文围绕论文选题展开研究，重点关注研究对象在数字化转型与流程规范化中的关键问题。已有研究表明，AI 工具可以通过数据沉淀、流程识别和决策辅助改善组织管理效率${c1}。在此基础上，本文结合具体行业场景，分析 AI 赋能路径、执行机制及其对规范化管理的影响，并进一步讨论其适用边界与落地条件${c2}。研究有助于为相关企业优化管理流程、提升执行一致性提供参考。`;
+    }
+    return `从研究背景来看，当前行业管理正在从经验驱动逐步转向数据驱动，AI 技术的引入使流程识别、任务分解与执行反馈具备了更强的自动化基础。相关研究已经指出，数字化工具并不只是提升单点效率，更重要的是改变组织内部信息流动和流程协同方式${c1}。\n\n结合本研究主题，AI 赋能的核心价值首先体现在标准流程的显性化。通过对业务环节进行拆解，系统可以把原本依赖个人经验的操作转化为可记录、可比较、可追踪的流程节点，从而为后续评价和优化提供基础。同时，案例研究方法能够帮助研究者在真实企业情境中观察这种变化，避免只停留在概念讨论层面${c2}。\n\n因此，本章后续可以围绕“问题提出、理论依据、研究对象与分析框架”逐步展开：先说明行业为什么需要规范化，再解释 AI 为什么可能成为规范化的工具，最后把论文的研究问题落到可观察的数据来源和案例材料上。`;
+  }
   if (/续写/.test(prompt)) {
     return '进一步来看，AI 技术并不是简单替代人工，而是通过流程标准化、数据沉淀与节点协同三方面重塑企业管理方式。对于装修行业而言，这种重塑首先体现在采购、质检与项目交付等高频环节，其次才会逐步扩展到组织协同与经营决策层面。';
   }
@@ -223,6 +232,120 @@ export async function chat(messages, { temperature = 0.7, signal, timeoutMs = 18
   const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new ApiError('empty', '模型返回了空内容，请重试');
   return text.trim();
+}
+
+/**
+ * 调用大模型对话接口（流式）。
+ * OpenAI/DeepSeek 兼容 SSE：逐段回调 onDelta，最终返回完整文本。
+ */
+export async function streamChat(messages, { temperature = 0.7, signal, timeoutMs = 180000, onDelta } = {}) {
+  if (!shouldUseLiveAI()) {
+    if (signal?.aborted) throw new ApiError('aborted', '请求已取消');
+    const text = mockGenericReply(messages);
+    const chunks = String(text).match(/.{1,24}/gs) || [''];
+    for (const chunk of chunks) {
+      if (signal?.aborted) throw new ApiError('aborted', '请求已取消');
+      onDelta?.(chunk);
+      await new Promise(resolve => setTimeout(resolve, 18));
+    }
+    return text.trim();
+  }
+
+  const cfg = getConfig();
+  if (!cfg.apiKey) throw new ApiError('no_key', '请先在「设置」中填写 API Key');
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  if (signal) {
+    if (signal.aborted) ctrl.abort();
+    else signal.addEventListener('abort', () => ctrl.abort(), { once: true });
+  }
+
+  let res;
+  try {
+    res = await fetch(`${cfg.baseURL.replace(/\/+$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({ model: cfg.model, messages, temperature, stream: true }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    if (e?.name === 'AbortError') {
+      throw signal?.aborted
+        ? new ApiError('aborted', '请求已取消')
+        : new ApiError('timeout', '请求超时：生成时间过长或网络不稳定，请重试');
+    }
+    throw new ApiError('network', '网络连接失败：请检查网络，或确认服务商地址支持浏览器直连');
+  }
+
+  if (!res.ok) {
+    clearTimeout(timer);
+    const map = {
+      400: ['bad_request', '请求参数有误，请检查模型名称'],
+      401: ['auth', 'API Key 无效，请到「设置」中检查'],
+      402: ['balance', '账户余额不足，请充值后再试'],
+      403: ['auth', 'API Key 无权限或已被停用，请到「设置」中检查'],
+      429: ['rate', '请求过于频繁，请稍等几秒再试'],
+      500: ['server', '服务商暂时不可用，请稍后再试'],
+    };
+    const [code, message] = map[res.status] || ['http', `请求失败（HTTP ${res.status}）`];
+    throw new ApiError(code, message);
+  }
+
+  if (!res.body) {
+    clearTimeout(timer);
+    throw new ApiError('bad_response', '服务商没有返回可读取的流式响应');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const lines = part.split('\n').map(line => line.trim()).filter(Boolean);
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          let data;
+          try {
+            data = JSON.parse(payload);
+          } catch {
+            continue;
+          }
+          const delta = data?.choices?.[0]?.delta?.content || data?.choices?.[0]?.message?.content || '';
+          if (!delta) continue;
+          full += delta;
+          onDelta?.(delta, full);
+        }
+      }
+    }
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw signal?.aborted
+        ? new ApiError('aborted', '请求已取消')
+        : new ApiError('timeout', '请求超时：生成时间过长或网络不稳定，请重试');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    reader.releaseLock();
+  }
+
+  if (!full.trim()) throw new ApiError('empty', '模型返回了空内容，请重试');
+  return full.trim();
 }
 
 /** 用一条极简消息测试连接，返回 { reply, ms }（短超时，30 秒；支持外部取消 signal） */

@@ -826,7 +826,7 @@ function render(el) {
           const reply = await chat([
             { role: 'system', content: `${SYSTEM} 只输出严格 JSON 数组。` },
             { role: 'user', content: `请围绕下面的研究设想生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。\n研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}\n请根据反馈明显调整方向，不要只是换几个近义词。` : ''}` },
-          ], { temperature: 0.6, signal: topicSignal() });
+          ], { temperature: 0.6, signal: topicSignal(), timeoutMs: 60000 });
           parsed = normalizeTitleCandidates(parseJson(reply));
         } else {
           parsed = mockTitles({ idea, keywords, constraints });
@@ -930,7 +930,7 @@ feasibility: {score, risks[], suggestions[]}
 研究对象：${current.population || '未提供'}
 学位类型：${getProject().degreeType || '硕士论文'}
 ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。` : ''}` },
-          ], { temperature: 0.35, signal: topicSignal() });
+          ], { temperature: 0.35, signal: topicSignal(), timeoutMs: 60000 });
           parsed = parseJson(reply);
         } else {
           parsed = mockPlan(current, feedback);

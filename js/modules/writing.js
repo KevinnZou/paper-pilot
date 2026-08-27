@@ -4,7 +4,7 @@ import { history, undo, redo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { Fragment } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } from '../ui.js';
-import { chat } from '../api.js';
+import { chat, streamChat } from '../api.js';
 import { searchLiterature } from '../litsearch.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
 import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
@@ -201,6 +201,14 @@ function normalizeDraftCitationMarkers(text, refs) {
       .replace(new RegExp(`\\[${n}\\]`, 'g'), marker);
   });
   return out;
+}
+
+function replaceDraftStream(view, range, text, refs = []) {
+  const normalized = normalizeDraftCitationMarkers(text, refs);
+  const fragment = plainTextFragment(normalized || '正在生成草稿…');
+  const tr = view.state.tr.replaceWith(range.from, range.to, fragment).scrollIntoView();
+  view.dispatch(tr);
+  range.to = range.from + fragment.size;
 }
 
 function ensureOutlineSubsections(doc, project) {
@@ -1989,6 +1997,8 @@ export default {
         return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subsections.length ? `请按这些小节展开：${subsections.join('；')}。` : '请按章节主题自行组织清晰小节。'}需要自然引用下方文献，至少使用 2 条引用，引用必须使用提供的 [[CIT:id]] 标记，不要使用 [1] 这类普通文本编号。只输出正文，不要输出客套说明。\n\n当前已有内容：\n${currentText || '暂无'}`;
       })();
       setLoading(btn, true, target.kind === 'keywords' ? '生成中…' : '检索文献…');
+      let streamRange = null;
+      let streamed = '';
       try {
         let draftCitations = [];
         let addedCount = 0;
@@ -2035,15 +2045,21 @@ export default {
         const referencesBlock = draftCitations.length
           ? `\n\n可引用文献：\n${draftCitations.map(citationBrief).join('\n\n')}`
           : '';
-        const reply = await chat([
+        streamRange = { from: target.bodyTo, to: target.bodyTo };
+        replaceDraftStream(viewState.view, streamRange, '', draftCitations);
+        const reply = await streamChat([
           { role: 'system', content: SYSTEM },
           { role: 'user', content: `${userPrompt}${referencesBlock}` },
-        ], { temperature: target.kind === 'keywords' ? 0.35 : 0.68, signal: writingSignal() });
+        ], {
+          temperature: target.kind === 'keywords' ? 0.35 : 0.68,
+          signal: writingSignal(),
+          onDelta: delta => {
+            streamed += delta;
+            replaceDraftStream(viewState.view, streamRange, streamed, draftCitations);
+          },
+        });
         const suggestion = normalizeDraftCitationMarkers(cleanAiText(reply), draftCitations);
-        const insertPos = target.bodyTo;
-        viewState.view.dispatch(
-          viewState.view.state.tr.insert(insertPos, plainTextFragment(suggestion)).scrollIntoView()
-        );
+        replaceDraftStream(viewState.view, streamRange, suggestion, draftCitations);
         viewState.view.focus();
         refreshCitationNumbers();
         renderCitationPicker();
@@ -2051,6 +2067,9 @@ export default {
         renderChapterCard();
         toast(target.kind === 'keywords' ? '关键词已插入当前部分' : `已新增 ${addedCount} 条文献，草稿已带引用插入正文`, 'ok', 3200);
       } catch (e) {
+        if (streamRange && !streamed) {
+          viewState.view.dispatch(viewState.view.state.tr.delete(streamRange.from, streamRange.to));
+        }
         if (e?.code !== 'aborted') toast(e.message || '生成失败，请稍后重试', 'err', 3600);
       } finally {
         setLoading(btn, false);
