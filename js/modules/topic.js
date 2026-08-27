@@ -382,11 +382,14 @@ function currentPlanPrompt(design) {
 function renderPromptProgress(design) {
   const { prompts, index } = currentPlanPrompt(design);
   return `<div class="topic-prompt-progress">
-    ${prompts.map((item, idx) => `
-      <button class="topic-prompt-chip ${item.answered ? 'done' : (idx === index ? 'current' : '')}" data-go-plan-prompt="${idx}" type="button" title="${escapeHtml(item.summary || item.title)}">
+    ${prompts.map((item, idx) => {
+      const classes = ['topic-prompt-chip', item.answered ? 'done' : '', idx === index ? 'current' : ''].filter(Boolean).join(' ');
+      return `
+      <button class="${classes}" data-go-plan-prompt="${idx}" type="button" title="${escapeHtml(item.summary || item.title)}">
         <span class="topic-prompt-no">${idx + 1}</span>
         <span>${escapeHtml(item.key === 'question' ? '主问题' : item.key === 'method' ? '方法' : item.key === 'data' ? '数据' : item.key === 'objective' ? '侧重点' : '范围')}</span>
-      </button>`).join('')}
+      </button>`;
+    }).join('')}
   </div>`;
 }
 

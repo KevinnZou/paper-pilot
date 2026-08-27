@@ -549,15 +549,16 @@ body.sidebar-collapsed .module-writing .main-header {
   border-color: var(--line-strong);
   background: var(--surface);
 }
-.topic-prompt-chip.current {
-  border-color: #C9D8E2;
-  background: var(--brand-soft);
-  color: var(--brand-strong);
-}
 .topic-prompt-chip.done {
   border-color: #CFE0D4;
   background: var(--jade-soft);
   color: #2C5A42;
+}
+.topic-prompt-chip.current {
+  border-color: #C9D8E2;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  box-shadow: inset 0 -2px 0 var(--brand);
 }
 .topic-prompt-no {
   width: 18px;
