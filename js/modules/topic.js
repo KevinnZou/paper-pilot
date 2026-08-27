@@ -467,6 +467,13 @@ function renderOutlinePreview(text) {
     </article>`).join('')}</div>`;
 }
 
+function outlineChapterCount(text) {
+  return String(text || '').split('\n').filter(line => {
+    const clean = line.replace(/\*\*|__|`/g, '').replace(/^\s*(?:#{1,6}|[-•*])\s*/, '').trim();
+    return /^(第\s*[一二三四五六七八九十百\d]+\s*章|chapter\s+\d+[\s:：.-]+|\d+[、．.]\s*(?!\d)|\d+\s+)/i.test(clean);
+  }).length;
+}
+
 function renderStepNav(step, maxStep, project, design) {
   const labels = ['确定题目', '确定方案', '生成大纲'];
   return `<div class="topic-stage-nav">
@@ -732,7 +739,7 @@ function render(el) {
           <div class="oc-modal-label">论文大纲</div>
           <div id="oc-outline" class="oc-outline"></div>
           <div class="result-actions">
-            <button class="btn" id="oc-confirm">确认并应用</button>
+            <button class="btn" id="oc-confirm">确认并进入写作台</button>
             <button class="btn btn-ghost" id="oc-cancel">取消</button>
           </div>
         </div>
@@ -1200,6 +1207,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
 
     function openOutlineConfirm(text) {
       const current = normalizeResearchDesign(getProject().researchDesign, getProject());
+      const chapterCount = outlineChapterCount(text);
       if (ocPlan) {
         ocPlan.innerHTML = `
           <div class="oc-plan-grid">
@@ -1213,10 +1221,12 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       if (ocConflict) {
         const p = getProject();
         const hasData = (p.outline || []).length || Object.keys(p.drafts || {}).length || p.documentV2;
-        ocConflict.innerHTML = hasData
-          ? '<div class="oc-conflict-warning">当前工作台已有内容（已用大纲 / 草稿 / 正文）。采用新大纲会替换章节结构；已匹配章节的草稿会尽量保留，其余内容可能被覆盖。</div>'
-          : '';
+        ocConflict.innerHTML = `
+          ${chapterCount ? `<div class="oc-ready-note">已识别 ${chapterCount} 个章节，确认后会写入论文写作台。</div>` : '<div class="oc-conflict-warning">暂未识别到章节。请把大纲改成「第1章 绪论」或「1. 绪论」这类格式后再确认。</div>'}
+          ${hasData ? '<div class="oc-conflict-warning">当前工作台已有内容（已用大纲 / 草稿 / 正文）。采用新大纲会替换章节结构；已匹配章节的草稿会尽量保留，其余内容可能被覆盖。</div>' : ''}`;
       }
+      const confirmBtn = el.querySelector('#oc-confirm');
+      if (confirmBtn) confirmBtn.disabled = !chapterCount;
       if (ocModal) ocModal.hidden = false;
     }
 
@@ -1231,8 +1241,11 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       openOutlineConfirm(text);
     });
     el.querySelector('#oc-confirm')?.addEventListener('click', () => {
-      closeOutlineConfirm();
-      applyOutline(outlineEditor?.value || outlineOut?.dataset.outlineText || '');
+      const ok = applyOutline(outlineEditor?.value || outlineOut?.dataset.outlineText || '');
+      if (ok) closeOutlineConfirm();
+      else if (ocConflict) {
+        ocConflict.innerHTML = '<div class="oc-conflict-warning">大纲还没有成功写入。请检查是否包含「第1章」这类章节标题，再重新确认。</div>';
+      }
     });
     el.querySelector('#oc-cancel')?.addEventListener('click', closeOutlineConfirm);
     el.querySelector('#oc-close')?.addEventListener('click', closeOutlineConfirm);

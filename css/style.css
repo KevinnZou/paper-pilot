@@ -2877,6 +2877,11 @@ kbd {
   background: var(--amber-soft); border-left: 3px solid var(--amber);
   border-radius: 4px; line-height: 1.6;
 }
+.oc-ready-note {
+  margin: 0 0 14px; padding: 9px 12px; font-size: 12.5px; color: #2C5A42;
+  background: var(--jade-soft); border-left: 3px solid var(--jade);
+  border-radius: 4px; line-height: 1.6;
+}
 
 /* 研究设计：确认方案与大纲弹窗 */
 .oc-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
