@@ -436,9 +436,10 @@ function renderPlanQuestionnaire(design) {
         </div>
       </div>
       <div class="topic-prompt-actions">
-        ${index > 0 ? '<button class="btn btn-ghost btn-sm" id="rd-plan-prev">上一题</button>' : '<span></span>'}
-        ${isLast ? `<button class="btn btn-sm" id="rd-plan-finish" ${canConfirm ? '' : 'disabled'}>确认进入大纲</button>` : ''}
+        ${index > 0 ? '<button class="btn btn-ghost btn-sm" id="rd-plan-prev" type="button">上一题</button>' : '<span></span>'}
+        ${isLast ? `<button class="btn btn-sm" id="rd-plan-finish" type="button" ${canConfirm ? '' : 'disabled'}>确认进入大纲</button>` : ''}
       </div>
+      <div class="topic-inline-error" id="rd-plan-finish-error" hidden></div>
     </section>`;
 }
 
@@ -960,27 +961,51 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       render(el);
     }
 
-    function finishPlanFlow() {
-      const current = normalizeResearchDesign(getProject().researchDesign, getProject());
-      const { prompts } = currentPlanPrompt(current);
-      const done = prompts.every(item => item.answered);
-      if (!done) {
-        toast('还有问题没选完，先把这一轮答完', 'err');
-        return;
+    function showPlanFinishError(message) {
+      const box = el.querySelector('#rd-plan-finish-error');
+      if (box) {
+        box.hidden = false;
+        box.textContent = message;
       }
-      const question = selectedQuestion(current);
-      const method = selectedMethod(current);
-      const data = selectedDataSource(current);
-      const objective = selectedObjectiveFocus(current);
-      saveDesignPatch({
-        researchQuestions: question ? [question] : current.researchQuestions,
-        methods: method ? [method] : current.methods,
-        dataSources: data ? [data] : current.dataSources,
-        objectives: objective ? [objective] : (current.objectiveOptions.length ? current.objectiveOptions : current.objectives),
-        currentStep: 3,
-      });
-      toast('研究方案已确定，正在生成大纲', 'ok');
-      render(el);
+      toast(message, 'err', 3600);
+    }
+
+    function finishPlanFlow(btn) {
+      try {
+        if (btn) setLoading(btn, true, '进入中…');
+        const current = normalizeResearchDesign(getProject().researchDesign, getProject());
+        const { prompts } = currentPlanPrompt(current);
+        const done = prompts.every(item => item.answered);
+        if (!done) {
+          showPlanFinishError('还有问题没选完，先把这一轮答完');
+          if (btn) setLoading(btn, false);
+          return;
+        }
+        const question = selectedQuestion(current);
+        const method = selectedMethod(current);
+        const data = selectedDataSource(current);
+        const objective = selectedObjectiveFocus(current);
+        if (!question?.question || !method || !data) {
+          showPlanFinishError('研究问题、方法和数据来源还没有完整保存，请回到前面的题目重新点选一次。');
+          if (btn) setLoading(btn, false);
+          return;
+        }
+        saveDesignPatch({
+          researchQuestions: [question],
+          methods: [method],
+          dataSources: [data],
+          objectives: objective ? [objective] : (current.objectiveOptions.length ? current.objectiveOptions : current.objectives),
+          currentStep: 3,
+          stepTouched: false,
+          outlineStatus: 'idle',
+          outlineError: '',
+        });
+        toast('研究方案已确定，正在进入大纲页', 'ok');
+        document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' }));
+      } catch (e) {
+        showPlanFinishError(`进入大纲失败：${e.message || '未知错误'}`);
+        if (btn) setLoading(btn, false);
+      }
     }
 
     function applyCustomPromptValue(key) {
@@ -1085,7 +1110,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       saveDesignPatch({ planCursor: Math.max((current.planCursor || 0) - 1, 0), currentStep: 2 });
       render(el);
     });
-    el.querySelector('#rd-plan-finish')?.addEventListener('click', () => finishPlanFlow());
+    el.querySelector('#rd-plan-finish')?.addEventListener('click', e => finishPlanFlow(e.currentTarget));
     el.querySelectorAll('[data-custom-submit]').forEach(btn =>
       btn.addEventListener('click', () => applyCustomPromptValue(btn.dataset.customSubmit)));
   }

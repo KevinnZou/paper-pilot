@@ -673,6 +673,16 @@ body.sidebar-collapsed .module-writing .main-header {
   align-items: center;
   gap: 10px;
 }
+.topic-inline-error {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--cinnabar);
+  border-radius: 4px;
+  background: var(--cinnabar-soft);
+  color: var(--cinnabar-strong);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
 .topic-current-line {
   display: flex;
   gap: 8px;
