@@ -1881,63 +1881,6 @@ kbd {
 .pm-editor .ProseMirror ul,
 .pm-editor .ProseMirror ol { margin: 10px 0 14px 24px; padding: 0; }
 .pm-editor .ProseMirror li { margin: 4px 0; }
-.wb-draft-preview {
-  margin: 14px 0 10px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--brand);
-  border-radius: 4px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-.wb-draft-preview[hidden] { display: none; }
-.wb-draft-preview-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.wb-draft-preview-head h3 {
-  margin: 0 0 3px;
-  font-size: 16px;
-  font-family: var(--font-serif);
-}
-.wb-draft-compare {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 12px;
-}
-.wb-draft-column {
-  min-width: 0;
-}
-.wb-draft-text {
-  min-height: 180px;
-  max-height: 360px;
-  overflow: auto;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface-2);
-  color: var(--ink);
-  font-family: var(--font-serif);
-  font-size: 14px;
-  line-height: 1.9;
-  white-space: pre-wrap;
-}
-.wb-draft-text.muted {
-  color: var(--ink-soft);
-  background: #FBFAF7;
-}
-.wb-draft-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
 .pm-citation {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 24px; padding: 0 4px; margin: 0 1px;
@@ -2786,9 +2729,6 @@ kbd {
   .chapter-group { flex: 0 0 220px; }
   .chapter-subsection-list { display: none; }
   .chapter-item { flex-shrink: 0; width: auto; }
-  .wb-draft-compare { grid-template-columns: 1fr; }
-  .wb-draft-preview-head { flex-direction: column; }
-  .wb-draft-actions { justify-content: flex-start; }
   .wb-toolbar-more { flex: 1 1 100%; width: 100%; }
   .wb-toolbar-more summary { width: 100%; }
   .wb-toolbar-more-panel { position: static; min-width: 0; width: 100%; }

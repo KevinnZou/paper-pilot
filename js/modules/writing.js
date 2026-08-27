@@ -5,6 +5,7 @@ import { keymap } from 'prosemirror-keymap';
 import { Fragment } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } from '../ui.js';
 import { chat } from '../api.js';
+import { searchLiterature } from '../litsearch.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
 import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
 import {
@@ -21,7 +22,7 @@ import {
   collectCitationUsage,
   fullTextFromDoc,
 } from '../document-model.js';
-import { ensureCitationIds, citationMap } from '../citation-utils.js';
+import { ensureCitationIds, citationMap, normalizeCitationEntry } from '../citation-utils.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
 
@@ -154,9 +155,52 @@ function plainTextFragment(text) {
     .map(item => item.replace(/\n/g, ' ').trim())
     .filter(Boolean);
   const paragraphs = chunks.length ? chunks : [''];
-  return Fragment.fromArray(paragraphs.map(item =>
-    item ? paperSchema.nodes.paragraph.create(null, paperSchema.text(item)) : paperSchema.nodes.paragraph.create()
-  ));
+  return Fragment.fromArray(paragraphs.map(item => {
+    if (!item) return paperSchema.nodes.paragraph.create();
+    const pieces = [];
+    const regex = /\[\[CIT:([a-zA-Z0-9-]+)\]\]/g;
+    let last = 0;
+    let match;
+    while ((match = regex.exec(item))) {
+      const before = item.slice(last, match.index);
+      if (before) pieces.push(paperSchema.text(before));
+      pieces.push(paperSchema.nodes.citation.create({ citationId: match[1] }));
+      last = match.index + match[0].length;
+    }
+    const tail = item.slice(last);
+    if (tail) pieces.push(paperSchema.text(tail));
+    return paperSchema.nodes.paragraph.create(null, pieces);
+  }));
+}
+
+function citationKey(item = {}) {
+  return String(item.doi || item.title || '').trim().toLowerCase();
+}
+
+function nextLitNo(list) {
+  return list.reduce((max, item) => Math.max(max, Number(item.litNo) || 0), 0) + 1;
+}
+
+function citationBrief(item, index) {
+  return `${index + 1}. 引用标记：[[CIT:${item.id}]]
+题名：${item.title || '未命名文献'}
+作者：${item.authors || item.author || '未知'}
+年份：${item.year || '未知'}
+出处：${item.source || item.publisher || '未知'}
+摘要：${item.abstract || '无摘要'}`;
+}
+
+function normalizeDraftCitationMarkers(text, refs) {
+  let out = String(text || '');
+  refs.forEach((item, index) => {
+    const n = index + 1;
+    const marker = `[[CIT:${item.id}]]`;
+    out = out
+      .replace(new RegExp(`\\[R${n}\\]`, 'g'), marker)
+      .replace(new RegExp(`\\[文献${n}\\]`, 'g'), marker)
+      .replace(new RegExp(`\\[${n}\\]`, 'g'), marker);
+  });
+  return out;
 }
 
 function ensureOutlineSubsections(doc, project) {
@@ -677,9 +721,9 @@ export default {
 
   render(el) {
     const project = getProject();
-    const citations = normalizeCitations();
+    let citations = normalizeCitations();
     const doc = ensureOutlineSubsections(docFromJSON({ ...project, citations }), project);
-    const viewState = { pending: null, rerun: null, draftPreview: null, view: null, currentChapter: project.currentChapter || project.outline?.[0]?.chapter || '' };
+    const viewState = { pending: null, rerun: null, view: null, currentChapter: project.currentChapter || project.outline?.[0]?.chapter || '' };
     const panelState = { outlineCollapsed: false, activeRightTab: 'assistant' };
 
     el.innerHTML = `
@@ -739,7 +783,6 @@ export default {
               <button class="btn btn-ghost btn-sm" id="wb-draft">生成当前部分草稿</button>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
-            <div id="wb-draft-preview" class="wb-draft-preview" hidden></div>
             <div class="wb-meta">
               <span id="wb-count">全文字数 0</span>
               <span id="wb-saved">已载入</span>
@@ -808,7 +851,6 @@ export default {
       </div>`;
 
     const suggestionBox = el.querySelector('#wb-suggestion');
-    const draftPreviewBox = el.querySelector('#wb-draft-preview');
     const outlineBox = el.querySelector('#wb-outline');
     const citationBox = el.querySelector('#wb-citations');
     const evidenceBox = el.querySelector('#wb-evidence');
@@ -1926,71 +1968,6 @@ export default {
       }
     }
 
-    function renderDraftPreview() {
-      const item = viewState.draftPreview;
-      if (!draftPreviewBox) return;
-      if (!item) {
-        draftPreviewBox.hidden = true;
-        draftPreviewBox.innerHTML = '';
-        return;
-      }
-      draftPreviewBox.hidden = false;
-      draftPreviewBox.innerHTML = `
-        <div class="wb-draft-preview-head">
-          <div>
-            <h3><span class="mark"></span>${escapeHtml(item.label)}</h3>
-            <p class="desc">原文仍保留在上方编辑器中，读完后再决定是否写回。</p>
-          </div>
-          <button class="btn btn-ghost btn-sm" id="draft-dismiss">先不采用</button>
-        </div>
-        <div class="wb-draft-compare">
-          <section class="wb-draft-column">
-            <label class="field-label">当前内容</label>
-            <div class="wb-draft-text muted">${escapeHtml(item.original || '这一部分目前还没有正文。')}</div>
-          </section>
-          <section class="wb-draft-column">
-            <label class="field-label">新生成草稿</label>
-            <div class="wb-draft-text">${escapeHtml(item.suggestion)}</div>
-          </section>
-        </div>
-        <div class="wb-draft-actions">
-          <button class="btn" id="draft-replace">替换当前部分</button>
-          <button class="btn btn-ghost" id="draft-insert-after">追加到当前部分后面</button>
-          <button class="btn btn-ai" id="draft-regenerate">重新生成</button>
-        </div>
-        ${integrityNote()}`;
-      bindDraftPreviewActions();
-      draftPreviewBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    function applyDraftPreview(mode) {
-      const item = viewState.draftPreview;
-      if (!item?.suggestion) return;
-      const fragment = plainTextFragment(item.suggestion);
-      const tr = viewState.view.state.tr;
-      if (mode === 'replace') {
-        tr.replaceWith(item.replaceFrom, item.replaceTo, fragment).scrollIntoView();
-      } else {
-        tr.insert(item.replaceTo, fragment).scrollIntoView();
-      }
-      viewState.view.dispatch(tr);
-      viewState.view.focus();
-      viewState.draftPreview = null;
-      renderDraftPreview();
-      toast(mode === 'replace' ? '已替换当前部分' : '已追加到当前部分后面', 'ok');
-    }
-
-    function bindDraftPreviewActions() {
-      draftPreviewBox.querySelector('#draft-dismiss')?.addEventListener('click', () => {
-        viewState.draftPreview = null;
-        renderDraftPreview();
-        toast('已保留原文，本次草稿未写回', 'ok', 1600);
-      });
-      draftPreviewBox.querySelector('#draft-replace')?.addEventListener('click', () => applyDraftPreview('replace'));
-      draftPreviewBox.querySelector('#draft-insert-after')?.addEventListener('click', () => applyDraftPreview('append'));
-      draftPreviewBox.querySelector('#draft-regenerate')?.addEventListener('click', () => runDraftGeneration(viewState.draftPreview?.target));
-    }
-
     async function runDraftGeneration(existingTarget = null) {
       const target = existingTarget || currentWritingTarget(viewState.view);
       if (!target) {
@@ -2001,30 +1978,78 @@ export default {
       const btn = el.querySelector('#wb-draft');
       const title = meaningfulTitle(getProject().title) || '（未定题）';
       const subsections = target.kind === 'chapter' ? subsectionsForSection(viewState.view.state.doc, target).map(item => item.title).filter(Boolean) : [];
+      const searchQuery = [title, target.label, ...subsections.slice(0, 3)].filter(Boolean).join(' ');
       const userPrompt = (() => {
         if (target.kind === 'abstract') {
-          return `请为论文《${title}》生成一版中文摘要，300-500 字，覆盖研究背景、目的、方法、主要发现和结论。只输出摘要正文。\n\n已有摘要：\n${currentText || '暂无'}`;
+          return `请为论文《${title}》生成一版中文摘要，300-500 字，覆盖研究背景、目的、方法、主要发现和结论。需要自然引入下方文献中的 1-2 条作为支撑，引用必须使用提供的 [[CIT:id]] 标记。只输出摘要正文。`;
         }
         if (target.kind === 'keywords') {
           return `请为论文《${title}》生成 3-5 个中文关键词，用中文分号分隔。只输出关键词，不要解释。\n\n已有关键词：\n${currentText || '暂无'}`;
         }
-        return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subsections.length ? `请按这些小节展开：${subsections.join('；')}。` : '请按章节主题自行组织清晰小节。'}只输出正文，不要输出客套说明。\n\n当前已有内容：\n${currentText || '暂无'}`;
+        return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subsections.length ? `请按这些小节展开：${subsections.join('；')}。` : '请按章节主题自行组织清晰小节。'}需要自然引用下方文献，至少使用 2 条引用，引用必须使用提供的 [[CIT:id]] 标记，不要使用 [1] 这类普通文本编号。只输出正文，不要输出客套说明。\n\n当前已有内容：\n${currentText || '暂无'}`;
       })();
-      setLoading(btn, true, '生成中…');
+      setLoading(btn, true, target.kind === 'keywords' ? '生成中…' : '检索文献…');
       try {
+        let draftCitations = [];
+        let addedCount = 0;
+        if (target.kind !== 'keywords') {
+          const found = await searchLiterature(searchQuery, 5, writingSignal());
+          const list = ensureCitationIds(getCitations()).list;
+          let nextNo = nextLitNo(list) - 1;
+          const existingByKey = new Map(list.map(item => [citationKey(item), item]).filter(([key]) => !!key));
+          const keys = new Set(existingByKey.keys());
+          const added = [];
+          const selected = [];
+          found.slice(0, 5).forEach(item => {
+            const key = citationKey(item);
+            if (!key) return;
+            if (keys.has(key)) {
+              const existing = existingByKey.get(key);
+              if (existing) selected.push(existing);
+              return;
+            }
+            const entry = normalizeCitationEntry({
+              ...item,
+              id: item.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            }, getProject().referenceStandard);
+            entry.litNo = ++nextNo;
+            list.unshift(entry);
+            keys.add(key);
+            existingByKey.set(key, entry);
+            added.push(entry);
+            selected.push(entry);
+          });
+          addedCount = added.length;
+          saveCitations(list);
+          citations = list;
+          draftCitations = [...selected, ...list.slice(0, 3)]
+            .filter((item, index, arr) => arr.findIndex(x => x.id === item.id) === index)
+            .slice(0, 5);
+          renderCitationPicker();
+          if (!draftCitations.length) {
+            toast('没有检索到可用文献，本次未生成草稿。请换一个更具体的题目或先到文献页补充文献。', 'err', 4200);
+            return;
+          }
+          setLoading(btn, true, '生成草稿…');
+        }
+        const referencesBlock = draftCitations.length
+          ? `\n\n可引用文献：\n${draftCitations.map(citationBrief).join('\n\n')}`
+          : '';
         const reply = await chat([
           { role: 'system', content: SYSTEM },
-          { role: 'user', content: userPrompt },
+          { role: 'user', content: `${userPrompt}${referencesBlock}` },
         ], { temperature: target.kind === 'keywords' ? 0.35 : 0.68, signal: writingSignal() });
-        viewState.draftPreview = {
-          target,
-          label: `AI 生成草稿 · ${target.label}`,
-          original: currentText,
-          suggestion: cleanAiText(reply),
-          replaceFrom: target.bodyFrom,
-          replaceTo: target.bodyTo,
-        };
-        renderDraftPreview();
+        const suggestion = normalizeDraftCitationMarkers(cleanAiText(reply), draftCitations);
+        const insertPos = target.bodyTo;
+        viewState.view.dispatch(
+          viewState.view.state.tr.insert(insertPos, plainTextFragment(suggestion)).scrollIntoView()
+        );
+        viewState.view.focus();
+        refreshCitationNumbers();
+        renderCitationPicker();
+        renderEvidencePanel();
+        renderChapterCard();
+        toast(target.kind === 'keywords' ? '关键词已插入当前部分' : `已新增 ${addedCount} 条文献，草稿已带引用插入正文`, 'ok', 3200);
       } catch (e) {
         if (e?.code !== 'aborted') toast(e.message || '生成失败，请稍后重试', 'err', 3600);
       } finally {
