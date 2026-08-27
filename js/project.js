@@ -607,7 +607,7 @@ function parseOutline(text) {
       .trim();
     if (!clean) return;
 
-    const cn = new RegExp(`^(第\\s*[${cnNums}\\\\d]+\\s*章[　\\s:：.-]*.*)$`).exec(clean);
+    const cn = new RegExp(`^(第\\s*[${cnNums}\\d]+\\s*章[　\\s:：.-]*.*)$`).exec(clean);
     const cnList = new RegExp(`^([${cnNums}]+)[、.．]\\s*(.+)$`).exec(clean);
     const chapterNum = /^(\d+)[、．.]\s*(?!\d)(.+)$/.exec(clean);
     const chapterPlainNum = /^(\d+)\s+(.+)$/.exec(clean);
@@ -616,7 +616,7 @@ function parseOutline(text) {
 
     if (cn) {
       const normalized = cn[1]
-        .replace(new RegExp(`^第\\s*([${cnNums}\\\\d]+)\\s*章[　\\s:：.-]*(.*)$`), (_, no, title) => `第${no}章 ${title || ''}`)
+        .replace(new RegExp(`^第\\s*([${cnNums}\\d]+)\\s*章[　\\s:：.-]*(.*)$`), (_, no, title) => `第${no}章 ${title || ''}`)
         .trim();
       chapters.push({ chapter: normalized, sections: [] });
     } else if (cnList && /(绪论|引言|文献|理论|研究设计|方法|分析|实证|案例|结果|讨论|结论|建议|展望|摘要)/.test(cnList[2])) {
