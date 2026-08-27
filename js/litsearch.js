@@ -3,9 +3,9 @@
 //       → 合并去重 → AI 为每条候选标注"可印证/支撑论文的哪个点" → 人工勾选审核入库
 import { formatCitation } from './gbt7714.js';
 import { toast, escapeHtml, setLoading } from './ui.js';
-import { get, set } from './storage.js';
 import { chat, shouldUseLiveAI } from './api.js';
 import { ensureCitationIds, normalizeCitationEntry } from './citation-utils.js';
+import { getCitations, saveCitations } from './project.js';
 
 // 中断恢复：导航离开时取消进行中的检索与 AI 标注（避免结果写进已卸载的页面、浪费 token）
 // tm:navigate 由 document.dispatchEvent 触发且不冒泡，监听必须挂在 document；模块只加载一次，每次导航后换新 controller
@@ -423,7 +423,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
     if (moreBtn) setLoading(moreBtn, true, '加载中…');
     try {
       const more = await searchLiterature(moreState.query, moreState.rows, litSignal(), moreState.offset);
-      const libKeys = new Set(get('citations', []).map(c => itemKey(c)).filter(Boolean));
+      const libKeys = new Set(getCitations().map(c => itemKey(c)).filter(Boolean));
       const seen = new Set(currentItems.map(itemKey));
       const fresh = more.filter(r => { const k = itemKey(r); return k && !seen.has(k); });
       currentItems.push(...fresh);
@@ -456,7 +456,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       return;
     }
     const libKeys = new Set(
-      get('citations', []).map(c => itemKey(c)).filter(Boolean)
+      getCitations().map(c => itemKey(c)).filter(Boolean)
     );
 
     const itemsHtml = litItemsHtml(items, libKeys);
@@ -507,9 +507,9 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
       });
       if (!selected.length) { toast('请先勾选要加入的文献', 'err'); return; }
       const libKeysNow = new Set(
-        get('citations', []).map(c => itemKey(c)).filter(Boolean)
+        getCitations().map(c => itemKey(c)).filter(Boolean)
       );
-      const list = get('citations', []);
+      const list = getCitations();
       const normalized = ensureCitationIds(list);
       if (normalized.changed) {
         list.splice(0, list.length, ...normalized.list);
@@ -530,7 +530,7 @@ export function renderLitSearch(container, { defaultQuery = '', batchFrom = null
         list.unshift(entry);
         added++;
       });
-      set('citations', list);
+      saveCitations(list);
       toast(`新增 ${added} 条${skipped ? `，跳过 ${skipped} 条重复` : ''}`, 'ok');
       // 刷新结果列表：已入库条目置灰并打「已入库」印章，保持状态一致
       renderResults(items);

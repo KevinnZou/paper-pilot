@@ -3,7 +3,7 @@ import { toast, copyText, escapeHtml, setLoading } from '../ui.js';
 import { get, set } from '../storage.js';
 import { chat } from '../api.js';
 import { renderLitSearch } from '../litsearch.js';
-import { getProject, getEvidence, saveEvidence } from '../project.js';
+import { getProject, getCitations, saveCitations, getEvidence, saveEvidence } from '../project.js';
 import { ensureCitationIds, normalizeCitationEntry, formatCitationEntry } from '../citation-utils.js';
 import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../document-model.js';
 import { ICONS } from '../icons.js';
@@ -35,9 +35,9 @@ const abortSignal = () => window.__tmAbort.signal;
 function collectCitedNums() {
   const project = getProject();
   if (project.documentV2) {
-    const citations = get('citations', []);
+    const citations = getCitations();
     const { list, changed } = ensureCitationIds(citations);
-    if (changed) set('citations', list);
+    if (changed) saveCitations(list);
     const usage = collectCitationUsage(docFromJSON({ ...project, citations: list }));
     const order = buildCitationNumberMap(docFromJSON({ ...project, citations: list }));
     return new Set([...usage.keys()].map(id => order.get(id)).filter(Boolean));
@@ -195,7 +195,7 @@ function ensureNumbers(list) {
   list.forEach(c => {
     if (c.litNo == null) { c.litNo = next++; changed = true; }
   });
-  if (changed || withIds.changed) set('citations', list);
+  if (changed || withIds.changed) saveCitations(list);
 }
 
 function nextLitNo(list) {
@@ -207,7 +207,7 @@ function makeEvidenceId() {
 }
 
 function sortedList() {
-  const list = ensureCitationIds(get('citations', [])).list.map(item =>
+  const list = ensureCitationIds(getCitations()).list.map(item =>
     normalizeCitationEntry(item, getProject().referenceStandard));
   return list.sort((a, b) => (a.litNo || 0) - (b.litNo || 0));
 }
@@ -512,7 +512,7 @@ function bindListActions(el) {
   el.querySelectorAll('[data-cit-del]').forEach(b =>
     b.addEventListener('click', () => {
       // 用稳定编号 litNo 定位（数组顺序会因 unshift 变化，索引定位会删错）
-      const list = get('citations', []);
+      const list = getCitations();
       const idx = list.findIndex(x => x.id === b.dataset.citDel);
       const item = idx >= 0 ? list[idx] : null;
       if (!item) return;
@@ -526,7 +526,7 @@ function bindListActions(el) {
         : `确定删除「${(item.title || '').slice(0, 24)}」吗？删除后无法恢复。`;
       if (!confirm(msg)) return;
       list.splice(idx, 1);
-      set('citations', list);
+      saveCitations(list);
       toast('已删除', 'ok');
       refreshLibrary(el);
     }));
@@ -543,7 +543,7 @@ function bindListActions(el) {
 }
 
 function render(el) {
-  const list0 = get('citations', []);
+  const list0 = getCitations();
   ensureNumbers(list0);
   const list = sortedList();
   const citedNums = collectCitedNums();
@@ -660,11 +660,11 @@ function render(el) {
     if (!entry.title) { toast('请至少填写题名', 'err'); return; }
     Object.assign(entry, formatCitationEntry({ ...entry, id: entry.id || crypto.randomUUID?.() }, prj.referenceStandard));
     updatePreview(); // 同步刷新预览（防抖未触发时立即点保存也能看到最新格式）
-    const list = get('citations', []);
+    const list = getCitations();
     if (!entry.id) entry.id = crypto.randomUUID?.() || `cit-${Date.now()}`;
     entry.litNo = nextLitNo(list);
     list.unshift(entry);
-    set('citations', list);
+    saveCitations(list);
     toast(`已保存到文献库（编号 [${entry.litNo}]）`, 'ok');
     refreshLibrary(el); // 预览保留在页面上，不整页重渲染
     // 连续录入：清空输入字段，预览保留
@@ -721,7 +721,7 @@ function render(el) {
         toast('解析失败：AI 返回格式异常', 'err');
         return;
       }
-      const list = get('citations', []);
+      const list = getCitations();
       const objs = entries.filter(e => e && typeof e === 'object'); // 防御 AI 返回非对象元素
       if (!objs.length) {
         out.innerHTML = `<span class="placeholder">AI 未解析出文献条目，请检查粘贴内容或稍后重试</span>`;
@@ -734,7 +734,7 @@ function render(el) {
         e.litNo = nextLitNo(list);
         list.unshift(e);
       });
-      set('citations', list);
+      saveCitations(list);
       out.innerHTML =
         `<span class="sample-tag">已解析 ${objs.length} 条并保存到文献库</span>\n` +
         escapeHtml(objs.map((e, i) => `[${i + 1}] ${e.formatted}`).join('\n'));
