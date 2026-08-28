@@ -866,9 +866,9 @@ export default {
                 <span class="cur-note" id="wb-cur-note">自动保存</span>
               </div>
               <div class="wb-header-actions">
-                <button class="btn btn-ghost btn-sm" id="wb-topic">项目方案</button>
-                <button class="btn btn-ghost btn-sm" id="wb-done">标记完成</button>
-                <button class="btn btn-ghost btn-sm" id="wb-copy">复制全文</button>
+                <button class="btn btn-ghost btn-sm wb-tool-btn" id="wb-topic">项目方案</button>
+                <button class="btn btn-ghost btn-sm wb-tool-btn" id="wb-done">标记完成</button>
+                <button class="btn btn-ghost btn-sm wb-tool-btn" id="wb-copy">复制全文</button>
                 <details class="wb-toolbar-more">
                   <summary>更多操作</summary>
                   <div class="wb-toolbar-more-panel">
@@ -887,9 +887,12 @@ export default {
                 </details>
               </div>
             </div>
-            <div class="wb-toolbar wb-toolbar-primary">
-              ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="btn ${item.id === 'academic' ? 'btn-ai-solid' : 'btn-ai'} btn-sm" data-ai="${item.id}">${item.label}</button>`).join('')}
-              <button class="btn btn-ghost btn-sm" id="wb-draft">生成当前部分草稿</button>
+            <div class="wb-editor-toolbar">
+              <div class="wb-command-group" aria-label="AI 写作工具">
+                <span class="wb-command-label">AI</span>
+                ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="wb-command ${item.id === 'academic' ? 'primary' : ''}" type="button" data-ai="${item.id}">${item.label}</button>`).join('')}
+              </div>
+              <button class="btn btn-ai-solid btn-sm wb-draft-btn" id="wb-draft">生成当前部分草稿</button>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
             <div class="wb-meta">
