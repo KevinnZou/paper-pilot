@@ -902,15 +902,17 @@ input::placeholder, textarea::placeholder { color: #A9B0B5; }
 }
 .result-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
 .wb-inline-review {
-  margin-top: 14px;
+  margin: 14px 0 18px;
   padding: 16px 18px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--cinnabar);
   border-radius: var(--radius);
   background: #FFFCF8;
   box-shadow: var(--shadow);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  white-space: normal;
 }
-.wb-inline-review[hidden] { display: none; }
 .wb-inline-review-head {
   display: flex;
   align-items: flex-start;
@@ -925,6 +927,10 @@ input::placeholder, textarea::placeholder { color: #A9B0B5; }
 }
 .wb-inline-review .desc { margin: 0; }
 .wb-inline-review .result-box { margin-top: 8px; }
+.pm-editor .ProseMirror .wb-inline-review h3,
+.pm-editor .ProseMirror .wb-inline-review p {
+  font-family: var(--font-sans);
+}
 
 /* 学术诚信提示：朱批边注 */
 .integrity-note {

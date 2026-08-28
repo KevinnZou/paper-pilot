@@ -1,5 +1,5 @@
-import { EditorState, TextSelection } from 'prosemirror-state';
-import { EditorView } from 'prosemirror-view';
+import { EditorState, TextSelection, Plugin, PluginKey } from 'prosemirror-state';
+import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { history, undo, redo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { Fragment } from 'prosemirror-model';
@@ -204,6 +204,11 @@ function aiTextFragment(text, options = {}) {
     .forEach(rawLine => {
       const line = rawLine.trim();
       if (!line) {
+        pushParagraph();
+        return;
+      }
+      const plainHeading = stripLightMarkdown(line);
+      if (/^(第[一二三四五六七八九十百千万\d]+章|\d+(?:\.\d+)*\s+)/.test(plainHeading) && knownHeadings.has(normalizeHeadingText(plainHeading))) {
         pushParagraph();
         return;
       }
@@ -666,22 +671,14 @@ function inlineDiffHtml(original, suggestion) {
 function renderSuggestionBox(box, state) {
   box.innerHTML = `
     <h3><span class="mark"></span>AI 写作助手</h3>
-    <p class="desc">选中文字后使用上方工具。长文本建议会显示在正文编辑区下方，便于完整阅读和采纳。</p>
-    ${state.pending ? '<p class="desc">当前有一条待处理建议，请在编辑器下方查看。</p>' : ''}
+    <p class="desc">选中文字后使用上方工具。建议会直接显示在编辑器正文旁边，确认后才写回论文。</p>
+    ${state.pending ? '<p class="desc">当前有一条待处理建议，已放在正文中的选区附近。</p>' : ''}
     ${integrityNote()}`;
 }
 
-function renderInlineSuggestionBox(box, state) {
-  if (!box) return;
-  if (!state.pending) {
-    box.hidden = true;
-    box.innerHTML = '';
-    return;
-  }
-  const item = state.pending;
+function inlineSuggestionHtml(item) {
   const isRewriteDiff = DIFF_ACTIONS.has(item.actionId) && (item.original || '').trim() && (item.suggestion || '').trim();
-  box.hidden = false;
-  box.innerHTML = `
+  return `
     <div class="wb-inline-review-head">
       <div>
         <h3><span class="mark"></span>${escapeHtml(item.label)}</h3>
@@ -699,10 +696,10 @@ function renderInlineSuggestionBox(box, state) {
     <label class="field-label">${isRewriteDiff ? '建议全文' : 'AI 建议'}</label>
     <div class="result-box filled">${escapeHtml(item.suggestion)}</div>
     <div class="result-actions">
-      <button class="btn" id="sg-accept">接受</button>
-      <button class="btn btn-ghost" id="sg-reject">拒绝</button>
-      <button class="btn btn-ai" id="sg-regenerate">重新生成</button>
-      ${item.actionId === 'logic' ? '<button class="btn btn-ghost" id="sg-todo">转成待修改清单</button>' : ''}
+      <button class="btn" type="button" data-review-action="accept">接受</button>
+      <button class="btn btn-ghost" type="button" data-review-action="reject">拒绝</button>
+      <button class="btn btn-ai" type="button" data-review-action="regenerate">重新生成</button>
+      ${item.actionId === 'logic' ? '<button class="btn btn-ghost" type="button" data-review-action="todo">转成待修改清单</button>' : ''}
     </div>`;
 }
 
@@ -872,7 +869,6 @@ export default {
               <button class="btn btn-ghost btn-sm" id="wb-draft">生成当前部分草稿</button>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
-            <div id="wb-inline-review" class="wb-inline-review" hidden></div>
             <div class="wb-meta">
               <span id="wb-count">全文字数 0</span>
               <span id="wb-saved">已载入</span>
@@ -941,7 +937,6 @@ export default {
       </div>`;
 
     const suggestionBox = el.querySelector('#wb-suggestion');
-    const inlineReviewBox = el.querySelector('#wb-inline-review');
     const outlineBox = el.querySelector('#wb-outline');
     const citationBox = el.querySelector('#wb-citations');
     const evidenceBox = el.querySelector('#wb-evidence');
@@ -1909,11 +1904,122 @@ export default {
       toast(`已整理「${section.chapter}」的 ${replacements.length} 段正文格式`, 'ok');
     }
 
+    const reviewPluginKey = new PluginKey('paperpilot-inline-review');
+    let reviewWidgetNo = 0;
+
+    function handleReviewAction(actionName) {
+      if (!viewState.pending) return;
+      if (actionName === 'reject') {
+        viewState.pending = null;
+        clearReviewWidget();
+        renderSuggestionBox(suggestionBox, viewState);
+        toast('已拒绝本次建议，原文保持不变', 'ok', 1500);
+        return;
+      }
+      if (actionName === 'regenerate') {
+        clearReviewWidget();
+        viewState.rerun?.();
+        return;
+      }
+      if (actionName === 'todo') {
+        const items = String(viewState.pending.suggestion)
+          .split(/\n+/)
+          .map(line => line.replace(/^\s*[-*•\d.、]+\s*/, '').trim())
+          .filter(Boolean)
+          .slice(0, 6);
+        if (!items.length) {
+          toast('这次检查结果没有识别出可转成待办的条目', 'err');
+          return;
+        }
+        items.forEach(text => addTodoToCurrentSection(text));
+        viewState.pending = null;
+        clearReviewWidget();
+        renderSuggestionBox(suggestionBox, viewState);
+        switchRightTab('todos');
+        return;
+      }
+      if (actionName !== 'accept') return;
+      const { replaceFrom, replaceTo, suggestion, actionId, target } = viewState.pending;
+      if (actionId === 'logic') {
+        toast('检查结果保留为批注建议，不直接写回正文', 'ok');
+        viewState.pending = null;
+        clearReviewWidget();
+        renderSuggestionBox(suggestionBox, viewState);
+        return;
+      }
+      replaceAiTextRange(viewState.view, replaceFrom, replaceTo, suggestion, { target });
+      viewState.pending = null;
+      clearReviewWidget();
+      renderSuggestionBox(suggestionBox, viewState);
+      toast('AI 建议已接受并写回正文', 'ok');
+    }
+
+    function createReviewWidget(pending) {
+      const dom = document.createElement('div');
+      dom.className = 'wb-inline-review';
+      dom.innerHTML = inlineSuggestionHtml(pending);
+      dom.addEventListener('mousedown', evt => evt.preventDefault());
+      dom.addEventListener('click', evt => {
+        const btn = evt.target.closest('[data-review-action]');
+        if (!btn) return;
+        evt.preventDefault();
+        handleReviewAction(btn.dataset.reviewAction);
+      });
+      return dom;
+    }
+
+    function clearReviewWidget() {
+      if (!viewState.view) return;
+      viewState.view.dispatch(viewState.view.state.tr.setMeta(reviewPluginKey, { clear: true }));
+    }
+
+    function showReviewWidget(pending) {
+      if (!viewState.view || !pending) return;
+      const doc = viewState.view.state.doc;
+      const rawPos = Math.min(Math.max(pending.replaceTo || pending.replaceFrom || 1, 1), doc.content.size);
+      const $pos = doc.resolve(rawPos);
+      let pos = rawPos;
+      for (let depth = $pos.depth; depth > 0; depth--) {
+        if ($pos.node(depth).isTextblock) {
+          pos = Math.min($pos.after(depth), doc.content.size);
+          break;
+        }
+      }
+      viewState.view.dispatch(viewState.view.state.tr.setMeta(reviewPluginKey, {
+        pos,
+        pending,
+        key: `review-${++reviewWidgetNo}`,
+      }).scrollIntoView());
+    }
+
+    const reviewPlugin = new Plugin({
+      key: reviewPluginKey,
+      state: {
+        init: () => DecorationSet.empty,
+        apply(tr, old) {
+          const meta = tr.getMeta(reviewPluginKey);
+          if (meta?.clear) return DecorationSet.empty;
+          if (meta?.pending) {
+            return DecorationSet.create(tr.doc, [
+              Decoration.widget(meta.pos, () => createReviewWidget(meta.pending), { side: 1, key: meta.key }),
+            ]);
+          }
+          return old.map(tr.mapping, tr.doc);
+        },
+      },
+      props: {
+        decorations(state) {
+          return reviewPluginKey.getState(state) || DecorationSet.empty;
+        },
+      },
+    });
+
     const editorState = EditorState.create({
       schema: paperSchema,
       doc,
       plugins: [
         history(),
+        reviewPlugin,
         keymap({
           'Mod-z': undo,
           'Mod-y': redo,
@@ -1956,9 +2062,11 @@ export default {
         viewState.view.updateState(nextState);
         refreshCitationNumbers();
         syncCurrentChapter();
-        if (saveTimer) clearTimeout(saveTimer);
-        setSaveStatus('saving');
-        saveTimer = setTimeout(persistNow, 500);
+        if (tr.docChanged) {
+          if (saveTimer) clearTimeout(saveTimer);
+          setSaveStatus('saving');
+          saveTimer = setTimeout(persistNow, 500);
+        }
       },
     });
 
@@ -1971,7 +2079,6 @@ export default {
     renderChapterCard();
     renderVersionsPanel();
     renderSuggestionBox(suggestionBox, viewState);
-    renderInlineSuggestionBox(inlineReviewBox, viewState);
     syncOutlineCollapse();
     setSaveStatus('idle', '已载入');
     alignInitialChapter();
@@ -2048,12 +2155,11 @@ export default {
           replaceFrom,
           replaceTo,
           sourceLabel,
+          target: currentWritingTarget(viewState.view),
         };
         viewState.rerun = () => runSuggestion(action, sourceText, replaceFrom, replaceTo, sourceLabel);
         renderSuggestionBox(suggestionBox, viewState);
-        renderInlineSuggestionBox(inlineReviewBox, viewState);
-        bindSuggestionActions();
-        inlineReviewBox?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        showReviewWidget(viewState.pending);
       } catch (e) {
         if (e?.code !== 'aborted') toast(e.message, 'err', 3600);
       } finally {
@@ -2159,48 +2265,6 @@ export default {
       } finally {
         setLoading(btn, false);
       }
-    }
-
-    function bindSuggestionActions() {
-      inlineReviewBox.querySelector('#sg-reject')?.addEventListener('click', () => {
-        viewState.pending = null;
-        renderSuggestionBox(suggestionBox, viewState);
-        renderInlineSuggestionBox(inlineReviewBox, viewState);
-        toast('已拒绝本次建议，原文保持不变', 'ok', 1500);
-      });
-      inlineReviewBox.querySelector('#sg-accept')?.addEventListener('click', () => {
-        if (!viewState.pending) return;
-        const { replaceFrom, replaceTo, suggestion, actionId } = viewState.pending;
-        if (actionId === 'logic') {
-          toast('检查结果保留为批注建议，不直接写回正文', 'ok');
-          viewState.pending = null;
-          renderSuggestionBox(suggestionBox, viewState);
-          renderInlineSuggestionBox(inlineReviewBox, viewState);
-          return;
-        }
-        replaceAiTextRange(viewState.view, replaceFrom, replaceTo, suggestion, {
-          target: currentWritingTarget(viewState.view),
-        });
-        toast('AI 建议已接受并写回正文', 'ok');
-        viewState.pending = null;
-        renderSuggestionBox(suggestionBox, viewState);
-        renderInlineSuggestionBox(inlineReviewBox, viewState);
-      });
-      inlineReviewBox.querySelector('#sg-regenerate')?.addEventListener('click', () => viewState.rerun?.());
-      inlineReviewBox.querySelector('#sg-todo')?.addEventListener('click', () => {
-        if (!viewState.pending?.suggestion) return;
-        const items = String(viewState.pending.suggestion)
-          .split(/\n+/)
-          .map(line => line.replace(/^\s*[-*•\d.、]+\s*/, '').trim())
-          .filter(Boolean)
-          .slice(0, 6);
-        if (!items.length) {
-          toast('这次检查结果没有识别出可转成待办的条目', 'err');
-          return;
-        }
-        items.forEach(text => addTodoToCurrentSection(text));
-        switchRightTab('todos');
-      });
     }
 
     el.querySelectorAll('[data-ai]').forEach(btn => btn.addEventListener('click', () => {
