@@ -13,6 +13,13 @@ const CARDS = [
   { id: 'planner', title: '计划与进度', desc: '今日任务、本周任务、时间轴与写作记录' },
 ];
 
+const WRITING_CARDS = [
+  { id: 'writing', title: '继续写作', desc: '回到当前章节，生成草稿、润色和插入引用' },
+  { id: 'citation', title: '补充文献', desc: '检索文献、整理证据卡，给正文补支撑' },
+  { id: 'checkExport', title: '检查与导出', desc: '检查结构、引用和格式，导出过程稿或定稿' },
+  { id: 'planner', title: '计划辅助', desc: '可选：设置时间轴、记录打卡和本周任务' },
+];
+
 const PROGRESS_WEIGHT = { '已完成': 1, '进行中': 0.5, '未开始': 0 };
 
 function shortName(s, n = 12) {
@@ -48,7 +55,7 @@ function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapte
       cta: '去研究设计',
     };
   }
-  if (researchReadyCount < 4) {
+  if (!chapters.length && researchReadyCount < 4) {
     return {
       title: '今天补齐研究设计',
       goal: '至少把研究问题、方法、数据来源和可行性检查补全，让后续写作有抓手。',
@@ -66,16 +73,6 @@ function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapte
       eta: '25 分钟',
       nav: 'topic',
       cta: '去生成大纲',
-    };
-  }
-  if (!project.dueDate) {
-    return {
-      title: '今天设定截止日期',
-      goal: '把整篇论文挂到时间轴上，后续任务和风险判断才会准确。',
-      bullets: ['确认提交日期', '生成倒排计划', '看系统给出的写作节奏'],
-      eta: '10 分钟',
-      nav: 'planner',
-      cta: '去设截止日期',
     };
   }
   if (nextChapter) {
@@ -142,15 +139,14 @@ export default {
     const lastText = lastRaw
       ? (typeof lastRaw === 'string' ? lastRaw : `${lastRaw.date}${lastRaw.chapter ? ` · ${lastRaw.chapter}` : ''}`)
       : '';
+    const hasWriting = chapters.length > 0 || totalWords > 0 || !!p.documentV2;
 
-    // 五步写作之旅（onboarding 流程条）
+    // 主线只保留论文产出必需动作；截止日期、打卡是辅助管理，不进入强制流程
     const steps = [
-      { label: '选择 AI 模式', done: !cfg?.enableLiveAI || !!cfg?.apiKey, extra: cfg?.enableLiveAI ? (cfg?.apiKey ? '已配置' : '待配置') : '演示模式', nav: 'settings' },
-      { label: '明确研究题目', done: !!resolvedTitle, extra: resolvedTitle ? shortName(resolvedTitle, 8) : '', nav: 'topic' },
-      { label: '补齐研究设计', done: researchReadyCount >= 4, extra: `${researchReadyCount}/6`, nav: 'topic' },
-      { label: '采用章节大纲', done: chapters.length > 0, extra: chapters.length ? `${chapters.length} 章` : '', nav: 'topic' },
-      { label: '设定截止日期', done: !!p.dueDate, extra: p.dueDate ? p.dueDate.slice(5).replace('-', '/') : '', nav: 'planner' },
-      { label: '开始按章写作', done: Object.values(drafts).some(d => (d?.content || '').trim()), nav: 'writing' },
+      { label: '确定题目', done: !!resolvedTitle, extra: resolvedTitle ? shortName(resolvedTitle, 8) : '', nav: hasWriting ? 'writing' : 'topic' },
+      { label: '形成方案', done: researchReadyCount >= 4 || hasWriting, extra: researchReadyCount >= 4 ? `${researchReadyCount}/6` : '', nav: hasWriting ? 'writing' : 'topic' },
+      { label: '采用大纲', done: chapters.length > 0, extra: chapters.length ? `${chapters.length} 章` : '', nav: hasWriting ? 'writing' : 'topic' },
+      { label: '开始写作', done: hasWriting && Object.values(drafts).some(d => (d?.content || '').trim()), nav: 'writing' },
     ];
     const doneSteps = steps.filter(s => s.done).length;
     const currentIdx = steps.findIndex(s => !s.done);
@@ -176,9 +172,9 @@ export default {
     let heroAction = '';
     if (cfg?.enableLiveAI && !cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">配置真实 AI</button>';
     else if (!resolvedTitle) heroAction = '<button class="btn btn-lg" data-nav="topic">去确定研究题目</button>';
+    else if (hasWriting) heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '继续写作'}</button>`;
     else if (researchReadyCount < 4) heroAction = '<button class="btn btn-lg" data-nav="topic">补齐研究设计</button>';
     else if (!chapters.length) heroAction = '<button class="btn btn-lg" data-nav="topic">去生成并采用大纲</button>';
-    else if (!p.dueDate) heroAction = '<button class="btn btn-lg" data-nav="planner">设定截止日期</button>';
     else heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '开始写作'}</button>`;
 
     // 四块版面：hero / 写作之旅 / 章节进度+打卡 / 功能入口
@@ -204,14 +200,15 @@ export default {
         <div class="hero-action-row">
           ${heroAction}
           ${!resolvedTitle ? '<button class="btn btn-ghost" id="hero-demo">先载入演示数据看效果</button>' : ''}
-          ${resolvedTitle ? '<button class="btn btn-ghost" data-nav="planner">查看写作计划</button>' : ''}
+          ${hasWriting ? '<button class="btn btn-ghost" data-nav="citation">补充文献</button>' : ''}
+          ${resolvedTitle && !hasWriting ? '<button class="btn btn-ghost" data-nav="planner">可选：设置计划</button>' : ''}
         </div>
         ${resolvedTitle ? `
           <div class="hero-stats">
-            <div class="stat"><span class="stat-num ${daysLeft !== null && daysLeft <= 14 ? 'danger' : ''}" ${daysLeft !== null && daysLeft <= 14 ? 'title="已不足两周，注意写作节奏"' : ''}>${daysLeft !== null ? daysLeft : '—'}</span><span class="stat-label">距截止天数</span></div>
             <div class="stat"><span class="stat-num">${overallPct}%</span><span class="stat-label">章节进度</span></div>
             <div class="stat"><span class="stat-num">${totalWords || 0}</span><span class="stat-label">已写字数</span></div>
-            <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续打卡</span></div>
+            <div class="stat"><span class="stat-num">${chapters.length || 0}</span><span class="stat-label">大纲章节</span></div>
+            <div class="stat"><span class="stat-num">${p.citations?.length || 0}</span><span class="stat-label">文献数量</span></div>
           </div>` : ''}
       </div>`;
 
@@ -238,8 +235,8 @@ export default {
 
     const journeyHtml = `
       <div class="card journey-card">
-        <h2><span class="mark"></span>写作之旅　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
-        <p class="desc">把主线状态压成一条进度条，方便快速确认卡点。</p>
+        <h2><span class="mark"></span>论文主线　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
+        <p class="desc">只显示真正影响论文产出的关键节点。</p>
         <div class="journey">
           ${steps.map((s, i) => `
             <button class="journey-step ${s.done ? 'done' : i === currentIdx ? 'current' : ''}" data-nav="${s.nav}" title="${escapeHtml(s.label)}${s.done ? '（已完成）' : i === currentIdx ? '（当前步骤）' : ''}">
@@ -280,31 +277,33 @@ export default {
         </div>
 
         <div class="card side-summary-card">
-          <h2><span class="mark"></span>近期状态</h2>
-          <p class="desc">打卡节奏一览：累计、连续与近 70 天热力图。</p>
+          <h2><span class="mark"></span>辅助管理</h2>
+          <p class="desc">截止日期和打卡只辅助节奏，不影响你继续写作。</p>
           <div class="hero-stats dash-status-stats">
-            <div class="stat"><span class="stat-num">${checkins.length}</span><span class="stat-label">累计打卡</span></div>
+            <div class="stat"><span class="stat-num ${daysLeft !== null && daysLeft <= 14 ? 'danger' : ''}">${daysLeft !== null ? daysLeft : '—'}</span><span class="stat-label">${p.dueDate ? '距截止天数' : '未设截止'}</span></div>
             <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续天数</span></div>
           </div>
           ${calGridHtml(checkins)}
+          <p class="desc">${lastText ? `最近一次：${escapeHtml(lastText)}` : '还没有打卡记录。'}</p>
           <div class="hero-action-row dash-status-actions">
-            <button class="btn btn-ghost" data-nav="planner">去打卡</button>
+            <button class="btn btn-ghost" data-nav="planner">${p.dueDate ? '查看计划' : '可选：设置计划'}</button>
             <button class="btn btn-ghost" data-nav="checkExport">去检查与导出</button>
           </div>
         </div>
       </div>`;
 
+    const workspaceCards = hasWriting ? WRITING_CARDS : CARDS;
     const entranceHtml = `
       <section class="tool-band">
         <div class="hero-top">
           <div>
             <h2><span class="mark"></span>工作区入口</h2>
-            <p class="desc">把高频操作集中在这里，避免在首页到处找入口。</p>
+            <p class="desc">${hasWriting ? '你已经进入写作状态，首页优先保留继续推进论文的入口。' : '先完成研究设计，再进入写作、文献和计划。'}</p>
           </div>
-          <button class="btn btn-ghost btn-sm" data-nav="checkExport">检查与导出</button>
+          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'topic' : 'checkExport'}">${hasWriting ? '调整研究设计' : '检查与导出'}</button>
         </div>
         <div class="dash-grid">
-        ${CARDS.map(c => `
+        ${workspaceCards.map(c => `
           <button class="dash-card" data-nav="${c.id}" title="${escapeHtml(c.desc)}">
             <span class="icon">${ICONS[c.id] || ''}</span>
             <span class="d-card-txt">
