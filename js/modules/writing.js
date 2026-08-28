@@ -400,46 +400,73 @@ function selectionHitsHeading(view) {
 
 function buildPreviewHtml(doc, citations) {
   const blocks = buildRenderableBlocks(doc, citationMap(citations));
+  let chapterNo = 0;
+  let figureNo = 0;
+  let tableNo = 0;
+  let formulaNo = 0;
+  const chapterIndexFrom = text => {
+    const match = String(text || '').match(/第\s*(\d+)\s*章/);
+    return match ? Number(match[1]) : 0;
+  };
   return blocks.map(block => {
     if (block.type === 'title') return `<h1 class="title">${escapeHtml(block.text)}</h1>`;
     if (block.type === 'heading') {
-      const tag = block.level >= 3 ? 'h3' : 'h2';
-      const cls = block.level >= 3 ? 'subsec' : 'sec';
+      if (block.role === 'section') {
+        chapterNo = chapterIndexFrom(block.text) || chapterNo + 1;
+        figureNo = 0;
+        tableNo = 0;
+        formulaNo = 0;
+      }
+      const tag = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role) ? 'h2' : 'h3';
+      const cls = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role)
+        ? 'chapter-title'
+        : block.level >= 4
+          ? 'subsec-3'
+          : 'subsec';
       return `<${tag} class="${cls}">${escapeHtml(block.text)}</${tag}>`;
     }
     if (block.type === 'paragraph') return `<p>${escapeHtml(block.text)}</p>`;
     if (block.type === 'blockquote') return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
     if (block.type === 'reference') return `<p class="ref">${escapeHtml(block.text)}</p>`;
-    if (block.type === 'notes_heading') return `<h2 class="sec">${escapeHtml(block.text)}</h2>`;
+    if (block.type === 'notes_heading') return `<h2 class="chapter-title">${escapeHtml(block.text)}</h2>`;
     if (block.type === 'note') return `<p class="ref pp-note-row">[注${block.number}] ${escapeHtml(block.text)}</p>`;
     if (block.type === 'list') {
       const tag = block.ordered ? 'ol' : 'ul';
       return `<${tag}>${block.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</${tag}>`;
     }
     if (block.type === 'formula') {
+      formulaNo += 1;
+      const formulaLabel = chapterNo ? `${chapterNo}.${formulaNo}` : block.number;
       return `<figure class="pp-formula">
-        <div class="pp-formula-body">${escapeHtml(block.latex || '')}</div>
-        <figcaption>式${block.number}　${escapeHtml(block.label || '未命名公式')}</figcaption>
+        <div class="pp-formula-row">
+          <div class="pp-formula-body">${escapeHtml(block.latex || '')}</div>
+          <div class="pp-formula-no">（${formulaLabel}）</div>
+        </div>
+        ${block.label ? `<figcaption>${escapeHtml(block.label)}</figcaption>` : ''}
         ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
     }
     if (block.type === 'figure') {
+      figureNo += 1;
+      const figureLabel = chapterNo ? `${chapterNo}.${figureNo}` : block.number;
       const caption = block.caption || block.alt || '未命名图片';
       return `<figure class="pp-figure">
         <img src="${block.src}" alt="${escapeHtml(block.alt || caption)}">
-        <figcaption>图${block.number}　${escapeHtml(caption)}</figcaption>
+        <figcaption>图 ${figureLabel}　${escapeHtml(caption)}</figcaption>
         ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
     }
     if (block.type === 'table') {
+      tableNo += 1;
+      const tableLabel = chapterNo ? `${chapterNo}.${tableNo}` : block.number;
       const head = block.rows[0] || [];
       const body = block.rows.slice(1);
       return `<figure class="pp-table-wrap">
+        <figcaption>表 ${tableLabel}　${escapeHtml(block.caption || '未命名表格')}</figcaption>
         <table class="pp-table">
           ${head.length ? `<thead><tr>${head.map(cell => `<th>${escapeHtml(cell || '—')}</th>`).join('')}</tr></thead>` : ''}
           <tbody>${body.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell || '')}</td>`).join('')}</tr>`).join('')}</tbody>
         </table>
-        <figcaption>表${block.number}　${escapeHtml(block.caption || '未命名表格')}</figcaption>
         ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
     }
@@ -454,67 +481,80 @@ function openPrintPreview(doc, citations) {
     toast('浏览器拦截了新窗口，请允许弹窗后重试', 'err');
     return;
   }
-  win.document.write(`<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>论文排版预览</title>
+  win.document.write(`<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>清华大学研究生学位论文格式预览</title>
   <style>
-    @page { size: A4; margin: 28mm 26mm 24mm 26mm; }
+    @page { size: A4; margin: 30mm; }
     html { background: #EEECE5; }
     body {
       width: 210mm;
       min-height: 297mm;
       box-sizing: border-box;
       margin: 28px auto;
-      padding: 28mm 26mm 24mm;
+      padding: 30mm;
       background: #fff;
       color: #000;
       font-family: SimSun, "Songti SC", STSong, serif;
       font-size: 12pt;
-      line-height: 1.8;
+      line-height: 20pt;
       box-shadow: 0 16px 45px rgba(38,48,59,.16);
     }
     .title {
       text-align: center;
       font-family: SimHei, "Heiti SC", sans-serif;
+      font-size: 22pt;
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 0 0 24pt;
+    }
+    .chapter-title {
+      font-family: SimHei, "Heiti SC", sans-serif;
       font-size: 16pt;
       font-weight: 700;
-      line-height: 1.55;
-      margin: 0 0 18pt;
-    }
-    .sec {
-      font-family: SimHei, "Heiti SC", sans-serif;
-      font-size: 14pt;
-      font-weight: 700;
-      line-height: 1.65;
-      margin: 20pt 0 8pt;
+      text-align: center;
+      line-height: 1;
+      margin: 24pt 0 18pt;
       page-break-after: avoid;
     }
     .subsec {
       font-family: SimHei, "Heiti SC", sans-serif;
-      font-size: 12pt;
+      font-size: 14pt;
       font-weight: 700;
-      line-height: 1.65;
-      margin: 12pt 0 6pt;
+      line-height: 20pt;
+      margin: 18pt 0 6pt;
       color: #000;
       page-break-after: avoid;
     }
+    .subsec-3 {
+      font-family: SimHei, "Heiti SC", sans-serif;
+      font-size: 13pt;
+      font-weight: 700;
+      line-height: 20pt;
+      margin: 12pt 0 6pt;
+      page-break-after: avoid;
+    }
     p { text-indent: 2em; margin: 0; text-align: justify; text-justify: inter-ideograph; }
-    p.ref { text-indent: -2em; padding-left: 2em; font-size: 10.5pt; line-height: 1.55; color: #000; }
+    p.ref { text-indent: -2em; padding-left: 1cm; font-size: 10.5pt; line-height: 16pt; margin-top: 3pt; color: #000; }
     .pp-note-row { text-indent: 0; padding-left: 0; }
-    blockquote { margin: 8pt 0; padding: 0 0 0 1em; border-left: 2px solid #999; color: #111; }
+    blockquote { margin: 8pt 0; padding: 0 0 0 2em; border-left: 0; color: #111; font-family: KaiTi, "Kaiti SC", serif; }
     ul, ol { margin: 6pt 0 8pt 2em; padding: 0; }
     li { margin: 0; }
-    .pp-formula { margin: 12pt 0; break-inside: avoid; }
-    .pp-formula-body { padding: 8pt 10pt; font-family: "Times New Roman", SimSun, serif; text-align: center; white-space: pre-wrap; }
-    .pp-formula figcaption { margin-top: 4pt; text-align: center; font-size: 10.5pt; color: #000; }
+    .pp-formula { margin: 6pt 0; break-inside: avoid; }
+    .pp-formula-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12pt; }
+    .pp-formula-body { padding: 0 10pt; font-family: Cambria Math, "Times New Roman", SimSun, serif; font-size: 12pt; line-height: 1; text-align: center; white-space: pre-wrap; }
+    .pp-formula-no { min-width: 42pt; text-align: right; font-family: "Times New Roman", SimSun, serif; font-size: 12pt; line-height: 1; }
+    .pp-formula figcaption { margin-top: 6pt; text-align: center; font-size: 11pt; line-height: 1; color: #000; }
     .pp-figure, .pp-table-wrap { margin: 12pt 0; break-inside: avoid; }
     .pp-figure img { max-width: 100%; display: block; margin: 0 auto; }
-    .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 5pt; text-align: center; font-size: 10.5pt; color: #000; }
-    .pp-note { margin: 4pt 0 0; text-indent: 0; font-size: 10.5pt; color: #000; }
-    .pp-table { width: 100%; border-collapse: collapse; font-size: 10.5pt; background: #fff; }
-    .pp-table th, .pp-table td { border: 1px solid #000; padding: 5pt 6pt; text-align: left; vertical-align: top; }
+    .pp-figure figcaption { margin-top: 6pt; margin-bottom: 12pt; text-align: center; font-size: 11pt; line-height: 1; color: #000; }
+    .pp-table-wrap figcaption { margin: 12pt 0 6pt; text-align: center; font-size: 11pt; line-height: 1; color: #000; }
+    .pp-note { margin: 6pt 0 12pt; text-indent: 0; font-size: 10.5pt; line-height: 1; color: #000; }
+    .pp-table { width: 100%; border-collapse: collapse; font-size: 11pt; line-height: 1; background: #fff; border-top: 1.5pt solid #000; border-bottom: 1.5pt solid #000; }
+    .pp-table th, .pp-table td { border: 0; padding: 5pt 6pt; text-align: center; vertical-align: middle; }
+    .pp-table thead th { border-bottom: 1pt solid #000; }
     .pp-table th { font-family: SimHei, "Heiti SC", sans-serif; font-weight: 700; }
-    .tip { position: fixed; top: 14px; right: 16px; background: #2F4F66; color: #fff; padding: 8px 14px; border-radius: 5px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
+    .tip { position: fixed; top: 14px; right: 16px; background: #2F4F66; color: #fff; padding: 8px 14px; border-radius: 5px; font-size: 13px; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
     @media print { html { background:#fff; } .tip { display:none; } body { width:auto; min-height:auto; margin: 0; padding: 0; box-shadow:none; } }
-  </style></head><body><div class="tip">Ctrl/Cmd+P 打印或另存 PDF</div>${html}</body></html>`);
+  </style></head><body><div class="tip">清华指南 2025 版预览 · Ctrl/Cmd+P 打印或另存 PDF</div>${html}</body></html>`);
   win.document.close();
 }
 
@@ -930,7 +970,7 @@ export default {
                   <button class="wb-icon-tool" type="button" id="wb-redo" title="重做" aria-label="重做">${ICONS.redo}</button>
                   <button class="wb-tool-btn" type="button" id="wb-save-version">保存版本</button>
                   <button class="wb-tool-btn" type="button" id="wb-format">格式整理</button>
-                  <button class="wb-tool-btn" type="button" id="wb-preview">论文格式预览</button>
+                  <button class="wb-tool-btn" type="button" id="wb-preview">清华格式预览</button>
                   <button class="wb-tool-btn" type="button" id="wb-download">下载 Markdown</button>
                 </div>
               </div>
