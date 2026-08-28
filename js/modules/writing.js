@@ -456,28 +456,64 @@ function openPrintPreview(doc, citations) {
   }
   win.document.write(`<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>论文排版预览</title>
   <style>
-    body { max-width: 760px; margin: 44px auto; padding: 0 26px 60px; font-family: "Songti SC", STSong, SimSun, serif; line-height: 1.95; color: #26303B; background: #F6F5F1; }
-    .title { text-align: center; font-size: 22px; margin: 0 0 20px; }
-    .sec { font-size: 17px; margin: 28px 0 10px; border-bottom: 1px solid #E4E1D8; padding-bottom: 6px; }
-    .sec::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #C03B2D; margin-right: 9px; }
-    .subsec { font-size: 15px; margin: 18px 0 8px; color: #26303B; }
-    p { text-indent: 2em; margin: 6px 0; font-size: 15px; }
-    p.ref { text-indent: -2em; padding-left: 2em; font-size: 12.5px; line-height: 1.8; color: #4A5560; }
+    @page { size: A4; margin: 28mm 26mm 24mm 26mm; }
+    html { background: #EEECE5; }
+    body {
+      width: 210mm;
+      min-height: 297mm;
+      box-sizing: border-box;
+      margin: 28px auto;
+      padding: 28mm 26mm 24mm;
+      background: #fff;
+      color: #000;
+      font-family: SimSun, "Songti SC", STSong, serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      box-shadow: 0 16px 45px rgba(38,48,59,.16);
+    }
+    .title {
+      text-align: center;
+      font-family: SimHei, "Heiti SC", sans-serif;
+      font-size: 16pt;
+      font-weight: 700;
+      line-height: 1.55;
+      margin: 0 0 18pt;
+    }
+    .sec {
+      font-family: SimHei, "Heiti SC", sans-serif;
+      font-size: 14pt;
+      font-weight: 700;
+      line-height: 1.65;
+      margin: 20pt 0 8pt;
+      page-break-after: avoid;
+    }
+    .subsec {
+      font-family: SimHei, "Heiti SC", sans-serif;
+      font-size: 12pt;
+      font-weight: 700;
+      line-height: 1.65;
+      margin: 12pt 0 6pt;
+      color: #000;
+      page-break-after: avoid;
+    }
+    p { text-indent: 2em; margin: 0; text-align: justify; text-justify: inter-ideograph; }
+    p.ref { text-indent: -2em; padding-left: 2em; font-size: 10.5pt; line-height: 1.55; color: #000; }
     .pp-note-row { text-indent: 0; padding-left: 0; }
-    blockquote { margin: 12px 0; padding: 8px 16px; border-left: 3px solid #C03B2D; background: #FBF7F0; }
-    ul, ol { margin: 10px 0 14px 32px; }
-    .pp-formula { margin: 18px 0; }
-    .pp-formula-body { padding: 14px 16px; border: 1px solid #DDD7CA; background: #FCFBF8; font-family: "SFMono-Regular", Menlo, Consolas, monospace; text-align: center; white-space: pre-wrap; }
-    .pp-formula figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
-    .pp-figure, .pp-table-wrap { margin: 18px 0; }
-    .pp-figure img { max-width: 100%; display: block; margin: 0 auto; border: 1px solid #DDD7CA; }
-    .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 8px; text-align: center; font-size: 13px; color: #4A5560; }
-    .pp-note { margin: 6px 0 0; text-indent: 0; font-size: 13px; color: #5A6570; }
-    .pp-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }
-    .pp-table th, .pp-table td { border: 1px solid #CFC9BB; padding: 8px 10px; text-align: left; vertical-align: top; }
-    .pp-table th { background: #F5F1EA; }
-    .tip { position: fixed; top: 14px; right: 16px; background: #2F4F66; color: #fff; padding: 8px 14px; border-radius: 5px; font-size: 13px; }
-    @media print { .tip { display:none; } body { background:#fff; margin: 0; } }
+    blockquote { margin: 8pt 0; padding: 0 0 0 1em; border-left: 2px solid #999; color: #111; }
+    ul, ol { margin: 6pt 0 8pt 2em; padding: 0; }
+    li { margin: 0; }
+    .pp-formula { margin: 12pt 0; break-inside: avoid; }
+    .pp-formula-body { padding: 8pt 10pt; font-family: "Times New Roman", SimSun, serif; text-align: center; white-space: pre-wrap; }
+    .pp-formula figcaption { margin-top: 4pt; text-align: center; font-size: 10.5pt; color: #000; }
+    .pp-figure, .pp-table-wrap { margin: 12pt 0; break-inside: avoid; }
+    .pp-figure img { max-width: 100%; display: block; margin: 0 auto; }
+    .pp-figure figcaption, .pp-table-wrap figcaption { margin-top: 5pt; text-align: center; font-size: 10.5pt; color: #000; }
+    .pp-note { margin: 4pt 0 0; text-indent: 0; font-size: 10.5pt; color: #000; }
+    .pp-table { width: 100%; border-collapse: collapse; font-size: 10.5pt; background: #fff; }
+    .pp-table th, .pp-table td { border: 1px solid #000; padding: 5pt 6pt; text-align: left; vertical-align: top; }
+    .pp-table th { font-family: SimHei, "Heiti SC", sans-serif; font-weight: 700; }
+    .tip { position: fixed; top: 14px; right: 16px; background: #2F4F66; color: #fff; padding: 8px 14px; border-radius: 5px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
+    @media print { html { background:#fff; } .tip { display:none; } body { width:auto; min-height:auto; margin: 0; padding: 0; box-shadow:none; } }
   </style></head><body><div class="tip">Ctrl/Cmd+P 打印或另存 PDF</div>${html}</body></html>`);
   win.document.close();
 }
@@ -699,7 +735,8 @@ function renderSuggestionBox(box, state) {
   box.innerHTML = `
     <h3><span class="mark"></span>AI 辅助</h3>
     <p class="desc">选中文字后使用上方工具。建议会直接显示在编辑器正文旁边，确认后才写回论文。</p>
-    ${state.pending ? '<p class="desc">当前有一条待处理建议，已放在正文中的选区附近。</p>' : ''}
+    ${state.pending && state.pending.actionId !== 'logic' ? '<p class="desc">当前有一条待处理建议，已放在正文中的选区附近。</p>' : ''}
+    ${state.pending?.actionId === 'logic' ? '<p class="desc">逻辑检查报告已在弹窗中打开，可转成待修改清单。</p>' : ''}
     ${integrityNote()}`;
 }
 
@@ -891,15 +928,10 @@ export default {
                 <div class="wb-toolbar-cluster wb-toolbar-quick">
                   <button class="wb-icon-tool" type="button" id="wb-undo" title="撤销" aria-label="撤销">${ICONS.undo}</button>
                   <button class="wb-icon-tool" type="button" id="wb-redo" title="重做" aria-label="重做">${ICONS.redo}</button>
-                  <button class="wb-tool-btn" type="button" id="wb-preview">排版预览</button>
-                  <details class="wb-toolbar-more">
-                    <summary>更多</summary>
-                    <div class="wb-toolbar-more-panel">
-                      <button class="btn btn-ghost btn-sm" id="wb-save-version">保存整稿版本</button>
-                      <button class="btn btn-ghost btn-sm" id="wb-format">格式整理</button>
-                      <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
-                    </div>
-                  </details>
+                  <button class="wb-tool-btn" type="button" id="wb-save-version">保存版本</button>
+                  <button class="wb-tool-btn" type="button" id="wb-format">格式整理</button>
+                  <button class="wb-tool-btn" type="button" id="wb-preview">论文格式预览</button>
+                  <button class="wb-tool-btn" type="button" id="wb-download">下载 Markdown</button>
                 </div>
               </div>
               <div class="wb-editor-toolbar">
@@ -976,6 +1008,18 @@ export default {
             <div id="wb-asset-form"></div>
           </div>
         </div>
+        <div class="modal-backdrop" id="wb-logic-modal" hidden>
+          <div class="modal-panel wb-logic-modal">
+            <div class="citation-modal-head">
+              <div>
+                <h3>本章逻辑检查</h3>
+                <p class="desc">检查结果只作为修改建议，不会直接写进论文正文。</p>
+              </div>
+              <button class="btn btn-ghost btn-sm icon-only" type="button" id="wb-logic-close" aria-label="关闭">${ICONS.close}</button>
+            </div>
+            <div id="wb-logic-result"></div>
+          </div>
+        </div>
       </div>`;
 
     const suggestionBox = el.querySelector('#wb-suggestion');
@@ -1001,6 +1045,8 @@ export default {
     const assetTitle = el.querySelector('#wb-asset-title');
     const assetDesc = el.querySelector('#wb-asset-desc');
     const imageInput = el.querySelector('#wb-image-file');
+    const logicModal = el.querySelector('#wb-logic-modal');
+    const logicResult = el.querySelector('#wb-logic-result');
     let saveTimer = null;
     let assetDraft = null;
 
@@ -1010,6 +1056,31 @@ export default {
       document.body.style.overflow = '';
       assetDraft = null;
       if (imageInput) imageInput.value = '';
+    }
+
+    function closeLogicModal() {
+      if (!logicModal) return;
+      logicModal.hidden = true;
+      document.body.style.overflow = '';
+    }
+
+    function renderLogicModal(pending) {
+      if (!logicModal || !logicResult || !pending) return;
+      logicResult.innerHTML = `
+        <div class="logic-report-body">
+          <div class="logic-report-meta">
+            <span class="chip">检查范围</span>
+            <strong>${escapeHtml(pending.label || '本章逻辑检查')}</strong>
+          </div>
+          <div class="result-box filled">${escapeHtml(pending.suggestion || '暂无检查结果')}</div>
+          <div class="result-actions">
+            <button class="btn" type="button" data-review-action="todo">转成待修改清单</button>
+            <button class="btn btn-ai" type="button" data-review-action="regenerate">重新检查</button>
+            <button class="btn btn-ghost" type="button" data-review-action="reject">关闭</button>
+          </div>
+        </div>`;
+      logicModal.hidden = false;
+      document.body.style.overflow = 'hidden';
     }
 
     function openAssetModal(kind, payload = null) {
@@ -1961,14 +2032,17 @@ export default {
     function handleReviewAction(actionName) {
       if (!viewState.pending) return;
       if (actionName === 'reject') {
+        const wasLogic = viewState.pending.actionId === 'logic';
         viewState.pending = null;
         clearReviewWidget();
+        closeLogicModal();
         renderSuggestionBox(suggestionBox, viewState);
-        toast('已拒绝本次建议，原文保持不变', 'ok', 1500);
+        toast(wasLogic ? '已关闭检查报告' : '已拒绝本次建议，原文保持不变', 'ok', 1500);
         return;
       }
       if (actionName === 'regenerate') {
         clearReviewWidget();
+        closeLogicModal();
         viewState.rerun?.();
         return;
       }
@@ -1985,6 +2059,7 @@ export default {
         items.forEach(text => addTodoToCurrentSection(text));
         viewState.pending = null;
         clearReviewWidget();
+        closeLogicModal();
         renderSuggestionBox(suggestionBox, viewState);
         switchRightTab('todos');
         return;
@@ -1995,6 +2070,7 @@ export default {
         toast('检查结果保留为批注建议，不直接写回正文', 'ok');
         viewState.pending = null;
         clearReviewWidget();
+        closeLogicModal();
         renderSuggestionBox(suggestionBox, viewState);
         return;
       }
@@ -2004,6 +2080,24 @@ export default {
       renderSuggestionBox(suggestionBox, viewState);
       toast('AI 建议已接受并写回正文', 'ok');
     }
+
+    logicResult?.addEventListener('click', evt => {
+      const btn = evt.target.closest('[data-review-action]');
+      if (!btn) return;
+      evt.preventDefault();
+      handleReviewAction(btn.dataset.reviewAction);
+    });
+    el.querySelector('#wb-logic-close')?.addEventListener('click', () => {
+      viewState.pending = null;
+      closeLogicModal();
+      renderSuggestionBox(suggestionBox, viewState);
+    });
+    logicModal?.addEventListener('click', evt => {
+      if (evt.target !== logicModal) return;
+      viewState.pending = null;
+      closeLogicModal();
+      renderSuggestionBox(suggestionBox, viewState);
+    });
 
     function createReviewWidget(pending) {
       const dom = document.createElement('div');
@@ -2214,7 +2308,11 @@ export default {
         };
         viewState.rerun = () => runSuggestion(action, sourceText, replaceFrom, replaceTo, sourceLabel);
         renderSuggestionBox(suggestionBox, viewState);
-        showReviewWidget(viewState.pending);
+        if (action.id === 'logic') {
+          renderLogicModal(viewState.pending);
+        } else {
+          showReviewWidget(viewState.pending);
+        }
       } catch (e) {
         if (e?.code !== 'aborted') toast(e.message, 'err', 3600);
       } finally {

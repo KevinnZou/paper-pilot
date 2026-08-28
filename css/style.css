@@ -1773,6 +1773,7 @@ kbd {
 }
 .wb-toolbar-quick {
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 .wb-toolbar-spacer {
   flex: 1 1 auto;
@@ -2024,6 +2025,26 @@ kbd {
   box-shadow: var(--shadow-lift);
   display: grid;
   gap: 8px;
+}
+.wb-logic-modal {
+  width: min(760px, 92vw);
+}
+.logic-report-body {
+  display: grid;
+  gap: 12px;
+}
+.logic-report-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.logic-report-body .result-box {
+  max-height: min(48vh, 420px);
+  overflow: auto;
 }
 
 /* 初稿生成表单：朱批左轨（AI 生成场景） */
