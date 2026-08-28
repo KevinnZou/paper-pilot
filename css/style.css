@@ -1738,6 +1738,7 @@ kbd {
 .wb-header-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
   flex: 0 0 auto;
   flex-wrap: wrap;
@@ -1756,11 +1757,21 @@ kbd {
   border-color: var(--line);
 }
 .wb-current {
-  display: flex; align-items: baseline; gap: 8px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
   flex: 1 1 auto; min-width: 0; overflow: visible;
   font-family: var(--font-serif); font-size: 15px; letter-spacing: .4px;
 }
-.wb-current .cur-title { flex: 1 1 auto; white-space: normal; overflow: visible; min-width: 0; line-height: 1.5; }
+.wb-current .cur-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+  color: var(--ink-soft);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: normal;
+}
 .wb-current .cur-note { font-family: var(--font-sans); font-size: 12px; color: var(--ink-soft); margin-left: 8px; flex: 0 0 auto; }
 
 /* 章节目录 */

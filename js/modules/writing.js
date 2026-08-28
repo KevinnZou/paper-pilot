@@ -346,10 +346,14 @@ function serializeProjectDoc(doc, currentChapter, project) {
   const extracted = extractProjectStateFromDoc(doc);
   const oldProgress = project.chapterProgress || {};
   const oldOutline = sectionMetaFromProject(project);
+  const sections = topLevelSections(doc);
   const progress = {};
   extracted.outline.forEach((item, index) => {
     const old = oldOutline.find(x => x.sectionId === item.sectionId) || oldOutline.find(x => x.chapter === item.chapter);
-    progress[item.chapter] = old ? (oldProgress[old.chapter] || '未开始') : '未开始';
+    const existingStatus = old ? (oldProgress[old.chapter] || '未开始') : '未开始';
+    const section = sections.find(sec => sec.sectionId === item.sectionId) || sections.find(sec => sec.chapter === item.chapter);
+    const sectionText = section ? doc.textBetween(section.bodyFrom, section.bodyTo, '\n').trim() : '';
+    progress[item.chapter] = existingStatus === '未开始' && wordCount(sectionText) > 0 ? '进行中' : existingStatus;
     extracted.outline[index] = {
       ...item,
       sections: item.sections?.length ? item.sections : (old?.sections || []),
@@ -365,6 +369,7 @@ function serializeProjectDoc(doc, currentChapter, project) {
     drafts: extracted.drafts,
     chapterProgress: progress,
     currentChapter: currentChapter || project.currentChapter || extracted.outline[0]?.chapter || '',
+    citations: getCitations(),
   };
 }
 
@@ -862,7 +867,7 @@ export default {
           <section class="wb-center">
             <div class="wb-header">
               <div class="wb-current">
-                <span class="cur-title" id="wb-cur-title">正在写：<b>${escapeHtml(viewState.currentChapter || '未选择章节')}</b></span>
+                <span class="cur-title" id="wb-cur-title">正文编辑</span>
                 <span class="cur-note" id="wb-cur-note">自动保存</span>
               </div>
               <div class="wb-header-actions">
@@ -1803,6 +1808,7 @@ export default {
         if (node.type.name === 'citation') citationIds.add(node.attrs.citationId);
       });
       const status = getProject().chapterProgress?.[section.chapter] || '未开始';
+      const displayStatus = status === '未开始' && wordCount(chapterText) > 0 ? '进行中' : status;
       const evidenceItems = relatedEvidenceItems(section);
       const entry = sectionWorkbenchEntry(section);
       const todoOpen = entry.todos.filter(item => !item.done).length;
@@ -1813,7 +1819,7 @@ export default {
         <div class="wb-ch-strip">
           <div class="wb-ch-row">
             <div class="wb-ch-title-wrap">
-              <span class="wb-ch-chip ${status === '已完成' ? 'done' : status === '进行中' ? 'doing' : ''}">${escapeHtml(status)}</span>
+              <span class="wb-ch-chip ${displayStatus === '已完成' ? 'done' : displayStatus === '进行中' ? 'doing' : ''}">${escapeHtml(displayStatus)}</span>
               <b class="wb-ch-title" title="${escapeHtml(section.chapter)}">${escapeHtml(section.chapter)}</b>
             </div>
             <button class="btn btn-ghost btn-sm wb-ch-more" type="button" id="wb-ch-ops" aria-haspopup="true" aria-expanded="false" title="章节操作">⋯</button>
@@ -1874,7 +1880,7 @@ export default {
       viewState.currentChapter = section.chapter;
       setCurrentChapter(section.chapter);
       const title = el.querySelector('#wb-cur-title');
-      if (title) title.innerHTML = `正在写：<b>${escapeHtml(section.chapter)}</b>`;
+      if (title) title.textContent = '正文编辑';
       const note = el.querySelector('#wb-cur-note');
       if (note) note.textContent = `${wordCount(viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n'))} 字 · 自动保存`;
       renderEvidencePanel();
@@ -2285,6 +2291,11 @@ export default {
         });
         const suggestion = normalizeDraftCitationMarkers(cleanAiText(reply), draftCitations);
         replaceDraftStream(viewState.view, streamRange, suggestion, draftCitations);
+        saveCitations(citations);
+        if (target.kind === 'chapter' && target.chapter && (getProject().chapterProgress?.[target.chapter] || '未开始') === '未开始') {
+          setChapterProgress(target.chapter, '进行中');
+        }
+        persistNow();
         viewState.view.focus();
         refreshCitationNumbers();
         renderCitationPicker();
