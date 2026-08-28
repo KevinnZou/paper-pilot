@@ -1727,10 +1727,11 @@ kbd {
 }
 .wb-header {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 14px;
-  padding: 10px 0 12px;
+  gap: 8px;
+  padding: 8px 0 10px;
   margin-bottom: 0;
   border-bottom: 1px solid var(--line);
 }
@@ -1738,7 +1739,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   white-space: normal;
 }
@@ -1756,10 +1757,10 @@ kbd {
 }
 .wb-current {
   display: flex; align-items: baseline; gap: 8px;
-  flex: 1 1 0; min-width: 0; overflow: hidden;
+  flex: 1 1 auto; min-width: 0; overflow: visible;
   font-family: var(--font-serif); font-size: 15px; letter-spacing: .4px;
 }
-.wb-current .cur-title { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.wb-current .cur-title { flex: 1 1 auto; white-space: normal; overflow: visible; min-width: 0; line-height: 1.5; }
 .wb-current .cur-note { font-family: var(--font-sans); font-size: 12px; color: var(--ink-soft); margin-left: 8px; flex: 0 0 auto; }
 
 /* 章节目录 */
@@ -1823,26 +1824,27 @@ kbd {
   top: 0;
   z-index: 4;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 0 10px;
+  padding: 8px 0 9px;
   margin-bottom: 0;
   background: linear-gradient(180deg, var(--surface) 0%, rgba(255,255,255,.94) 78%, rgba(255,255,255,0) 100%);
 }
 .wb-command-group {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
   min-width: 0;
+  max-width: 100%;
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
   box-shadow: var(--shadow);
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow: visible;
 }
-.wb-command-group::-webkit-scrollbar { display: none; }
 .wb-command-label {
   flex: 0 0 auto;
   padding: 0 8px;
@@ -1878,6 +1880,17 @@ kbd {
   flex: 0 0 auto;
   min-height: 34px;
   box-shadow: var(--shadow);
+}
+@media (max-width: 1180px) {
+  .wb-editor-toolbar {
+    flex-wrap: wrap;
+  }
+  .wb-command-group {
+    flex: 1 1 100%;
+  }
+  .wb-draft-btn {
+    margin-left: auto;
+  }
 }
 .wb-sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; align-self: center; }
 .wb-toolbar-more {
