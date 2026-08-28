@@ -148,29 +148,95 @@ function subsectionsForSection(doc, section) {
   return items;
 }
 
-function plainTextFragment(text) {
-  const chunks = String(text || '')
-    .trim()
-    .split(/\n{2,}/)
-    .map(item => item.replace(/\n/g, ' ').trim())
-    .filter(Boolean);
-  const paragraphs = chunks.length ? chunks : [''];
-  return Fragment.fromArray(paragraphs.map(item => {
-    if (!item) return paperSchema.nodes.paragraph.create();
-    const pieces = [];
-    const regex = /\[\[CIT:([a-zA-Z0-9-]+)\]\]/g;
-    let last = 0;
-    let match;
-    while ((match = regex.exec(item))) {
-      const before = item.slice(last, match.index);
-      if (before) pieces.push(paperSchema.text(before));
-      pieces.push(paperSchema.nodes.citation.create({ citationId: match[1] }));
-      last = match.index + match[0].length;
-    }
-    const tail = item.slice(last);
-    if (tail) pieces.push(paperSchema.text(tail));
-    return paperSchema.nodes.paragraph.create(null, pieces);
-  }));
+function inlineContentFromText(text) {
+  const pieces = [];
+  const regex = /\[\[CIT:([a-zA-Z0-9-]+)\]\]/g;
+  let last = 0;
+  let match;
+  while ((match = regex.exec(text))) {
+    const before = text.slice(last, match.index);
+    if (before) pieces.push(paperSchema.text(before));
+    pieces.push(paperSchema.nodes.citation.create({ citationId: match[1] }));
+    last = match.index + match[0].length;
+  }
+  const tail = text.slice(last);
+  if (tail) pieces.push(paperSchema.text(tail));
+  return pieces;
+}
+
+function stripLightMarkdown(text) {
+  return String(text || '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^\s*[-*]\s+/gm, '')
+    .trim();
+}
+
+function normalizeHeadingText(text) {
+  return String(text || '')
+    .replace(/^#+\s*/, '')
+    .replace(/^第?[一二三四五六七八九十百千万\d]+[章节、.\s]+/, '')
+    .replace(/^\d+(?:\.\d+)*\s*/, '')
+    .replace(/[：:。,.，\s]/g, '')
+    .toLowerCase();
+}
+
+function aiTextFragment(text, options = {}) {
+  const target = options.target || null;
+  const knownHeadings = new Set([
+    normalizeHeadingText(target?.label),
+    normalizeHeadingText(target?.chapter),
+    ...(options.subsections || []).map(normalizeHeadingText),
+  ].filter(Boolean));
+  const blocks = [];
+  let paragraph = [];
+  const pushParagraph = () => {
+    const body = stripLightMarkdown(paragraph.join(' ').replace(/\s+/g, ' '));
+    paragraph = [];
+    if (!body) return;
+    blocks.push(paperSchema.nodes.paragraph.create(null, inlineContentFromText(body)));
+  };
+  String(text || '')
+    .replace(/```[a-zA-Z]*\n?/g, '')
+    .replace(/```/g, '')
+    .split(/\n/)
+    .forEach(rawLine => {
+      const line = rawLine.trim();
+      if (!line) {
+        pushParagraph();
+        return;
+      }
+      const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (headingMatch) {
+        pushParagraph();
+        const title = stripLightMarkdown(headingMatch[2]);
+        if (knownHeadings.has(normalizeHeadingText(title))) return;
+        blocks.push(paperSchema.nodes.heading.create(
+          { level: 3, role: 'subsection', sectionId: makeSectionId() },
+          paperSchema.text(title)
+        ));
+        return;
+      }
+      paragraph.push(line);
+    });
+  pushParagraph();
+  return Fragment.fromArray(blocks.length ? blocks : [paperSchema.nodes.paragraph.create()]);
+}
+
+function replaceAiTextRange(view, from, to, text, options = {}) {
+  const cleaned = normalizeDraftCitationMarkers(cleanAiText(text), options.refs || []);
+  try {
+    view.dispatch(
+      view.state.tr.replaceWith(from, to, aiTextFragment(cleaned, options)).scrollIntoView()
+    );
+  } catch (error) {
+    const fallback = stripLightMarkdown(cleaned)
+      .replace(/^#+\s*/gm, '')
+      .replace(/\n{2,}/g, '\n')
+      .trim();
+    view.dispatch(view.state.tr.insertText(fallback, from, to).scrollIntoView());
+  }
 }
 
 function citationKey(item = {}) {
@@ -205,7 +271,10 @@ function normalizeDraftCitationMarkers(text, refs) {
 
 function replaceDraftStream(view, range, text, refs = []) {
   const normalized = normalizeDraftCitationMarkers(text, refs);
-  const fragment = plainTextFragment(normalized || '正在生成草稿…');
+  const fragment = aiTextFragment(normalized || '正在生成草稿…', {
+    target: range.target,
+    subsections: range.subsections || [],
+  });
   const tr = view.state.tr.replaceWith(range.from, range.to, fragment).scrollIntoView();
   view.dispatch(tr);
   range.to = range.from + fragment.size;
@@ -595,18 +664,31 @@ function inlineDiffHtml(original, suggestion) {
 }
 
 function renderSuggestionBox(box, state) {
+  box.innerHTML = `
+    <h3><span class="mark"></span>AI 写作助手</h3>
+    <p class="desc">选中文字后使用上方工具。长文本建议会显示在正文编辑区下方，便于完整阅读和采纳。</p>
+    ${state.pending ? '<p class="desc">当前有一条待处理建议，请在编辑器下方查看。</p>' : ''}
+    ${integrityNote()}`;
+}
+
+function renderInlineSuggestionBox(box, state) {
+  if (!box) return;
   if (!state.pending) {
-    box.innerHTML = `
-      <h3><span class="mark"></span>AI 写作助手</h3>
-      <p class="desc">选中文字后再触发 AI。生成结果会先作为建议展示在这里，只有点击「接受」才会写回正文。</p>
-      ${integrityNote()}`;
+    box.hidden = true;
+    box.innerHTML = '';
     return;
   }
   const item = state.pending;
   const isRewriteDiff = DIFF_ACTIONS.has(item.actionId) && (item.original || '').trim() && (item.suggestion || '').trim();
+  box.hidden = false;
   box.innerHTML = `
-    <h3><span class="mark"></span>${escapeHtml(item.label)}</h3>
-    <p class="desc">AI 建议默认不直接改正文，你可以比较后决定是否接受。</p>
+    <div class="wb-inline-review-head">
+      <div>
+        <h3><span class="mark"></span>${escapeHtml(item.label)}</h3>
+        <p class="desc">这条建议还没有写回正文。先看差异，再决定采纳、重生成或丢弃。</p>
+      </div>
+      <span class="chip">待确认</span>
+    </div>
     ${isRewriteDiff ? `
       <label class="field-label">前后对比（<s>删除线</s> = 原文去掉，<b>高亮</b> = 新增）</label>
       <div class="result-box">${inlineDiffHtml(item.original, item.suggestion)}</div>
@@ -621,8 +703,7 @@ function renderSuggestionBox(box, state) {
       <button class="btn btn-ghost" id="sg-reject">拒绝</button>
       <button class="btn btn-ai" id="sg-regenerate">重新生成</button>
       ${item.actionId === 'logic' ? '<button class="btn btn-ghost" id="sg-todo">转成待修改清单</button>' : ''}
-    </div>
-    ${integrityNote()}`;
+    </div>`;
 }
 
 function relatedEvidenceHtml(section, citations) {
@@ -791,6 +872,7 @@ export default {
               <button class="btn btn-ghost btn-sm" id="wb-draft">生成当前部分草稿</button>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
+            <div id="wb-inline-review" class="wb-inline-review" hidden></div>
             <div class="wb-meta">
               <span id="wb-count">全文字数 0</span>
               <span id="wb-saved">已载入</span>
@@ -859,6 +941,7 @@ export default {
       </div>`;
 
     const suggestionBox = el.querySelector('#wb-suggestion');
+    const inlineReviewBox = el.querySelector('#wb-inline-review');
     const outlineBox = el.querySelector('#wb-outline');
     const citationBox = el.querySelector('#wb-citations');
     const evidenceBox = el.querySelector('#wb-evidence');
@@ -1888,6 +1971,7 @@ export default {
     renderChapterCard();
     renderVersionsPanel();
     renderSuggestionBox(suggestionBox, viewState);
+    renderInlineSuggestionBox(inlineReviewBox, viewState);
     syncOutlineCollapse();
     setSaveStatus('idle', '已载入');
     alignInitialChapter();
@@ -1967,8 +2051,9 @@ export default {
         };
         viewState.rerun = () => runSuggestion(action, sourceText, replaceFrom, replaceTo, sourceLabel);
         renderSuggestionBox(suggestionBox, viewState);
+        renderInlineSuggestionBox(inlineReviewBox, viewState);
         bindSuggestionActions();
-        switchRightTab('assistant');
+        inlineReviewBox?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       } catch (e) {
         if (e?.code !== 'aborted') toast(e.message, 'err', 3600);
       } finally {
@@ -1989,12 +2074,12 @@ export default {
       const searchQuery = [title, target.label, ...subsections.slice(0, 3)].filter(Boolean).join(' ');
       const userPrompt = (() => {
         if (target.kind === 'abstract') {
-          return `请为论文《${title}》生成一版中文摘要，300-500 字，覆盖研究背景、目的、方法、主要发现和结论。需要自然引入下方文献中的 1-2 条作为支撑，引用必须使用提供的 [[CIT:id]] 标记。只输出摘要正文。`;
+          return `请为论文《${title}》生成一版中文摘要，300-500 字，覆盖研究背景、目的、方法、主要发现和结论。需要自然引入下方文献中的 1-2 条作为支撑，引用必须使用提供的 [[CIT:id]] 标记。只输出摘要正文，不要输出“摘要”标题，不要使用 Markdown。`;
         }
         if (target.kind === 'keywords') {
           return `请为论文《${title}》生成 3-5 个中文关键词，用中文分号分隔。只输出关键词，不要解释。\n\n已有关键词：\n${currentText || '暂无'}`;
         }
-        return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subsections.length ? `请按这些小节展开：${subsections.join('；')}。` : '请按章节主题自行组织清晰小节。'}需要自然引用下方文献，至少使用 2 条引用，引用必须使用提供的 [[CIT:id]] 标记，不要使用 [1] 这类普通文本编号。只输出正文，不要输出客套说明。\n\n当前已有内容：\n${currentText || '暂无'}`;
+        return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subsections.length ? `编辑器里已经有这些小节标题：${subsections.join('；')}。请按这些小节的顺序展开正文，但不要重复输出章节标题或小节标题。` : '请按章节主题自行组织清晰段落。'}需要自然引用下方文献，至少使用 2 条引用，引用必须使用提供的 [[CIT:id]] 标记，不要使用 [1] 这类普通文本编号。只输出正文，不要输出客套说明，不要使用 Markdown 标题。\n\n当前已有内容：\n${currentText || '暂无'}`;
       })();
       setLoading(btn, true, target.kind === 'keywords' ? '生成中…' : '检索文献…');
       let streamRange = null;
@@ -2045,7 +2130,7 @@ export default {
         const referencesBlock = draftCitations.length
           ? `\n\n可引用文献：\n${draftCitations.map(citationBrief).join('\n\n')}`
           : '';
-        streamRange = { from: target.bodyTo, to: target.bodyTo };
+        streamRange = { from: target.bodyTo, to: target.bodyTo, target, subsections };
         replaceDraftStream(viewState.view, streamRange, '', draftCitations);
         const reply = await streamChat([
           { role: 'system', content: SYSTEM },
@@ -2077,29 +2162,32 @@ export default {
     }
 
     function bindSuggestionActions() {
-      suggestionBox.querySelector('#sg-accept')?.addEventListener('click', () => {
+      inlineReviewBox.querySelector('#sg-reject')?.addEventListener('click', () => {
+        viewState.pending = null;
+        renderSuggestionBox(suggestionBox, viewState);
+        renderInlineSuggestionBox(inlineReviewBox, viewState);
+        toast('已拒绝本次建议，原文保持不变', 'ok', 1500);
+      });
+      inlineReviewBox.querySelector('#sg-accept')?.addEventListener('click', () => {
         if (!viewState.pending) return;
         const { replaceFrom, replaceTo, suggestion, actionId } = viewState.pending;
         if (actionId === 'logic') {
           toast('检查结果保留为批注建议，不直接写回正文', 'ok');
           viewState.pending = null;
           renderSuggestionBox(suggestionBox, viewState);
+          renderInlineSuggestionBox(inlineReviewBox, viewState);
           return;
         }
-        viewState.view.dispatch(
-          viewState.view.state.tr.insertText(suggestion, replaceFrom, replaceTo).scrollIntoView()
-        );
+        replaceAiTextRange(viewState.view, replaceFrom, replaceTo, suggestion, {
+          target: currentWritingTarget(viewState.view),
+        });
         toast('AI 建议已接受并写回正文', 'ok');
         viewState.pending = null;
         renderSuggestionBox(suggestionBox, viewState);
+        renderInlineSuggestionBox(inlineReviewBox, viewState);
       });
-      suggestionBox.querySelector('#sg-reject')?.addEventListener('click', () => {
-        viewState.pending = null;
-        renderSuggestionBox(suggestionBox, viewState);
-        toast('已拒绝本次建议，原文保持不变', 'ok', 1500);
-      });
-      suggestionBox.querySelector('#sg-regenerate')?.addEventListener('click', () => viewState.rerun?.());
-      suggestionBox.querySelector('#sg-todo')?.addEventListener('click', () => {
+      inlineReviewBox.querySelector('#sg-regenerate')?.addEventListener('click', () => viewState.rerun?.());
+      inlineReviewBox.querySelector('#sg-todo')?.addEventListener('click', () => {
         if (!viewState.pending?.suggestion) return;
         const items = String(viewState.pending.suggestion)
           .split(/\n+/)

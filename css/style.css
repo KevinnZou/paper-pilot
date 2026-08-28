@@ -901,6 +901,30 @@ input::placeholder, textarea::placeholder { color: #A9B0B5; }
   background: var(--brand-soft); color: var(--brand); padding: 2px 8px; border-radius: 3px; margin-bottom: 8px;
 }
 .result-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.wb-inline-review {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cinnabar);
+  border-radius: var(--radius);
+  background: #FFFCF8;
+  box-shadow: var(--shadow);
+}
+.wb-inline-review[hidden] { display: none; }
+.wb-inline-review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+.wb-inline-review h3 {
+  margin: 0 0 2px;
+  font-family: var(--font-serif);
+  font-size: 17px;
+}
+.wb-inline-review .desc { margin: 0; }
+.wb-inline-review .result-box { margin-top: 8px; }
 
 /* 学术诚信提示：朱批边注 */
 .integrity-note {
