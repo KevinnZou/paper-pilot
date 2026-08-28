@@ -208,6 +208,10 @@ function aiTextFragment(text, options = {}) {
         return;
       }
       const plainHeading = stripLightMarkdown(line);
+      if (knownHeadings.has(normalizeHeadingText(plainHeading)) && plainHeading.length <= 60) {
+        pushParagraph();
+        return;
+      }
       if (/^(第[一二三四五六七八九十百千万\d]+章|\d+(?:\.\d+)*\s+)/.test(plainHeading) && knownHeadings.has(normalizeHeadingText(plainHeading))) {
         pushParagraph();
         return;
@@ -678,23 +682,21 @@ function renderSuggestionBox(box, state) {
 
 function inlineSuggestionHtml(item) {
   const isRewriteDiff = DIFF_ACTIONS.has(item.actionId) && (item.original || '').trim() && (item.suggestion || '').trim();
+  const label = isRewriteDiff
+    ? '修改预览'
+    : item.actionId === 'logic'
+      ? '检查结果'
+      : '生成内容';
   return `
     <div class="wb-inline-review-head">
       <div>
         <h3><span class="mark"></span>${escapeHtml(item.label)}</h3>
-        <p class="desc">这条建议还没有写回正文。先看差异，再决定采纳、重生成或丢弃。</p>
+        <p class="desc">这条建议暂未写回正文。绿色为新增，红色删除线为移除。</p>
       </div>
       <span class="chip">待确认</span>
     </div>
-    ${isRewriteDiff ? `
-      <label class="field-label">前后对比（<s>删除线</s> = 原文去掉，<b>高亮</b> = 新增）</label>
-      <div class="result-box">${inlineDiffHtml(item.original, item.suggestion)}</div>
-    ` : `
-      <label class="field-label">原文</label>
-      <div class="result-box">${escapeHtml(item.original || '（无原文，基于上下文生成）')}</div>
-    `}
-    <label class="field-label">${isRewriteDiff ? '建议全文' : 'AI 建议'}</label>
-    <div class="result-box filled">${escapeHtml(item.suggestion)}</div>
+    <label class="field-label">${label}</label>
+    <div class="result-box filled">${isRewriteDiff ? inlineDiffHtml(item.original, item.suggestion) : escapeHtml(item.suggestion)}</div>
     <div class="result-actions">
       <button class="btn" type="button" data-review-action="accept">接受</button>
       <button class="btn btn-ghost" type="button" data-review-action="reject">拒绝</button>
@@ -1261,18 +1263,14 @@ export default {
         : '<p class="desc">先在研究设计里生成大纲，或者直接在编辑器中新增章节标题。</p>';
       outlineBox.querySelectorAll('[data-section]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const section = topLevelSections(viewState.view.state.doc).find(x => x.sectionId === btn.dataset.section);
-          if (!section) return;
-          viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, section.headingFrom)).scrollIntoView());
-          viewState.view.focus();
+          jumpToSection(btn.dataset.section);
         });
       });
       outlineBox.querySelectorAll('[data-subsection-pos]').forEach(btn => {
         btn.addEventListener('click', () => {
           const pos = Number(btn.dataset.subsectionPos);
           if (!Number.isFinite(pos)) return;
-          viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, pos)).scrollIntoView());
-          viewState.view.focus();
+          jumpToPosition(pos);
         });
       });
     }
@@ -1565,21 +1563,35 @@ export default {
       sidePanes.forEach(pane => pane.classList.toggle('active', pane.dataset.sidePane === tab));
     }
 
+    function scrollEditorPositionToTop(pos) {
+      requestAnimationFrame(() => {
+        if (!viewState.view) return;
+        const sheet = viewState.view.dom.closest('.paper-sheet');
+        if (!sheet) return;
+        const found = viewState.view.domAtPos(Math.max(1, Math.min(pos, viewState.view.state.doc.content.size)));
+        let target = found.node?.nodeType === 3 ? found.node.parentElement : found.node;
+        if (target?.nodeType === 1 && !target.matches?.('h1,h2,h3,p')) {
+          target = target.closest?.('h1,h2,h3,p') || target.parentElement;
+        }
+        if (!target || typeof target.getBoundingClientRect !== 'function') return;
+        const top = sheet.scrollTop + target.getBoundingClientRect().top - sheet.getBoundingClientRect().top - 12;
+        sheet.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        target.classList.add('pm-jump-flash');
+        window.setTimeout(() => target.classList.remove('pm-jump-flash'), 900);
+      });
+    }
+
+    function jumpToPosition(pos) {
+      const safePos = Math.max(1, Math.min(Number(pos) || 1, viewState.view.state.doc.content.size));
+      viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, safePos)));
+      viewState.view.focus();
+      scrollEditorPositionToTop(safePos);
+    }
+
     function jumpToSection(sectionId) {
       const section = topLevelSections(viewState.view.state.doc).find(x => x.sectionId === sectionId);
       if (!section) return;
-      viewState.view.dispatch(viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, section.headingFrom)));
-      viewState.view.focus();
-      // 让章节标题滚到编辑区顶部（只动工作区内容，不滚页面）
-      requestAnimationFrame(() => {
-        let dom = viewState.view.nodeDOM(section.headingFrom);
-        if (dom && dom.nodeType === 3) dom = dom.parentElement;
-        const el = (dom && dom.nodeType === 1) ? dom : (dom && dom.closest ? dom.closest('h1,h2,h3') : null);
-        const sheet = viewState.view.dom.closest('.paper-sheet');
-        if (!el || !sheet || typeof el.getBoundingClientRect !== 'function') return;
-        const gap = el.getBoundingClientRect().top - sheet.getBoundingClientRect().top - 10;
-        if (gap) sheet.scrollTop += gap;
-      });
+      jumpToPosition(section.headingFrom);
     }
 
     function sectionFragment(title) {
@@ -1852,9 +1864,7 @@ export default {
       const sections = topLevelSections(viewState.view.state.doc);
       const target = sections.find(s => s.chapter === viewState.currentChapter) || sections[0];
       if (!target) return;
-      viewState.view.dispatch(
-        viewState.view.state.tr.setSelection(TextSelection.create(viewState.view.state.doc, target.headingFrom)).scrollIntoView()
-      );
+      jumpToSection(target.sectionId);
     }
 
     function persistNow() {

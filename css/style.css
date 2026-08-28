@@ -1912,6 +1912,13 @@ kbd {
 .pm-editor .ProseMirror h2[data-role="references"],
 .pm-editor .ProseMirror h2[data-role="ack"] { font-size: 17px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
 .pm-editor .ProseMirror p { margin: 0 0 12px; }
+.pm-editor .ProseMirror .pm-jump-flash {
+  animation: pm-jump-flash .9s ease;
+}
+@keyframes pm-jump-flash {
+  0% { background: var(--brand-soft); box-shadow: 0 0 0 8px var(--brand-soft); }
+  100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
+}
 .pm-editor .ProseMirror blockquote {
   margin: 12px 0; padding: 6px 14px;
   border-left: 3px solid var(--amber); background: var(--amber-soft);
@@ -2868,8 +2875,22 @@ kbd {
 }
 
 /* AI 前后 diff：删除线 = 原文去掉（朱砂），高亮 = 新增（松烟绿） */
-.pm-diff-del { color: var(--mute); text-decoration: line-through; text-decoration-color: var(--cinnabar); text-decoration-thickness: 1px; }
-.pm-diff-ins { background: var(--jade-soft); color: var(--jade); border-radius: 2px; padding: 0 1px; }
+.pm-diff-del {
+  color: #8A342A;
+  background: #FBE7E2;
+  text-decoration: line-through;
+  text-decoration-color: #8A342A;
+  text-decoration-thickness: 1px;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+.pm-diff-ins {
+  background: #DFF3E5;
+  color: #245D35;
+  border-radius: 2px;
+  padding: 0 2px;
+  text-decoration: none;
+}
 
 /* 计划任务卡：完成勾选（松烟绿） + 单主行动 */
 .task-check {
