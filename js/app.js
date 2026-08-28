@@ -13,7 +13,7 @@ import { getConfig, shouldUseLiveAI } from './api.js';
 import { getProject, hasActiveProject, projectStoreReady } from './project.js';
 import { meaningfulTitle } from './title-utils.js';
 
-const MODULES = [projects, dashboard, topic, citation, writing, planner, checkExport, projectSettings, settings];
+const MODULES = [dashboard, writing, citation, topic, planner, checkExport, projects, projectSettings, settings];
 const container = document.getElementById('module-container');
 const navEl = document.getElementById('nav');
 const sidebarToggleEl = document.getElementById('sidebar-toggle');
@@ -38,6 +38,12 @@ function renderNav() {
     .filter(m => m.id === 'projects' || hasActiveProject())
     .filter(m => m.id !== 'topic' || !researchDesignComplete());
   visible.forEach(m => {
+    if (m.id === 'projects' && visible.length > 1) {
+      const divider = document.createElement('div');
+      divider.className = 'nav-divider';
+      divider.setAttribute('aria-hidden', 'true');
+      navEl.appendChild(divider);
+    }
     const btn = document.createElement('button');
     btn.className = 'nav-item';
     btn.dataset.module = m.id;
