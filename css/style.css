@@ -1739,35 +1739,96 @@ kbd {
 }
 .wb-header {
   display: flex;
-  align-items: stretch;
-  flex-direction: column;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 9px 12px 7px;
+  gap: 12px;
+  padding: 10px 12px 8px;
   margin-bottom: 0;
 }
+.wb-format-toolbar,
 .wb-header-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 6px;
-  flex: 0 0 auto;
   flex-wrap: wrap;
   white-space: normal;
 }
+.wb-format-toolbar {
+  padding: 7px 12px;
+  border-top: 1px solid rgba(228,225,216,.72);
+  background: rgba(255,255,255,.42);
+}
+.wb-toolbar-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding-right: 10px;
+  border-right: 1px solid rgba(221,215,202,.72);
+}
+.wb-toolbar-cluster:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+.wb-toolbar-quick {
+  justify-content: flex-end;
+}
+.wb-toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 14px;
+}
+.wb-cluster-label {
+  margin-right: 2px;
+  color: #8A8274;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
 .wb-tool-btn {
   min-height: 28px;
-  padding: 3px 9px;
+  padding: 4px 9px;
   border-color: transparent;
   background: transparent;
   color: #536171;
   font-size: 12.5px;
   font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-family: var(--font-sans);
+  cursor: pointer;
 }
 .wb-tool-btn:hover {
   color: var(--ink);
-  background: rgba(255,255,255,.72);
+  background: rgba(255,255,255,.78);
   border-color: transparent;
+}
+.wb-icon-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #536171;
+  cursor: pointer;
+}
+.wb-icon-tool svg,
+.wb-tool-btn svg {
+  width: 15px;
+  height: 15px;
+}
+.wb-icon-tool:hover {
+  background: rgba(255,255,255,.78);
+  color: var(--ink);
+}
+.wb-tool-btn:focus-visible,
+.wb-icon-tool:focus-visible,
+.wb-command:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-soft);
 }
 .wb-current {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
@@ -1846,10 +1907,10 @@ kbd {
 .wb-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
 .wb-editor-toolbar {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 7px 12px 9px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 8px 12px 10px;
   margin-bottom: 0;
   border-top: 1px solid rgba(228,225,216,.72);
   background: transparent;
@@ -1858,7 +1919,7 @@ kbd {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   max-width: 100%;
   padding: 0;
@@ -1870,12 +1931,12 @@ kbd {
 }
 .wb-command-label {
   flex: 0 0 auto;
-  padding: 0 7px 0 0;
-  color: var(--cinnabar);
+  padding: 0 8px 0 0;
+  color: #2C8A66;
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .5px;
+  letter-spacing: .2px;
 }
 .wb-command {
   flex: 0 0 auto;
@@ -1896,28 +1957,30 @@ kbd {
   color: var(--ink);
 }
 .wb-command.primary {
-  background: #F6E3DE;
-  color: var(--cinnabar-strong);
+  padding-inline: 12px;
+  border: 1px solid rgba(44,138,102,.28);
+  background: #EEF8F2;
+  color: #1F7658;
 }
-.wb-draft-btn {
-  flex: 0 0 auto;
-  min-height: 31px;
-  padding-inline: 13px;
-  background: var(--brand);
-  border-color: var(--brand);
-  box-shadow: none;
+.wb-command.primary:hover {
+  background: #E2F2E9;
+  color: #155E46;
 }
-.wb-draft-btn:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
 @media (max-width: 1180px) {
+  .wb-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .wb-format-toolbar {
+    align-items: flex-start;
+  }
   .wb-editor-toolbar {
     flex-wrap: wrap;
   }
   .wb-command-group {
     flex: 1 1 100%;
   }
-  .wb-draft-btn {
-    margin-left: auto;
-  }
+  .wb-toolbar-spacer { display: none; }
 }
 .wb-sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; align-self: center; }
 .wb-toolbar-more {

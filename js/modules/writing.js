@@ -697,7 +697,7 @@ function inlineDiffHtml(original, suggestion) {
 
 function renderSuggestionBox(box, state) {
   box.innerHTML = `
-    <h3><span class="mark"></span>AI 写作助手</h3>
+    <h3><span class="mark"></span>AI 辅助</h3>
     <p class="desc">选中文字后使用上方工具。建议会直接显示在编辑器正文旁边，确认后才写回论文。</p>
     ${state.pending ? '<p class="desc">当前有一条待处理建议，已放在正文中的选区附近。</p>' : ''}
     ${integrityNote()}`;
@@ -830,7 +830,7 @@ export default {
   id: 'writing',
   icon: '',
   title: '论文写作',
-  subtitle: '结构化写作、AI 写作助手、动态引用编号',
+  subtitle: '结构化写作、AI 辅助、动态引用编号',
   projectScoped: true,
 
   render(el) {
@@ -871,34 +871,43 @@ export default {
                   <span class="cur-title" id="wb-cur-title">写作区</span>
                   <span class="cur-note" id="wb-cur-note">自动保存</span>
                 </div>
-                <div class="wb-header-actions">
-                  <button class="btn btn-ghost btn-sm wb-tool-btn" id="wb-topic">项目方案</button>
-                  <button class="btn btn-ghost btn-sm wb-tool-btn" id="wb-done">标记完成</button>
-                  <button class="btn btn-ghost btn-sm wb-tool-btn" id="wb-copy">复制全文</button>
+              </div>
+              <div class="wb-format-toolbar" aria-label="编辑器常用工具">
+                <div class="wb-toolbar-cluster">
+                  <span class="wb-cluster-label">文档</span>
+                  <button class="wb-tool-btn" type="button" id="wb-topic">项目方案</button>
+                  <button class="wb-tool-btn" type="button" id="wb-done">标记完成</button>
+                  <button class="wb-tool-btn icon-text" type="button" id="wb-copy">${ICONS.copy}<span>复制全文</span></button>
+                </div>
+                <div class="wb-toolbar-cluster">
+                  <span class="wb-cluster-label">插入</span>
+                  <button class="wb-tool-btn" type="button" id="wb-insert-citation">引用</button>
+                  <button class="wb-tool-btn" type="button" id="wb-insert-note">注释</button>
+                  <button class="wb-tool-btn" type="button" id="wb-insert-image">图片</button>
+                  <button class="wb-tool-btn" type="button" id="wb-insert-table">表格</button>
+                  <button class="wb-tool-btn" type="button" id="wb-insert-formula">公式</button>
+                </div>
+                <div class="wb-toolbar-spacer"></div>
+                <div class="wb-toolbar-cluster wb-toolbar-quick">
+                  <button class="wb-icon-tool" type="button" id="wb-undo" title="撤销" aria-label="撤销">${ICONS.undo}</button>
+                  <button class="wb-icon-tool" type="button" id="wb-redo" title="重做" aria-label="重做">${ICONS.redo}</button>
+                  <button class="wb-tool-btn" type="button" id="wb-preview">排版预览</button>
                   <details class="wb-toolbar-more">
-                    <summary>更多操作</summary>
+                    <summary>更多</summary>
                     <div class="wb-toolbar-more-panel">
-                      <button class="btn btn-ai btn-sm" data-ai="logic">逻辑检查</button>
                       <button class="btn btn-ghost btn-sm" id="wb-save-version">保存整稿版本</button>
                       <button class="btn btn-ghost btn-sm" id="wb-format">格式整理</button>
-                      <button class="btn btn-ghost btn-sm" id="wb-insert-formula">插入公式</button>
-                      <button class="btn btn-ghost btn-sm" id="wb-insert-note">插入注释</button>
-                      <button class="btn btn-ghost btn-sm" id="wb-insert-image">插入图片</button>
-                      <button class="btn btn-ghost btn-sm" id="wb-insert-table">插入表格</button>
-                      <button class="btn btn-ghost btn-sm icon-text" id="wb-undo">${ICONS.undo}<span>撤销</span></button>
-                      <button class="btn btn-ghost btn-sm icon-text" id="wb-redo">${ICONS.redo}<span>重做</span></button>
                       <button class="btn btn-ghost btn-sm" id="wb-download">下载 Markdown</button>
-                      <button class="btn btn-ghost btn-sm" id="wb-preview">排版预览</button>
                     </div>
                   </details>
                 </div>
               </div>
               <div class="wb-editor-toolbar">
-                <div class="wb-command-group" aria-label="AI 写作工具">
-                  <span class="wb-command-label">AI</span>
-                  ${AI_ACTIONS.filter(item => item.id !== 'logic').map(item => `<button class="wb-command ${item.id === 'academic' ? 'primary' : ''}" type="button" data-ai="${item.id}">${item.label}</button>`).join('')}
+                <div class="wb-command-group" aria-label="AI 辅助工具">
+                  <span class="wb-command-label">AI 辅助</span>
+                  <button class="wb-command primary" type="button" id="wb-draft">生成初稿</button>
+                  ${AI_ACTIONS.map(item => `<button class="wb-command" type="button" data-ai="${item.id}">${item.label}</button>`).join('')}
                 </div>
-                <button class="btn btn-ai-solid btn-sm wb-draft-btn" id="wb-draft">生成当前部分草稿</button>
               </div>
             </div>
             <div id="wb-editor" class="paper-sheet pm-editor"></div>
@@ -2141,6 +2150,10 @@ export default {
     el.querySelector('#wb-insert-note')?.addEventListener('click', () => openAssetModal('footnote'));
     el.querySelector('#wb-insert-image')?.addEventListener('click', () => openAssetModal('image'));
     el.querySelector('#wb-insert-table')?.addEventListener('click', () => openAssetModal('table'));
+    el.querySelector('#wb-insert-citation')?.addEventListener('click', () => {
+      switchRightTab('citation');
+      citationBox.querySelector('#wb-cit-select')?.focus();
+    });
     el.querySelector('#wb-asset-close-top')?.addEventListener('click', closeAssetModal);
     assetModal?.addEventListener('click', evt => {
       if (evt.target === assetModal) closeAssetModal();
