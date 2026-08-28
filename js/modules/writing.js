@@ -235,6 +235,24 @@ function aiTextFragment(text, options = {}) {
 
 function replaceAiTextRange(view, from, to, text, options = {}) {
   const cleaned = normalizeDraftCitationMarkers(cleanAiText(text), options.refs || []);
+  const $from = view.state.doc.resolve(from);
+  const $to = view.state.doc.resolve(to);
+  if ($from.sameParent($to) && $from.parent.isTextblock) {
+    const inlineText = stripLightMarkdown(cleaned)
+      .replace(/^#+\s*/gm, '')
+      .replace(/\s*\n+\s*/g, ' ')
+      .replace(/ {2,}/g, ' ')
+      .trim();
+    try {
+      view.dispatch(
+        view.state.tr.replaceWith(from, to, Fragment.fromArray(inlineContentFromText(inlineText))).scrollIntoView()
+      );
+      return;
+    } catch (error) {
+      view.dispatch(view.state.tr.insertText(inlineText, from, to).scrollIntoView());
+      return;
+    }
+  }
   try {
     view.dispatch(
       view.state.tr.replaceWith(from, to, aiTextFragment(cleaned, options)).scrollIntoView()
@@ -681,8 +699,11 @@ function renderSuggestionBox(box, state) {
 }
 
 function inlineSuggestionHtml(item) {
-  const isRewriteDiff = DIFF_ACTIONS.has(item.actionId) && (item.original || '').trim() && (item.suggestion || '').trim();
-  const label = isRewriteDiff
+  const isDiffPreview = (DIFF_ACTIONS.has(item.actionId) || item.actionId === 'continue') && (item.original || '').trim() && (item.suggestion || '').trim();
+  const previewHtml = item.actionId === 'continue'
+    ? inlineDiffHtml(item.original, `${item.original}${item.suggestion}`)
+    : inlineDiffHtml(item.original, item.suggestion);
+  const label = isDiffPreview
     ? '修改预览'
     : item.actionId === 'logic'
       ? '检查结果'
@@ -696,7 +717,7 @@ function inlineSuggestionHtml(item) {
       <span class="chip">待确认</span>
     </div>
     <label class="field-label">${label}</label>
-    <div class="result-box filled">${isRewriteDiff ? inlineDiffHtml(item.original, item.suggestion) : escapeHtml(item.suggestion)}</div>
+    <div class="result-box filled">${isDiffPreview ? previewHtml : escapeHtml(item.suggestion)}</div>
     <div class="result-actions">
       <button class="btn" type="button" data-review-action="accept">接受</button>
       <button class="btn btn-ghost" type="button" data-review-action="reject">拒绝</button>
@@ -2305,9 +2326,10 @@ export default {
       const from = viewState.view.state.selection.from;
       const to = viewState.view.state.selection.to;
       const content = action.mode === 'cursor'
-        ? viewState.view.state.doc.textBetween(Math.max(0, from - 300), from, '\n')
+        ? (text || viewState.view.state.doc.textBetween(Math.max(0, from - 300), from, '\n'))
         : text;
-      runSuggestion(action, content, from, to, action.id);
+      const writeFrom = action.mode === 'cursor' ? to : from;
+      runSuggestion(action, content, writeFrom, to, action.id);
     }));
 
     el.querySelector('#wb-draft').addEventListener('click', () => runDraftGeneration());
