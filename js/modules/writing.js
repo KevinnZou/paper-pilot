@@ -419,7 +419,7 @@ function buildPreviewHtml(doc, citations) {
       }
       const tag = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role) ? 'h2' : 'h3';
       const cls = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role)
-        ? 'chapter-title'
+        ? `chapter-title ${block.role === 'section' ? 'chapter-break' : 'front-title'}`
         : block.level >= 4
           ? 'subsec-3'
           : 'subsec';
@@ -438,10 +438,10 @@ function buildPreviewHtml(doc, citations) {
       formulaNo += 1;
       const formulaLabel = chapterNo ? `${chapterNo}.${formulaNo}` : block.number;
       return `<figure class="pp-formula">
-        <div class="pp-formula-row">
-          <div class="pp-formula-body">${escapeHtml(block.latex || '')}</div>
-          <div class="pp-formula-no">（${formulaLabel}）</div>
-        </div>
+        <table class="pp-formula-table"><tr>
+          <td class="pp-formula-body">${escapeHtml(block.latex || '')}</td>
+          <td class="pp-formula-no">（${formulaLabel}）</td>
+        </tr></table>
         ${block.label ? `<figcaption>${escapeHtml(block.label)}</figcaption>` : ''}
         ${block.note ? `<p class="pp-note">说明：${escapeHtml(block.note)}</p>` : ''}
       </figure>`;
@@ -474,29 +474,22 @@ function buildPreviewHtml(doc, citations) {
   }).join('');
 }
 
-function openPrintPreview(doc, citations) {
-  const html = buildPreviewHtml(doc, citations);
-  const win = window.open('', '_blank');
-  if (!win) {
-    toast('浏览器拦截了新窗口，请允许弹窗后重试', 'err');
-    return;
-  }
-  win.document.write(`<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>清华大学研究生学位论文格式预览</title>
-  <style>
+function thesisTemplateCss({ forWord = false } = {}) {
+  return `
     @page { size: A4; margin: 30mm; }
-    html { background: #EEECE5; }
+    html { background: ${forWord ? '#fff' : '#EEECE5'}; }
     body {
-      width: 210mm;
-      min-height: 297mm;
+      width: ${forWord ? 'auto' : '210mm'};
+      min-height: ${forWord ? 'auto' : '297mm'};
       box-sizing: border-box;
-      margin: 28px auto;
-      padding: 30mm;
+      margin: ${forWord ? '0' : '28px auto'};
+      padding: ${forWord ? '0' : '30mm'};
       background: #fff;
       color: #000;
       font-family: SimSun, "Songti SC", STSong, serif;
       font-size: 12pt;
       line-height: 20pt;
-      box-shadow: 0 16px 45px rgba(38,48,59,.16);
+      ${forWord ? '' : 'box-shadow: 0 16px 45px rgba(38,48,59,.16);'}
     }
     .title {
       text-align: center;
@@ -514,6 +507,16 @@ function openPrintPreview(doc, citations) {
       line-height: 1;
       margin: 24pt 0 18pt;
       page-break-after: avoid;
+      break-after: avoid;
+    }
+    .chapter-break {
+      page-break-before: always;
+      break-before: page;
+    }
+    .title + .chapter-break,
+    .front-title + .chapter-break {
+      page-break-before: always;
+      break-before: page;
     }
     .subsec {
       font-family: SimHei, "Heiti SC", sans-serif;
@@ -523,6 +526,7 @@ function openPrintPreview(doc, citations) {
       margin: 18pt 0 6pt;
       color: #000;
       page-break-after: avoid;
+      break-after: avoid;
     }
     .subsec-3 {
       font-family: SimHei, "Heiti SC", sans-serif;
@@ -531,6 +535,7 @@ function openPrintPreview(doc, citations) {
       line-height: 20pt;
       margin: 12pt 0 6pt;
       page-break-after: avoid;
+      break-after: avoid;
     }
     p { text-indent: 2em; margin: 0; text-align: justify; text-justify: inter-ideograph; }
     p.ref { text-indent: -2em; padding-left: 1cm; font-size: 10.5pt; line-height: 16pt; margin-top: 3pt; color: #000; }
@@ -538,12 +543,13 @@ function openPrintPreview(doc, citations) {
     blockquote { margin: 8pt 0; padding: 0 0 0 2em; border-left: 0; color: #111; font-family: KaiTi, "Kaiti SC", serif; }
     ul, ol { margin: 6pt 0 8pt 2em; padding: 0; }
     li { margin: 0; }
-    .pp-formula { margin: 6pt 0; break-inside: avoid; }
-    .pp-formula-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12pt; }
+    .pp-formula { margin: 6pt 0; break-inside: avoid; page-break-inside: avoid; }
+    .pp-formula-table { width: 100%; border-collapse: collapse; border: 0; }
+    .pp-formula-table td { border: 0; padding: 0; vertical-align: middle; }
     .pp-formula-body { padding: 0 10pt; font-family: Cambria Math, "Times New Roman", SimSun, serif; font-size: 12pt; line-height: 1; text-align: center; white-space: pre-wrap; }
-    .pp-formula-no { min-width: 42pt; text-align: right; font-family: "Times New Roman", SimSun, serif; font-size: 12pt; line-height: 1; }
+    .pp-formula-no { width: 48pt; text-align: right; font-family: "Times New Roman", SimSun, serif; font-size: 12pt; line-height: 1; }
     .pp-formula figcaption { margin-top: 6pt; text-align: center; font-size: 11pt; line-height: 1; color: #000; }
-    .pp-figure, .pp-table-wrap { margin: 12pt 0; break-inside: avoid; }
+    .pp-figure, .pp-table-wrap { margin: 12pt 0; break-inside: avoid; page-break-inside: avoid; }
     .pp-figure img { max-width: 100%; display: block; margin: 0 auto; }
     .pp-figure figcaption { margin-top: 6pt; margin-bottom: 12pt; text-align: center; font-size: 11pt; line-height: 1; color: #000; }
     .pp-table-wrap figcaption { margin: 12pt 0 6pt; text-align: center; font-size: 11pt; line-height: 1; color: #000; }
@@ -554,8 +560,52 @@ function openPrintPreview(doc, citations) {
     .pp-table th { font-family: SimHei, "Heiti SC", sans-serif; font-weight: 700; }
     .tip { position: fixed; top: 14px; right: 16px; background: #2F4F66; color: #fff; padding: 8px 14px; border-radius: 5px; font-size: 13px; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
     @media print { html { background:#fff; } .tip { display:none; } body { width:auto; min-height:auto; margin: 0; padding: 0; box-shadow:none; } }
-  </style></head><body><div class="tip">清华指南 2025 版预览 · Ctrl/Cmd+P 打印或另存 PDF</div>${html}</body></html>`);
+  `;
+}
+
+function buildTemplateDocumentHtml(doc, citations, { forWord = false, showTip = true } = {}) {
+  const html = buildPreviewHtml(doc, citations);
+  const title = escapeHtml(meaningfulTitle(getProject().title) || '论文');
+  const tip = showTip ? '<div class="tip">默认学位论文模板 · Ctrl/Cmd+P 打印或另存 PDF</div>' : '';
+  const officeMeta = forWord
+    ? '<meta name="ProgId" content="Word.Document"><meta name="Generator" content="PaperPilot">'
+    : '';
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">${officeMeta}<title>${title} - 模板格式预览</title>
+  <style>${thesisTemplateCss({ forWord })}</style></head><body>${tip}${html}</body></html>`;
+}
+
+function safeFileName(name) {
+  return (meaningfulTitle(name) || '论文全文').replace(/[\\/:*?"<>|]/g, '_');
+}
+
+function downloadBlob(content, fileName, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+
+function openPrintPreview(doc, citations, { autoPrint = false } = {}) {
+  const html = buildTemplateDocumentHtml(doc, citations);
+  const win = window.open('', '_blank');
+  if (!win) {
+    toast('浏览器拦截了新窗口，请允许弹窗后重试', 'err');
+    return;
+  }
+  win.document.write(html);
   win.document.close();
+  if (autoPrint) {
+    win.addEventListener('load', () => win.print(), { once: true });
+    setTimeout(() => win.print(), 500);
+  }
+}
+
+function exportTemplateWord(doc, citations) {
+  const html = buildTemplateDocumentHtml(doc, citations, { forWord: true, showTip: false });
+  downloadBlob(`\ufeff${html}`, `${safeFileName(getProject().title)}.doc`, 'application/msword;charset=utf-8');
 }
 
 function citationViewFactory(getLabel) {
@@ -970,7 +1020,9 @@ export default {
                   <button class="wb-icon-tool" type="button" id="wb-redo" title="重做" aria-label="重做">${ICONS.redo}</button>
                   <button class="wb-tool-btn" type="button" id="wb-save-version">保存版本</button>
                   <button class="wb-tool-btn" type="button" id="wb-format">格式整理</button>
-                  <button class="wb-tool-btn" type="button" id="wb-preview">清华格式预览</button>
+                  <button class="wb-tool-btn" type="button" id="wb-preview">模板预览</button>
+                  <button class="wb-tool-btn" type="button" id="wb-export-word">导出 Word</button>
+                  <button class="wb-tool-btn" type="button" id="wb-export-pdf">导出 PDF</button>
                   <button class="wb-tool-btn" type="button" id="wb-download">下载 Markdown</button>
                 </div>
               </div>
@@ -2542,6 +2594,14 @@ export default {
 
     el.querySelector('#wb-preview').addEventListener('click', () => {
       openPrintPreview(viewState.view.state.doc, citations);
+    });
+    el.querySelector('#wb-export-word')?.addEventListener('click', () => {
+      exportTemplateWord(viewState.view.state.doc, citations);
+      toast('已导出 Word 模板文档', 'ok');
+    });
+    el.querySelector('#wb-export-pdf')?.addEventListener('click', () => {
+      openPrintPreview(viewState.view.state.doc, citations, { autoPrint: true });
+      toast('已打开 PDF 导出窗口，请选择“另存为 PDF”', 'ok', 3600);
     });
   },
 };
