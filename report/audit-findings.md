@@ -1,12 +1,12 @@
 # 上线前业务审计发现（4 域 subagent 全部返回）
 
 ## P1（上线前必须修）
-- [ ] **P1-1 项目设置改题目不生效**：project-settings.js:112 只写 project.title；全站用 meaningfulTitle(design.title, project.title)（design 优先）→ 走完选题后改题无效。
-- [ ] **P1-2 单项目导出备份不可导入**：projects.js:192 导出 {app,version,project}，settings.js:225/238 导入只认 {appState,projects}/{data} → 报“没有可识别的数据”。
-- [ ] **P1-3 章节版本回退破坏结构+原子节点**（数据丢失）：writing.js:1812 createChapterSnapshot 用 textBetween（丢 atom）；:1844 restoreChapterVersion 用 insertText（抹平结构）。
-- [ ] **P1-4 导出前检查读已保存态而非实时**：writing.js:2798 wb-export-check 用 docFromJSON({...getProject()})，导出用 viewState.doc → 防抖/流式时不一致。
-- [ ] **P1-5 导出检查弹窗问题跳转失效**：writing.js:2829 只绑 [data-ec-close]，未绑 [data-issue-go]（check-export.js:322 有）→ “去对应章节/去文献库”点了模块不变、弹窗不关。
-- [ ] **P1-6 gbt7714 issueBlock 卷期错拼**：gbt7714.js:13-18 `[volume,issue,pages].join(': ')` → "34: (3): 45-52"，应为 "34(3): 45-52"，波及所有 J/C 引用。
+- [ ] **✅P1-1 项目设置改题目不生效**：project-settings.js:112 只写 project.title；全站用 meaningfulTitle(design.title, project.title)（design 优先）→ 走完选题后改题无效。
+- [ ] **✅P1-2 单项目导出备份不可导入**：projects.js:192 导出 {app,version,project}，settings.js:225/238 导入只认 {appState,projects}/{data} → 报“没有可识别的数据”。
+- [ ] **✅P1-3 章节版本回退破坏结构+原子节点**（数据丢失）：writing.js:1812 createChapterSnapshot 用 textBetween（丢 atom）；:1844 restoreChapterVersion 用 insertText（抹平结构）。
+- [ ] **✅P1-4 导出前检查读已保存态而非实时**：writing.js:2798 wb-export-check 用 docFromJSON({...getProject()})，导出用 viewState.doc → 防抖/流式时不一致。
+- [ ] **✅P1-5 导出检查弹窗问题跳转失效**：writing.js:2829 只绑 [data-ec-close]，未绑 [data-issue-go]（check-export.js:322 有）→ “去对应章节/去文献库”点了模块不变、弹窗不关。
+- [ ] **✅P1-6 gbt7714 issueBlock 卷期错拼**：gbt7714.js:13-18 `[volume,issue,pages].join(': ')` → "34: (3): 45-52"，应为 "34(3): 45-52"，波及所有 J/C 引用。
 
 ## P2（高价值，随 P1 一并修）
 - [ ] **改截止日期后计划不重算**：project-settings.js:119 只改 dueDate；甘特图用旧 stages。
