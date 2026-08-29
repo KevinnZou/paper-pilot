@@ -3,7 +3,7 @@ import { toast, copyText, escapeHtml, setLoading } from '../ui.js';
 import { get, set } from '../storage.js';
 import { chat } from '../api.js';
 import { renderLitSearch } from '../litsearch.js';
-import { getProject, getCitations, saveCitations, getEvidence, saveEvidence } from '../project.js';
+import { getProject, getCitations, saveCitations, getEvidence, saveEvidence, listProjects } from '../project.js';
 import { ensureCitationIds, normalizeCitationEntry, formatCitationEntry } from '../citation-utils.js';
 import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../document-model.js';
 import { ICONS } from '../icons.js';
@@ -204,6 +204,21 @@ function ensureNumbers(list) {
   if (changed || withIds.changed) saveCitations(list);
 }
 
+function citationRestorePools(currentList) {
+  const legacy = get('citations', []);
+  const projectPool = listProjects().flatMap(project => project.citations || []);
+  return [...currentList, ...(Array.isArray(legacy) ? legacy : []), ...projectPool].filter(Boolean);
+}
+
+function restoreCitationEntry(source, fallback, standard) {
+  return normalizeCitationEntry({
+    ...(source || {}),
+    ...fallback,
+    id: fallback.id || source?.id,
+    litNo: fallback.litNo,
+  }, standard);
+}
+
 function restoreMissingCitationsFromDoc(list) {
   const project = getProject();
   if (!project.documentV2) return list;
@@ -211,6 +226,7 @@ function restoreMissingCitationsFromDoc(list) {
   const order = buildCitationNumberMap(doc);
   const existing = new Set(list.map(item => item.id).filter(Boolean));
   const existingLitNos = new Set(list.map(item => Number(item.litNo)).filter(Number.isFinite));
+  const pools = citationRestorePools(list);
   const missing = [...order.entries()]
     .filter(([id]) => id && !existing.has(id))
     .sort((a, b) => a[1] - b[1]);
@@ -223,28 +239,36 @@ function restoreMissingCitationsFromDoc(list) {
     .filter(n => n && !existingLitNos.has(n) && ![...order.values()].includes(n))
     .sort((a, b) => a - b);
   if (!missing.length && !missingPlain.length) return list;
-  const restored = missing.map(([id, number]) => normalizeCitationEntry({
-    id,
-    litNo: number,
-    type: 'J',
-    title: `正文引用文献 ${number}`,
-    source: '待补全来源',
-    year: '',
-    doi: String(id).includes('/') || String(id).includes('.') ? id : '',
-  }, project.referenceStandard));
-  missingPlain.forEach(number => {
-    restored.push(normalizeCitationEntry({
-      id: `legacy-cit-${number}`,
+  const restored = missing.map(([id, number]) => {
+    const source = pools.find(item => item.id === id || item.doi === id);
+    return restoreCitationEntry(source, {
+      id,
       litNo: number,
-      type: 'J',
-      title: `正文引用文献 ${number}`,
-      source: '待补全来源',
-      year: '',
+      type: source?.type || 'J',
+      title: source?.title || `正文引用文献 ${number}`,
+      source: source?.source || '待补全来源',
+      year: source?.year || '',
+      doi: source?.doi || (String(id).includes('/') || String(id).includes('.') ? id : ''),
+    }, project.referenceStandard);
+  });
+  missingPlain.forEach(number => {
+    const source = pools.find(item => Number(item.litNo) === number);
+    restored.push(restoreCitationEntry(source, {
+      id: source?.id || `legacy-cit-${number}`,
+      litNo: number,
+      type: source?.type || 'J',
+      title: source?.title || `正文引用文献 ${number}`,
+      source: source?.source || '待补全来源',
+      year: source?.year || '',
+      doi: source?.doi || '',
     }, project.referenceStandard));
   });
   const next = [...list, ...restored].sort((a, b) => (a.litNo || 999999) - (b.litNo || 999999));
   saveCitations(next);
-  toast(`已从正文引用恢复 ${restored.length} 条待补全文献`, 'ok', 3200);
+  const complete = restored.filter(item => item.title && !/^正文引用文献 \d+$/.test(item.title)).length;
+  toast(complete === restored.length
+    ? `已从正文引用恢复 ${restored.length} 条文献`
+    : `已从正文引用恢复 ${restored.length} 条文献，其中 ${restored.length - complete} 条需要补全信息`, 'ok', 3600);
   return next;
 }
 
