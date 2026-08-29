@@ -1546,9 +1546,9 @@ kbd {
 }
 .wb-version-callout {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   padding: 12px 13px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -1559,6 +1559,7 @@ kbd {
   display: block;
   margin-bottom: 4px;
 }
+.wb-version-callout .btn { align-self: flex-start; }
 .wb-version-group + .wb-version-group {
   margin-top: 14px;
 }
