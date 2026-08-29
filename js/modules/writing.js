@@ -75,8 +75,12 @@ function sectionMetaFromProject(project) {
 
 function topLevelSections(doc) {
   const sections = [];
+  const boundaries = []; // 顶层标题（非 subsection）作为章节体边界
   doc.forEach((node, offset, index) => {
-    if (node.type.name === 'heading' && node.attrs.role === 'section') {
+    if (node.type.name !== 'heading') return;
+    if (node.attrs.role === 'subsection') return; // 章内子标题，不作为边界
+    boundaries.push({ offset, index, role: node.attrs.role });
+    if (node.attrs.role === 'section') {
       sections.push({
         chapter: node.textContent.trim(),
         sectionId: node.attrs.sectionId,
@@ -86,9 +90,10 @@ function topLevelSections(doc) {
       });
     }
   });
-  sections.forEach((item, idx) => {
-    item.endIndex = idx + 1 < sections.length ? sections[idx + 1].startIndex - 1 : doc.childCount - 1;
-    item.bodyTo = idx + 1 < sections.length ? sections[idx + 1].headingFrom - 1 : doc.content.size;
+  sections.forEach(item => {
+    const next = boundaries.find(h => h.offset > item.headingFrom - 1);
+    item.endIndex = next ? next.index - 1 : doc.childCount - 1;
+    item.bodyTo = next ? next.offset : doc.content.size;
   });
   return sections;
 }
