@@ -14,7 +14,9 @@ function issueBlock(c) {
   const volume = c.volume || '';
   const issue = c.issue ? `(${c.issue})` : '';
   const pages = c.pages || '';
-  return [volume, issue, pages].filter(Boolean).join(': ').replace(/\(\):\s*/, '');
+  // GB/T 7714：卷(期): 页码 —— 卷期间无冒号，页码前才加冒号
+  const volIssue = [volume, issue].filter(Boolean).join('');
+  return [volIssue, pages].filter(Boolean).join(': ');
 }
 
 export function formatCitation(c, standard = 'GB/T 7714-2025') {
@@ -26,7 +28,7 @@ export function formatCitation(c, standard = 'GB/T 7714-2025') {
   const pub = [c.place, c.publisher].filter(Boolean).join(': ');
   const issue = issueBlock(c);
   const access = c.accessDate ? `[${c.accessDate}]` : '';
-  const onlineTail = [c.url, access].filter(Boolean).join('. ');
+  const onlineTail = [access, c.url].filter(Boolean).join('. ');
   const joinStd = (...parts) => parts.filter(Boolean).join('. ') + (parts.some(Boolean) ? '.' : '');
   const refTag = standard === 'GB/T 7714-2015' ? '' : '';
   switch (c.type) {

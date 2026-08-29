@@ -1,5 +1,6 @@
 import { toast, escapeHtml } from '../ui.js';
-import { getProject, updateBasics, hasActiveProject } from '../project.js';
+import { getProject, updateBasics, saveProject, hasActiveProject } from '../project.js';
+import { isPlaceholderTitle } from '../title-utils.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
 
@@ -110,8 +111,9 @@ export default {
       </div>`;
 
     el.querySelector('#ps-save').addEventListener('click', () => {
+      const title = el.querySelector('#ps-title').value.trim();
       updateBasics({
-        title: el.querySelector('#ps-title').value.trim(),
+        title,
         school: el.querySelector('#ps-school').value.trim(),
         college: el.querySelector('#ps-college').value.trim(),
         degreeType: el.querySelector('#ps-degree').value,
@@ -119,6 +121,13 @@ export default {
         dueDate: el.querySelector('#ps-due').value,
         referenceStandard: el.querySelector('#ps-ref').value,
       });
+      // 保证题目与"研究设计题目"同源：改题同步写 researchDesign.title，避免被其覆盖（P1-1）
+      const p = getProject();
+      const rd = p.researchDesign || {};
+      if (!isPlaceholderTitle(String(rd.title || '')) || String(rd.title || '') !== title) {
+        saveProject({ researchDesign: { ...rd, title } });
+        if (title) updateBasics({ title });
+      }
       toast('项目设置已保存', 'ok');
     });
 

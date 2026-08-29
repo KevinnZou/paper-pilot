@@ -3,7 +3,7 @@ import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { history, undo, redo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { baseKeymap } from 'prosemirror-commands';
-import { Fragment } from 'prosemirror-model';
+import { Fragment, Slice } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } from '../ui.js';
 import { chat, streamChat } from '../api.js';
 import { searchLiterature } from '../litsearch.js';
@@ -1813,9 +1813,9 @@ export default {
       if (!section) return null;
       const text = viewState.view.state.doc.textBetween(section.bodyFrom, section.bodyTo, '\n').trim();
       if (!text) return null;
-      const version = snapshotChapter(section.chapter, text, 'manual', label, {
-        chapter: section.chapter,
-      });
+      // 存结构化片段（含引用/图/表/公式等原子节点），回退时不丢结构
+      const slice = viewState.view.state.doc.slice(section.bodyFrom, section.bodyTo);
+      const version = snapshotChapter(section.chapter, text, 'manual', label, { chapter: section.chapter, slice: slice.toJSON() });
       if (version) renderVersionsPanel();
       return version;
     }
@@ -1852,8 +1852,14 @@ export default {
         toast('当前章节没有这个版本记录', 'err');
         return;
       }
-      if (!window.confirm(`确认回退章节「${section.chapter}」到 ${timeLabel(version.at)} 的版本吗？`)) return;
-      viewState.view.dispatch(viewState.view.state.tr.insertText(version.text || '', section.bodyFrom, section.bodyTo).scrollIntoView());
+      if (!window.confirm(`确认回退章节「${section.chapter}」到 ${timeLabel(version.at)} 的版本吗？章节内的结构与引文/图表会被替换为存档内容。`)) return;
+      const tr = viewState.view.state.tr;
+      if (version.slice) {
+        const slice = Slice.fromJSON(paperSchema, version.slice);
+        viewState.view.dispatch(tr.replaceWith(section.bodyFrom, section.bodyTo, slice.content).scrollIntoView());
+      } else {
+        viewState.view.dispatch(tr.insertText(version.text || '', section.bodyFrom, section.bodyTo).scrollIntoView());
+      }
       toast(`已回退章节「${section.chapter}」`, 'ok');
     }
 
@@ -2798,7 +2804,8 @@ export default {
     el.querySelector('#wb-export-check')?.addEventListener('click', () => {
       const project = getProject();
       const citations = ensureCitationIds(getCitations()).list;
-      const doc = docFromJSON({ ...project, citations });
+      // 与导出同源：用编辑器实时 doc，而非已保存的 documentV2（防抖/流式未存内容也能被检查到）
+      const doc = viewState.view.state.doc;
       const issues = collectExportIssues(project, doc, citations);
       const cnt = g => issues.filter(i => i.group === g).length;
       const existing = document.getElementById('wb-export-check-modal');
@@ -2828,6 +2835,14 @@ export default {
       document.addEventListener('keydown', onEcKey);
       modal.querySelectorAll('[data-ec-close]').forEach(b => b.addEventListener('click', () => { modal.remove(); document.removeEventListener('keydown', onEcKey); }));
       modal.addEventListener('click', e => { if (e.target === modal) { modal.remove(); document.removeEventListener('keydown', onEcKey); } });
+      // P1-5：问题条目跳转（去对应章节 / 文献库 / 研究设计 / 计划）
+      modal.querySelectorAll('[data-issue-go]').forEach(btn => btn.addEventListener('click', () => {
+        const item = issues[Number(btn.dataset.issueGo)];
+        if (!item) return;
+        if (item.chapter) setCurrentChapter(item.chapter);
+        modal.remove(); document.removeEventListener('keydown', onEcKey);
+        document.dispatchEvent(new CustomEvent('tm:navigate', { detail: item.nav || 'writing' }));
+      }));
     });
     el.querySelector('#wb-export-word')?.addEventListener('click', () => {
       exportTemplateWord(viewState.view.state.doc, citations);

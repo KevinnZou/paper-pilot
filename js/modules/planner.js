@@ -32,7 +32,11 @@ function fmtDate(ms) {
 }
 
 function dateKey(ms) {
-  return new Date(ms).toISOString().slice(0, 10);
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function plusDays(n) {
@@ -189,7 +193,7 @@ function render(el) {
   const stages = project.stages || [];
   const totalDays = stages.length ? (stages[0].end - stages[stages.length - 1].start) : 1;
   const tasks = allTasks(project, plan);
-  const todayTasks = tasks.filter(task => task.dueDate <= today && !isDone(task, plan));
+  const todayTasks = tasks.filter(task => task.dueDate === today && !isDone(task, plan));
   const weekEnd = plusDays(6);
   const weekTasks = tasks.filter(task => task.dueDate > today && task.dueDate <= weekEnd && !isDone(task, plan));
   const overdueTasks = tasks.filter(task => task.dueDate < today && !isDone(task, plan));

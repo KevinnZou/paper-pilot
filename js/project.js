@@ -346,6 +346,22 @@ export function duplicateProject(id) {
   });
 }
 
+/** 导入单个项目备份（projects.js 导出的 {project}），作为新项目加入并激活 */
+export function importSingleProject(project) {
+  if (!project || typeof project !== 'object') return null;
+  const app = readApp();
+  const projects = { ...readProjects() };
+  const id = makeId();
+  const next = { ...project, id, createdAt: project.createdAt || nowIso(), updatedAt: nowIso() };
+  projects[id] = next;
+  app.projectOrder = [id, ...app.projectOrder.filter(x => x !== id)];
+  app.activeProjectId = id;
+  writeProjects(projects);
+  writeApp({ ...app });
+  emitProjects();
+  return id;
+}
+
 export function deleteProject(id) {
   const app = readApp();
   const projects = { ...readProjects() };

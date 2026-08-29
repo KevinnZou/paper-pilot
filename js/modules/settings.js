@@ -7,6 +7,7 @@ import {
   exportProjectStore,
   replaceProjectStore,
   clearProjectStore,
+  importSingleProject,
   markBackupExported,
   daysSinceLastBackup,
 } from '../project.js';
@@ -232,6 +233,17 @@ export default {
           document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
           return;
         }
+        // 单项目备份（projects.js 导出：{app:'paperpilot', version, project}）
+        if (parsed?.app === 'paperpilot' && parsed?.project) {
+          const id = importSingleProject(parsed.project);
+          if (id) {
+            toast('项目备份已导入并激活', 'ok');
+            document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
+          } else {
+            toast('项目备份格式无效', 'err', 3600);
+          }
+          return;
+        }
 
         const data = parsed?.data && typeof parsed.data === 'object' ? parsed.data : parsed;
         const entries = Object.entries(data).filter(([k, v]) => (k.startsWith('paperpilot:') || k.startsWith('thesismate:')) && typeof v === 'string');
@@ -253,7 +265,7 @@ export default {
       await clearProjectStore();
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
-        if (k && (k.startsWith('paperpilot:') || k.startsWith('thesismate:'))) localStorage.removeItem(k);
+        if (k && (k.startsWith('paperpilot:') || k.startsWith('thesismate:') || k.startsWith('paperpilot.'))) localStorage.removeItem(k);
       }
       remove('config');
       toast('本地数据已清除', 'ok');
