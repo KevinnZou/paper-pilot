@@ -8,6 +8,7 @@ import { chat, streamChat } from '../api.js';
 import { searchLiterature } from '../litsearch.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
 import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
+import { createDocxBlob } from '../docx-export.js';
 import {
   paperSchema,
   docFromJSON,
@@ -474,22 +475,22 @@ function buildPreviewHtml(doc, citations) {
   }).join('');
 }
 
-function thesisTemplateCss({ forWord = false } = {}) {
+function thesisTemplateCss() {
   return `
     @page { size: A4; margin: 30mm; }
-    html { background: ${forWord ? '#fff' : '#EEECE5'}; }
+    html { background: #EEECE5; }
     body {
-      width: ${forWord ? 'auto' : '210mm'};
-      min-height: ${forWord ? 'auto' : '297mm'};
+      width: 210mm;
+      min-height: 297mm;
       box-sizing: border-box;
-      margin: ${forWord ? '0' : '28px auto'};
-      padding: ${forWord ? '0' : '30mm'};
+      margin: 28px auto;
+      padding: 30mm;
       background: #fff;
       color: #000;
       font-family: SimSun, "Songti SC", STSong, serif;
       font-size: 12pt;
       line-height: 20pt;
-      ${forWord ? '' : 'box-shadow: 0 16px 45px rgba(38,48,59,.16);'}
+      box-shadow: 0 16px 45px rgba(38,48,59,.16);
     }
     .title {
       text-align: center;
@@ -563,15 +564,12 @@ function thesisTemplateCss({ forWord = false } = {}) {
   `;
 }
 
-function buildTemplateDocumentHtml(doc, citations, { forWord = false, showTip = true } = {}) {
+function buildTemplateDocumentHtml(doc, citations, { showTip = true } = {}) {
   const html = buildPreviewHtml(doc, citations);
   const title = escapeHtml(meaningfulTitle(getProject().title) || '论文');
   const tip = showTip ? '<div class="tip">默认学位论文模板 · Ctrl/Cmd+P 打印或另存 PDF</div>' : '';
-  const officeMeta = forWord
-    ? '<meta name="ProgId" content="Word.Document"><meta name="Generator" content="PaperPilot">'
-    : '';
-  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">${officeMeta}<title>${title} - 模板格式预览</title>
-  <style>${thesisTemplateCss({ forWord })}</style></head><body>${tip}${html}</body></html>`;
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${title} - 模板格式预览</title>
+  <style>${thesisTemplateCss()}</style></head><body>${tip}${html}</body></html>`;
 }
 
 function safeFileName(name) {
@@ -580,7 +578,8 @@ function safeFileName(name) {
 
 function downloadBlob(content, fileName, type) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([content], { type }));
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  a.href = URL.createObjectURL(blob);
   a.download = fileName;
   document.body.appendChild(a);
   a.click();
@@ -604,8 +603,7 @@ function openPrintPreview(doc, citations, { autoPrint = false } = {}) {
 }
 
 function exportTemplateWord(doc, citations) {
-  const html = buildTemplateDocumentHtml(doc, citations, { forWord: true, showTip: false });
-  downloadBlob(`\ufeff${html}`, `${safeFileName(getProject().title)}.doc`, 'application/msword;charset=utf-8');
+  downloadBlob(createDocxBlob(getProject(), doc, citations), `${safeFileName(getProject().title)}.docx`);
 }
 
 function citationViewFactory(getLabel) {

@@ -14,8 +14,14 @@ function textRuns(text) {
   return `<w:r><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
 }
 
-function paragraph(text, style = 'BodyText') {
-  return `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr>${textRuns(text)}</w:p>`;
+function paragraph(text, style = 'BodyText', options = {}) {
+  const pageBreak = options.pageBreakBefore ? '<w:pageBreakBefore/>' : '';
+  const align = options.align ? `<w:jc w:val="${options.align}"/>` : '';
+  return `<w:p><w:pPr><w:pStyle w:val="${style}"/>${pageBreak}${align}</w:pPr>${textRuns(text)}</w:p>`;
+}
+
+function pageBreakParagraph() {
+  return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
 }
 
 function crc32(bytes) {
@@ -174,15 +180,31 @@ function tableXml(rows) {
     <w:tblPr>
       <w:tblW w:w="0" w:type="auto"/>
       <w:tblBorders>
-        <w:top w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
-        <w:left w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
-        <w:bottom w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
-        <w:right w:val="single" w:sz="6" w:space="0" w:color="BDB6A8"/>
-        <w:insideH w:val="single" w:sz="6" w:space="0" w:color="D4CEC0"/>
-        <w:insideV w:val="single" w:sz="6" w:space="0" w:color="D4CEC0"/>
+        <w:top w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        <w:left w:val="nil"/>
+        <w:bottom w:val="single" w:sz="12" w:space="0" w:color="000000"/>
+        <w:right w:val="nil"/>
+        <w:insideH w:val="single" w:sz="6" w:space="0" w:color="000000"/>
+        <w:insideV w:val="nil"/>
       </w:tblBorders>
+      <w:tblCellMar>
+        <w:top w:w="100" w:type="dxa"/>
+        <w:left w:w="120" w:type="dxa"/>
+        <w:bottom w:w="100" w:type="dxa"/>
+        <w:right w:w="120" w:type="dxa"/>
+      </w:tblCellMar>
     </w:tblPr>
     ${rows.map((row, rowIndex) => `<w:tr>${row.map(cell => `<w:tc><w:tcPr>${rowIndex === 0 ? '<w:shd w:fill="F4EFE4"/>' : ''}</w:tcPr>${paragraph(cell || '', rowIndex === 0 ? 'TableHead' : 'TableCell')}</w:tc>`).join('')}</w:tr>`).join('')}
+  </w:tbl>`;
+}
+
+function formulaTableXml(text, number) {
+  return `<w:tbl>
+    <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr>
+    <w:tr>
+      <w:tc><w:tcPr><w:tcW w:w="8500" w:type="dxa"/></w:tcPr>${paragraph(text || '', 'Formula', { align: 'center' })}</w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="1100" w:type="dxa"/></w:tcPr>${paragraph(`（${number}）`, 'Formula', { align: 'right' })}</w:tc>
+    </w:tr>
   </w:tbl>`;
 }
 
@@ -193,11 +215,34 @@ function buildDocxParts(project, doc, citations) {
   const media = [];
   const relationships = ['<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'];
   let imageIndex = 1;
+  let chapterNo = 0;
+  let figureNo = 0;
+  let tableNo = 0;
+  let formulaNo = 0;
+  const chapterIndexFrom = text => {
+    const match = String(text || '').match(/第\s*(\d+)\s*章/);
+    return match ? Number(match[1]) : 0;
+  };
 
   renderable.forEach(block => {
     if (block.type === 'title') { blocks.push(paragraph(block.text, 'Title')); return; }
-    if (block.type === 'heading') { blocks.push(paragraph(block.text, 'Heading1')); return; }
-    if (block.type === 'notes_heading') { blocks.push(paragraph(block.text, 'Heading1')); return; }
+    if (block.type === 'heading') {
+      if (block.role === 'section') {
+        chapterNo = chapterIndexFrom(block.text) || chapterNo + 1;
+        figureNo = 0;
+        tableNo = 0;
+        formulaNo = 0;
+        blocks.push(pageBreakParagraph(), paragraph(block.text, 'HeadingChapter'));
+        return;
+      }
+      if (['abstract', 'references', 'ack'].includes(block.role)) {
+        blocks.push(paragraph(block.text, 'HeadingChapter'));
+        return;
+      }
+      blocks.push(paragraph(block.text, block.level >= 4 ? 'Heading3' : 'Heading2'));
+      return;
+    }
+    if (block.type === 'notes_heading') { blocks.push(paragraph(block.text, 'HeadingChapter')); return; }
     if (block.type === 'paragraph') { blocks.push(paragraph(block.text, 'BodyText')); return; }
     if (block.type === 'blockquote') { blocks.push(paragraph(block.text, 'BodyQuote')); return; }
     if (block.type === 'reference') { blocks.push(paragraph(block.text, 'Reference')); return; }
@@ -207,13 +252,17 @@ function buildDocxParts(project, doc, citations) {
       return;
     }
     if (block.type === 'formula') {
-      blocks.push(paragraph(block.latex || '', 'BodyQuote'));
-      blocks.push(paragraph(`式${block.number}${block.label ? ` ${block.label}` : ''}`, 'Caption'));
+      formulaNo += 1;
+      const number = chapterNo ? `${chapterNo}.${formulaNo}` : block.number;
+      blocks.push(formulaTableXml(block.latex || '', number));
+      if (block.label) blocks.push(paragraph(block.label, 'Caption'));
       if (block.note) blocks.push(paragraph(`说明：${block.note}`, 'BodyQuote'));
       return;
     }
     if (block.type === 'figure') {
-      const caption = `图${block.number} ${block.caption || block.alt || '未命名图片'}`;
+      figureNo += 1;
+      const number = chapterNo ? `${chapterNo}.${figureNo}` : block.number;
+      const caption = `图 ${number} ${block.caption || block.alt || '未命名图片'}`;
       const data = dataUrlToBytes(block.src);
       if (data && /image\/(png|jpeg)/.test(data.mime)) {
         const ext = data.mime === 'image/png' ? 'png' : 'jpg';
@@ -229,8 +278,10 @@ function buildDocxParts(project, doc, citations) {
       return;
     }
     if (block.type === 'table') {
+      tableNo += 1;
+      const number = chapterNo ? `${chapterNo}.${tableNo}` : block.number;
+      blocks.push(paragraph(`表 ${number} ${block.caption || '未命名表格'}`, 'Caption'));
       if (block.rows?.length) blocks.push(tableXml(block.rows));
-      blocks.push(paragraph(`表${block.number} ${block.caption || '未命名表格'}`, 'Caption'));
       if (block.note) blocks.push(paragraph(`说明：${block.note}`, 'BodyQuote'));
       return;
     }
@@ -257,7 +308,7 @@ function buildDocxParts(project, doc, citations) {
       ${blocks.join('')}
       <w:sectPr>
         <w:pgSz w:w="11906" w:h="16838"/>
-        <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
+        <w:pgMar w:top="1701" w:right="1701" w:bottom="1701" w:left="1701" w:header="1247" w:footer="1247" w:gutter="0"/>
       </w:sectPr>
     </w:body>
   </w:document>`;
@@ -276,48 +327,71 @@ function buildStylesXml() {
     <w:style w:type="paragraph" w:styleId="Title">
       <w:name w:val="Title"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:jc w:val="center"/><w:spacing w:after="240"/></w:pPr>
-      <w:rPr><w:b/><w:sz w:val="32"/><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/></w:rPr>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr>
+      <w:rPr><w:b/><w:sz w:val="44"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="HeadingChapter">
+      <w:name w:val="Chapter Heading"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="480" w:after="360" w:line="240" w:lineRule="auto"/></w:pPr>
+      <w:rPr><w:b/><w:sz w:val="32"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Heading1">
       <w:name w:val="Heading 1"/>
+      <w:basedOn w:val="HeadingChapter"/>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Heading2">
+      <w:name w:val="Heading 2"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>
-      <w:rPr><w:b/><w:sz w:val="28"/><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/></w:rPr>
+      <w:pPr><w:spacing w:before="360" w:after="120" w:line="400" w:lineRule="exact"/></w:pPr>
+      <w:rPr><w:b/><w:sz w:val="28"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Heading3">
+      <w:name w:val="Heading 3"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:spacing w:before="240" w:after="120" w:line="400" w:lineRule="exact"/></w:pPr>
+      <w:rPr><w:b/><w:sz w:val="26"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="BodyText">
       <w:name w:val="Body Text"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:ind w:firstLine="420"/><w:spacing w:line="480" w:lineRule="auto"/></w:pPr>
+      <w:pPr><w:ind w:firstLineChars="200" w:firstLine="480"/><w:spacing w:before="0" w:after="0" w:line="400" w:lineRule="exact"/></w:pPr>
       <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="24"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="BodyQuote">
       <w:name w:val="Body Quote"/>
       <w:basedOn w:val="BodyText"/>
-      <w:pPr><w:ind w:left="420"/><w:spacing w:line="420" w:lineRule="auto"/></w:pPr>
+      <w:pPr><w:ind w:left="480" w:firstLine="480"/><w:spacing w:before="0" w:after="0" w:line="400" w:lineRule="exact"/></w:pPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Caption">
       <w:name w:val="Caption"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="120"/></w:pPr>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="120" w:after="120" w:line="240" w:lineRule="auto"/></w:pPr>
       <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Formula">
+      <w:name w:val="Formula"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:spacing w:before="120" w:after="120" w:line="240" w:lineRule="auto"/></w:pPr>
+      <w:rPr><w:rFonts w:ascii="Cambria Math" w:eastAsia="宋体"/><w:sz w:val="24"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="TableHead">
       <w:name w:val="Table Head"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:jc w:val="center"/></w:pPr>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="60" w:line="240" w:lineRule="auto"/></w:pPr>
       <w:rPr><w:b/><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="TableCell">
       <w:name w:val="Table Cell"/>
       <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="60" w:line="240" w:lineRule="auto"/></w:pPr>
       <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Reference">
       <w:name w:val="Reference"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:ind w:left="420" w:hanging="420"/><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>
-      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+      <w:pPr><w:ind w:left="567" w:hanging="567"/><w:spacing w:before="60" w:after="0" w:line="320" w:lineRule="exact"/></w:pPr>
+      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr>
     </w:style>
   </w:styles>`;
 }
