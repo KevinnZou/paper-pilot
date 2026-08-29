@@ -596,6 +596,7 @@ function renderLibraryTab(list, citedNums) {
             <button class="btn btn-ghost btn-sm" id="cit-batch-uncited" ${list.length ? '' : 'disabled'}>删除未引用</button>
             <button class="btn btn-ghost btn-sm" id="cit-batch-placeholder" ${list.length ? '' : 'disabled'}>删除占位</button>
             <button class="btn btn-ghost btn-sm" id="cit-batch-enrich" ${list.length ? '' : 'disabled'}>自动补全</button>
+            <button class="btn btn-ghost btn-sm" id="cit-batch-sync" ${list.length ? '' : 'disabled'}>检查并同步正文引用</button>
           </div>
         </div>
         <div class="citation-list-shell">
@@ -781,6 +782,19 @@ function bindListActions(el) {
       await enrichPlaceholderCitations(el);
       refreshLibrary(el);
       toast('已尝试补全（文献池比对 + CrossRef 按 DOI），可再刷新查看', 'ok', 2800);
+    });
+    el.querySelector('#cit-batch-sync')?.addEventListener('click', async () => {
+      // 扫描正文全部引用标记，与文献库比对，缺的补上（能对上的补真实，否则补占位）
+      const before = getCitations().length;
+      ensureNumbers(getCitations());
+      restoreMissingCitationsFromDoc(getCitations());
+      upgradePlaceholderCitationsFromPools(getCitations());
+      await enrichPlaceholderCitations(el);
+      const list = getCitations();
+      const placeholders = list.filter(isPlaceholderCitation).length;
+      refreshLibrary(el);
+      const delta = list.length - before;
+      toast(`已同步正文引用：${delta > 0 ? `新增 ${delta} 条，` : ''}当前 ${list.length} 条，其中 ${placeholders} 条需补全（可点「自动补全」或删除）`, 'ok', 3200);
     });
   }
 
