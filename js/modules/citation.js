@@ -475,7 +475,7 @@ function renderTabNav(activeTab, stats = {}) {
     <div class="citation-shell-head">
       <div>
         <h2><span class="mark"></span>资料工作台</h2>
-        <p class="desc">把“找文献、管文献、摘证据”拆开处理，当前页面只保留一类任务。</p>
+        <p class="desc">资料工作台：导入检索文献、管理文献库、整理证据卡，各有分工。</p>
         <div class="citation-quick-stats">
           <span><b>${stats.total || 0}</b> 文献</span>
           <span><b>${stats.cited || 0}</b> 已引用</span>
@@ -506,7 +506,7 @@ function renderDiscoverTab(prj) {
         <div class="citation-panel-head">
           <div>
             <h4>智能推荐与检索</h4>
-            <p class="desc">这是最常用的入口。基于当前题目和大纲批量推荐中英文文献，也支持手动输入检索词，确认后再勾选入库。</p>
+            <p class="desc">基于当前题目与大纲批量推荐中英文文献，也可手动输入检索词，确认后加入文献库。</p>
           </div>
         </div>
         <div id="cit-lit"></div>
@@ -522,7 +522,7 @@ function renderDiscoverTab(prj) {
             <div class="citation-panel-head">
             <div>
               <h4>批量解析引用</h4>
-              <p class="desc">把从知网、Google Scholar 等处复制的引用信息清洗成结构化条目，再统一入库。</p>
+              <p class="desc">把从知网、Google Scholar 等复制的引用信息整理成规范条目，加入文献库。</p>
             </div>
             </div>
             <label class="field-label">粘贴引用信息</label>
@@ -594,7 +594,7 @@ function renderLibraryTab(list, citedNums) {
       <div class="citation-section-head">
         <div>
           <h3>我的文献库</h3>
-          <p class="desc">这里专门做整理和查找，不再混入检索与证据编辑。</p>
+          <p class="desc">整理、查找并管理你已收录的文献。</p>
         </div>
         <div class="citation-head-actions">
           <span class="chip ref-no mono" id="cit-library-count">${list.length} 条</span>
@@ -634,7 +634,7 @@ function renderEvidenceTab(list, prj) {
       <div class="citation-section-head">
         <div>
           <h3>证据卡</h3>
-          <p class="desc">默认先看证据卡列表，需要补充时再新增，避免编辑区长期占着页面。</p>
+          <p class="desc">集中管理证据卡，供写作时直接取用。</p>
         </div>
         <div class="citation-head-actions">
           <span class="chip mono" id="evi-count">${evidenceCount} 条证据</span>
@@ -646,7 +646,7 @@ function renderEvidenceTab(list, prj) {
         <div class="citation-panel-head">
           <div>
             <h4>证据卡列表</h4>
-            <p class="desc">优先保留后续写作时会直接拿来支撑论证的内容。</p>
+            <p class="desc">整理写作时能直接用于支撑论证的证据内容。</p>
           </div>
         </div>
         <div class="item-list citation-evidence-list" id="cit-evidence-list">${renderEvidenceList(evidenceListWithCitations(list), prj.outline || [])}</div>

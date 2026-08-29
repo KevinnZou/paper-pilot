@@ -1206,7 +1206,7 @@ export default {
             <div class="wb-side-pane" data-side-pane="evidence">
               <div class="wb-side-pane-head">
                 <h3><span class="mark"></span>相关证据</h3>
-                <p class="desc">优先看和当前章节直接相关的证据卡。</p>
+                <p class="desc">展示与当前章节直接相关的证据卡。</p>
               </div>
               <div id="wb-evidence"></div>
             </div>

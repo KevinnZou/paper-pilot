@@ -87,7 +87,7 @@ function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapte
       bullets: [
         diff > 0 ? `补足约 ${diff} 字，达到 ${wordGoal} 字初稿` : `继续精修本章，已超过 ${wordGoal} 字基础线`,
         '检查本章至少有 2 处文献支撑',
-        daysLeft != null && daysLeft <= 14 ? '同步留意截止风险，避免只写不排期' : '完成后更新章节状态',
+        daysLeft != null && daysLeft <= 14 ? '同步关注截止日期，安排好写作与进度' : '完成后更新章节状态',
       ],
       eta: chapterStatus === '未开始' ? '45 分钟' : '35 分钟',
       nav: 'writing',
@@ -237,7 +237,7 @@ export default {
     const journeyHtml = `
       <div class="card journey-card">
         <h2><span class="mark"></span>论文主线　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
-        <p class="desc">只显示真正影响论文产出的关键节点。</p>
+        <p class="desc">聚焦对论文推进最关键的事项。</p>
         <div class="journey">
           ${steps.map((s, i) => `
             <button class="journey-step ${s.done ? 'done' : i === currentIdx ? 'current' : ''}" data-nav="${s.nav}" title="${escapeHtml(s.label)}${s.done ? '（已完成）' : i === currentIdx ? '（当前步骤）' : ''}">
@@ -279,7 +279,7 @@ export default {
 
         <div class="card side-summary-card">
           <h2><span class="mark"></span>辅助管理</h2>
-          <p class="desc">截止日期和打卡只辅助节奏，不影响你继续写作。</p>
+          <p class="desc">截止日期和打卡帮你把握节奏，不影响你继续写作。</p>
           <div class="hero-stats dash-status-stats">
             <div class="stat"><span class="stat-num ${daysLeft !== null && daysLeft <= 14 ? 'danger' : ''}">${daysLeft !== null ? daysLeft : '—'}</span><span class="stat-label">${p.dueDate ? '距截止天数' : '未设截止'}</span></div>
             <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续天数</span></div>
@@ -299,7 +299,7 @@ export default {
         <div class="hero-top">
           <div>
             <h2><span class="mark"></span>工作区入口</h2>
-            <p class="desc">${hasWriting ? '你已经进入写作状态，首页优先保留继续推进论文的入口。' : '先完成研究设计，再进入写作、文献和计划。'}</p>
+            <p class="desc">${hasWriting ? '你已经进入写作状态，这里汇总继续推进论文的快捷入口。' : '先完成研究设计，再进入写作、文献和计划。'}</p>
           </div>
           <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'topic' : 'writing'}">${hasWriting ? '调整研究设计' : '检查与导出'}</button>
         </div>

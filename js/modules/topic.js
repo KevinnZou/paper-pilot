@@ -383,7 +383,7 @@ function planPrompts(design) {
     ...(design.feasibility.suggestions.length ? [{
       key: 'strategy',
       title: '你希望论文范围主要收在哪一处？',
-      desc: '最后只定写作边界，避免题目太散；大纲会按这个范围展开。',
+      desc: '明确写作边界，大纲会按这个范围展开。',
       answered: !!selectedRiskStrategy(design),
       summary: selectedRiskStrategy(design),
       customPlaceholder: '例如：只聚焦采购环节 / 只分析两家案例企业',
@@ -614,7 +614,7 @@ function render(el) {
           <div>
             <div class="topic-step-label">Step 1</div>
             <h2><span class="mark"></span>先从想法里挑出题目</h2>
-            <p class="desc">这里只保留最少输入。你描述研究想法和限制条件，AI 直接给出题目候选，你只需要做选择。</p>
+            <p class="desc">描述研究想法与限制条件，AI 会给出题目候选，你只需挑选最合适的。</p>
           </div>
           <div class="topic-head-side">
             <span class="chip doing">当前阶段</span>
@@ -671,7 +671,7 @@ function render(el) {
           <div>
             <div class="topic-step-label">Step 2</div>
             <h2><span class="mark"></span>从方案候选里做选择</h2>
-            <p class="desc">这一页不再要求你大段填写。AI 会基于题目给出研究问题、方法和数据来源建议，你只需要选一个最合适的组合。</p>
+            <p class="desc">确认 AI 基于题目给出的研究问题、方法与数据来源组合。</p>
           </div>
           <div class="topic-head-side">
             <span class="chip doing">当前阶段</span>
@@ -687,7 +687,7 @@ function render(el) {
         <section class="topic-candidate-section">
           <div class="topic-candidate-head">
             <h3>像答问卷一样把方案定下来</h3>
-            <p class="desc">每次只回答一个问题。点一个答案就进入下一问，不需要再点确认。</p>
+            <p class="desc">一次一个问题，点选答案即可进入下一问。</p>
           </div>
           ${renderPlanQuestionnaire(design)}
         </section>
@@ -777,7 +777,7 @@ function render(el) {
       <div class="topic-shell-head">
         <div>
           <h2><span class="mark"></span>研究设计向导</h2>
-          <p class="desc">按真实论文推进顺序完成：先定题，再定方案，最后出大纲。</p>
+          <p class="desc">按论文推进顺序完成：先定题，再定方案，最后出大纲。</p>
         </div>
         <div class="topic-shell-status">当前第 ${step} 步 / 共 3 步</div>
       </div>

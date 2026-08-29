@@ -206,7 +206,7 @@ function render(el) {
         <div class="planner-hero-head">
           <div>
             <h2><span class="mark"></span>今日节奏</h2>
-            <p class="desc">把今天要做什么、是否打卡、阶段是否合理放在同一条工作线上。</p>
+            <p class="desc">今天做什么、是否打卡、当前处于哪个阶段，一目了然。</p>
           </div>
           <button class="btn btn-sm" id="checkin-btn" ${checkedToday ? 'disabled title="今天已经打过卡，明天再来"' : ''}>${checkedToday ? '今日已打卡 ✓' : '今日打卡'}</button>
         </div>
@@ -246,7 +246,7 @@ function render(el) {
           <div class="planner-panel-head">
             <div>
               <h2><span class="mark"></span>本周行动</h2>
-              <p class="desc">${overdueTasks.length ? `先处理逾期任务：当前还有 <b>${overdueTasks.length}</b> 个任务已经过期。` : '只保留当前最该推进的事项，完成后再看后续安排。'}</p>
+              <p class="desc">${overdueTasks.length ? `先处理逾期任务：当前还有 <b>${overdueTasks.length}</b> 个任务已经过期。` : '先专注今天最该推进的事项，完成后再看后续。'}</p>
             </div>
             <div class="planner-counts">
               <span class="chip ${overdueTasks.length ? 'doing' : ''}">${todayTasks.length} 今日</span>
@@ -281,7 +281,7 @@ function render(el) {
             <div class="planner-panel-head">
               <div>
                 <h3>后续任务</h3>
-                <p class="desc">明天起 7 天内需要看见的任务，默认只露出最靠前的几项。</p>
+                <p class="desc">展示接下来 7 天里需要推进的任务。</p>
               </div>
             </div>
             ${renderTaskList(weekPreview, plan, '本周自动任务还不多，可以补充一个手动任务。')}
@@ -293,7 +293,7 @@ function render(el) {
           <div class="planner-panel-head">
             <div>
               <h2><span class="mark"></span>节奏记录</h2>
-              <p class="desc">近 70 天打卡和最近小结放在这里，主要用于回看节奏。</p>
+              <p class="desc">回看近 70 天的打卡记录与最近小结。</p>
             </div>
           </div>
           <div class="planner-cal">${calHtml}</div>
@@ -307,7 +307,7 @@ function render(el) {
         <div class="planner-panel-head">
           <div>
             <h2><span class="mark"></span>计划与时间轴</h2>
-            <p class="desc">定模板和截止日期后生成倒排阶段；这里看整体节奏，不和今日行动混在一起。</p>
+            <p class="desc">设定模板与截止日期后，这里展示整体时间节奏。</p>
           </div>
         </div>
         <div class="planner-timeline-controls">
