@@ -2,6 +2,7 @@ import { EditorState, TextSelection, Plugin, PluginKey } from 'prosemirror-state
 import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { history, undo, redo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
+import { baseKeymap } from 'prosemirror-commands';
 import { Fragment } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } from '../ui.js';
 import { chat, streamChat } from '../api.js';
@@ -2271,6 +2272,7 @@ export default {
             return true;
           },
         }),
+        keymap(baseKeymap),
       ],
     });
 
