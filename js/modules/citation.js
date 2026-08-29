@@ -370,6 +370,36 @@ function nextLitNo(list) {
   return list.reduce((m, c) => Math.max(m, c.litNo || 0), 0) + 1;
 }
 
+function citationExists(list, entry) {
+  const doi = String(entry?.doi || '').trim().toLowerCase();
+  const title = String(entry?.title || '').trim().toLowerCase();
+  return list.some(item => {
+    if (doi && String(item.doi || '').trim().toLowerCase() === doi) return true;
+    if (title && String(item.title || '').trim().toLowerCase() === title) return true;
+    return false;
+  });
+}
+
+/** 去除文献库中重复条目（同 DOI 或同题名，保留先入库的） */
+function dedupeCitations(list) {
+  const seenDoi = new Set();
+  const seenTitle = new Set();
+  const next = [];
+  let removed = 0;
+  list.forEach(item => {
+    const doi = String(item?.doi || '').trim().toLowerCase();
+    const title = String(item?.title || '').trim().toLowerCase();
+    const dup = (doi && seenDoi.has(doi)) || (title && seenTitle.has(title));
+    if (dup) { removed++; return; }
+    if (doi) seenDoi.add(doi);
+    if (title) seenTitle.add(title);
+    next.push(item);
+  });
+  if (removed) saveCitations(next);
+  if (removed) toast(`已移除 ${removed} 条重复文献`, 'ok', 2400);
+  return next;
+}
+
 function makeEvidenceId() {
   return globalThis.crypto?.randomUUID?.() || `ev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -834,6 +864,7 @@ function bindListActions(el) {
 function render(el) {
   const list0 = getCitations();
   ensureNumbers(list0);
+  dedupeCitations(getCitations());
   restoreMissingCitationsFromDoc(getCitations());
   upgradePlaceholderCitationsFromPools(getCitations());
   pruneUnresolvablePlaceholders();
@@ -954,6 +985,7 @@ function render(el) {
     Object.assign(entry, formatCitationEntry({ ...entry, id: entry.id || crypto.randomUUID?.() }, prj.referenceStandard));
     updatePreview(); // 同步刷新预览（防抖未触发时立即点保存也能看到最新格式）
     const list = getCitations();
+    if (citationExists(list, entry)) { toast('文献库已有相同文献（相同题名或 DOI），未重复添加', 'err'); return; }
     if (!entry.id) entry.id = crypto.randomUUID?.() || `cit-${Date.now()}`;
     entry.litNo = nextLitNo(list);
     list.unshift(entry);
@@ -1014,25 +1046,30 @@ function render(el) {
         toast('解析失败：AI 返回格式异常', 'err');
         return;
       }
-      const list = getCitations();
       const objs = entries.filter(e => e && typeof e === 'object'); // 防御 AI 返回非对象元素
       if (!objs.length) {
         out.innerHTML = `<span class="placeholder">AI 未解析出文献条目，请检查粘贴内容或稍后重试</span>`;
         toast('未解析到文献条目', 'err');
         return;
       }
+      const list = getCitations();
+      let added = 0, skipped = 0;
+      const addedEntries = [];
       objs.forEach(e => {
         e.id = e.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         Object.assign(e, normalizeCitationEntry(e, prj.referenceStandard));
+        if (citationExists(list, e)) { skipped++; return; }
         e.litNo = nextLitNo(list);
         list.unshift(e);
+        addedEntries.push(e);
+        added++;
       });
       saveCitations(list);
       out.innerHTML =
-        `<span class="sample-tag">已解析 ${objs.length} 条并保存到文献库</span>\n` +
-        escapeHtml(objs.map((e, i) => `[${i + 1}] ${e.formatted}`).join('\n'));
+        `<span class="sample-tag">已解析 ${added} 条并保存到文献库${skipped ? `（跳过重复 ${skipped} 条）` : ''}</span>\n` +
+        escapeHtml(addedEntries.map((e, i) => `[${i + 1}] ${e.formatted}`).join('\n'));
       out.classList.add('filled');
-      toast(`成功解析并保存 ${objs.length} 条文献`, 'ok');
+      toast(`成功解析并保存 ${added} 条文献${skipped ? `（跳过重复 ${skipped} 条）` : ''}`, 'ok');
       refreshLibrary(el); // 解析结果保留在页面上，不整页重渲染
     } catch (e) {
       if (e?.code === 'aborted') return; // 主动取消（切页），不打扰

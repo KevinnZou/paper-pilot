@@ -1652,25 +1652,18 @@ export default {
       const current = ensureCitationIds(getCitations()).list;
       const used = current
         .filter(item => usage.has(item.id))
-        .sort((a, b) => (order.get(a.id) || 999999) - (order.get(b.id) || 999999))
-        .map((item, index) => ({ ...item, litNo: index + 1 }));
-      const removed = current.length - used.length;
-      const usedIds = new Set(used.map(item => item.id));
-      const evidence = getEvidence();
-      const nextEvidence = evidence.filter(item => !item.citationId || usedIds.has(item.citationId));
-      if (nextEvidence.length !== evidence.length) saveEvidence(nextEvidence);
-      saveCitations(used);
-      citations = used;
+        .sort((a, b) => (order.get(a.id) || 999999) - (order.get(b.id) || 999999));
+      const unused = current.filter(item => !usage.has(item.id));
+      // 文献库是独立库：保留全部（已用 + 未用），只把已用的排到前面并按引用顺序重排编号
+      const reordered = [...used, ...unused].map((item, index) => ({ ...item, litNo: index + 1 }));
+      saveCitations(reordered);
+      citations = reordered;
       refreshCitationNumbers();
       renderCitationPicker();
-      renderEvidencePanel();
-      renderChapterCard();
       persistNow();
-      const evidenceRemoved = evidence.length - nextEvidence.length;
       const parts = [];
-      if (removed) parts.push(`移除 ${removed} 条未使用文献`);
-      if (evidenceRemoved) parts.push(`清理 ${evidenceRemoved} 张失效证据卡`);
-      toast(parts.length ? `已按正文引用顺序整理：${parts.join('，')}` : '文献已按正文引用顺序整理', 'ok', 3000);
+      if (unused.length) parts.push(`未用 ${unused.length} 条已保留在文献库`);
+      toast(parts.length ? `已按正文引用顺序整理：已用 ${used.length} 条，${parts.join('，')}` : '已按正文引用顺序整理', 'ok', 3000);
     }
 
     function renderEvidencePanel() {
@@ -2642,28 +2635,24 @@ export default {
           const found = await searchLiterature(searchQuery, 5, writingSignal());
           const list = ensureCitationIds(getCitations()).list;
           let nextNo = nextLitNo(list) - 1;
-          const existingByKey = new Map(list.map(item => [citationKey(item), item]).filter(([key]) => !!key));
-          const keys = new Set(existingByKey.keys());
           const added = [];
           const selected = [];
           found.slice(0, 5).forEach(item => {
-            const key = citationKey(item);
-            if (!key) return;
-            if (keys.has(key)) {
-              const existing = existingByKey.get(key);
-              if (existing) selected.push(existing);
-              return;
-            }
-            const entry = normalizeCitationEntry({
+            const normalized = normalizeCitationEntry({
               ...item,
               id: item.id || crypto.randomUUID?.() || `cit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             }, getProject().referenceStandard);
-            entry.litNo = ++nextNo;
-            list.unshift(entry);
-            keys.add(key);
-            existingByKey.set(key, entry);
-            added.push(entry);
-            selected.push(entry);
+            if (!normalized.title && !normalized.doi) return;
+            // 按 DOI 或题名去重，避免同一文献重复入库
+            const existing = list.find(c => c && (
+              (normalized.doi && String(c.doi || '').trim().toLowerCase() === normalized.doi.trim().toLowerCase()) ||
+              (normalized.title && String(c.title || '').trim().toLowerCase() === normalized.title.trim().toLowerCase())
+            ));
+            if (existing) { selected.push(existing); return; }
+            normalized.litNo = ++nextNo;
+            list.unshift(normalized);
+            added.push(normalized);
+            selected.push(normalized);
           });
           addedCount = added.length;
           saveCitations(list);
