@@ -998,7 +998,7 @@ function restoreMissingCitationsFromDoc(doc, list) {
 }
 
 function normalizeAcademicText(text) {
-  return String(text || '')
+  let t = String(text || '')
     .replace(/\u00a0/g, ' ')
     .replace(/\t+/g, ' ')
     .replace(/ {2,}/g, ' ')
@@ -1008,8 +1008,16 @@ function normalizeAcademicText(text) {
     .replace(/ ”/g, '”')
     .replace(/‘ /g, '‘')
     .replace(/ ’/g, '’')
-    .replace(/\s+\n/g, '\n')
-    .replace(/\n\s+/g, '\n')
+    .replace(/[，,]\.{2,}/g, '……')   // 中文省略号
+    .replace(/\.\.\.(?!\.)/g, '…');   // 半角三点 -> 中文省略号
+  // 全角字母/数字 -> 半角（中文上下文里残留的全角英数）
+  t = t
+    .replace(/[\uFF10-\uFF19]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[\uFF21-\uFF3A]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[\uFF41-\uFF5A]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  return t
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
     .trim();
 }
 
@@ -2238,6 +2246,34 @@ export default {
       }
     }
 
+    function formatWholeDocument() {
+      const view = viewState.view;
+      const { doc } = view.state;
+      const ops = [];
+      doc.descendants((node, pos) => {
+        if (node.type.name !== 'paragraph') return;
+        const text = node.textContent;
+        let hasAtom = false;
+        node.content.forEach(child => { if (child.isAtom) hasAtom = true; });
+        const isEmpty = !text.trim() && !hasAtom;
+        if (isEmpty) { ops.push({ kind: 'delete', pos, node }); return; }
+        const nextNode = normalizeInlineNodeContent(node, paperSchema);
+        if (nextNode && !nextNode.eq(node)) ops.push({ kind: 'replace', pos, node: nextNode });
+      });
+      if (!ops.length) {
+        toast('全文格式已规范：没有需要修正的地方', 'ok', 2000);
+        return;
+      }
+      let tr = view.state.tr;
+      let replaced = 0, removed = 0;
+      ops.sort((a, b) => b.pos - a.pos).forEach(op => {
+        if (op.kind === 'delete') { tr = tr.delete(op.pos, op.pos + op.node.nodeSize); removed++; }
+        else { tr = tr.replaceWith(op.pos, op.pos + op.node.nodeSize, op.node); replaced++; }
+      });
+      view.dispatch(tr.scrollIntoView());
+      toast(`已整理全文：修正 ${replaced} 段文本、移除 ${removed} 个空行`, 'ok', 2800);
+    }
+
     function formatCurrentSection() {
       const section = sectionForPos(viewState.view.state.doc, viewState.view.state.selection.from);
       if (!section) {
@@ -2477,7 +2513,7 @@ export default {
       toast(v ? '已保存整稿版本' : '内容未变化，未重复保存', 'ok', 1800);
       switchRightTab('versions');
     });
-    el.querySelector('#wb-format')?.addEventListener('click', formatCurrentSection);
+    el.querySelector('#wb-format')?.addEventListener('click', formatWholeDocument);
     el.querySelector('#wb-clean-citations')?.addEventListener('click', tidyCitationLibrary);
     el.querySelector('#wb-insert-formula')?.addEventListener('click', () => openAssetModal('formula'));
     el.querySelector('#wb-insert-note')?.addEventListener('click', () => openAssetModal('footnote'));
