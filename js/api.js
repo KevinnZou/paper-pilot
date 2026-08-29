@@ -142,7 +142,7 @@ function mockWritingSuggestion(prompt) {
   if (/续写/.test(prompt)) {
     return '进一步来看，AI 技术并不是简单替代人工，而是通过流程标准化、数据沉淀与节点协同三方面重塑企业管理方式。对于装修行业而言，这种重塑首先体现在采购、质检与项目交付等高频环节，其次才会逐步扩展到组织协同与经营决策层面。';
   }
-  return '测试模式下的示例改写结果：整体表达会更收敛、论证更完整，同时尽量保持原文意思不变。';
+  return '演示模式示例：整体表达更收敛、论证更完整，并尽量保持原意。';
 }
 
 function mockGenericReply(messages) {
@@ -155,7 +155,7 @@ function mockGenericReply(messages) {
   if (/低输入.*研究方案建议包|questions:\s*\[\{id, question/.test(prompt)) return mockTopicPlan();
   if (/生成规范的中文论文大纲|输出五章结构/.test(prompt)) return mockTopicOutline();
   if (/论文写作导师|学术表达|补充论证|重构表达|续写|逻辑结构/.test(prompt)) return mockWritingSuggestion(prompt);
-  return '测试模式回复：当前功能已切换到本地测试数据，不会消耗真实 API。';
+  return '演示模式回复：当前显示演示示例，不消耗真实调用。';
 }
 
 export class ApiError extends Error {

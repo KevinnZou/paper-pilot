@@ -77,7 +77,7 @@ export default {
       : `
         <div class="card empty">
           <div class="empty-icon">${ICONS.bookOpen}</div>
-          <p>还没有论文项目。V4 会按“项目”而不是“模块”推进整篇论文。</p>
+          <p>还没有论文项目。系统会按“项目”推进整篇论文，而不是把各模块割裂开。</p>
           <div class="empty-actions">
             <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
             <button class="btn btn-ghost" id="pc-empty-trial">开始试用 · 无需配置</button>

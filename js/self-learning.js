@@ -1,4 +1,4 @@
-// 自学习飞轮（客户端、规则式）：观察 → 归纳 → 适配（注入 AI 提示词）→ 展示
+// 个性化（自学习适配）：客户端、规则式，观察 → 归纳 → 适配（注入 AI 提示词）→ 展示
 // 无后端 / 无 ML 依赖；数据存 localStorage，跨项目全局。
 // 信号：每个 AI 动作的结果（接受/拒绝/重新生成）+ 已接受建议的篇幅变化（original vs suggestion）。
 
@@ -12,15 +12,25 @@ function load() {
       lens: [],
       interactions: 0,
       updatedAt: 0,
+      prefs: { tone: 'auto', intensity: 'standard' },
       ...raw,
     };
   } catch (e) { /* ignore */ }
-  return { perAction: {}, lens: [], interactions: 0, updatedAt: 0 };
+  return { perAction: {}, lens: [], interactions: 0, updatedAt: 0, prefs: { tone: 'auto', intensity: 'standard' } };
 }
 
 function save(p) { localStorage.setItem(KEY, JSON.stringify(p)); }
 
-export function reset() { save({ perAction: {}, lens: [], interactions: 0, updatedAt: 0 }); }
+export function reset() { save({ perAction: {}, lens: [], interactions: 0, updatedAt: 0, prefs: { tone: 'auto', intensity: 'standard' } }); }
+
+export function getPrefs() { return load().prefs; }
+export function setPrefs(partial) {
+  const p = load();
+  p.prefs = { ...p.prefs, ...(partial || {}) };
+  p.updatedAt = Date.now();
+  save(p);
+  return p.prefs;
+}
 
 /** 记录一次 AI 动作的结果：outcome ∈ 'accept' | 'reject' | 'regenerate' */
 export function recordOutcome(actionId, outcome, label) {
@@ -81,7 +91,57 @@ export function summary() {
 export function buildPreferencePrompt() {
   const s = summary();
   if (!s.length) return '';
-  return `\n\n【自学习】根据你与用户的持续交互，系统掌握：${s.join('；')}。请在本次写作中按这些偏好调整语气、篇幅与详略，让结果更贴合用户习惯。`;
+  const prefs = getPrefs();
+  const tone = prefs.tone === 'formal' ? '语气更正式书面、克制学术' : prefs.tone === 'concise' ? '表达更简洁、去掉冗余' : prefs.tone === 'detailed' ? '论证更充分、详略有度' : '';
+  const out = [...s];
+  if (tone) out.push(`当前用户手动指定：${tone}`);
+  const lead = prefs.intensity === 'strong' ? '请严格遵循' : prefs.intensity === 'light' ? '请酌情参考' : '请按此调整';
+  if (!s.length && !tone) return '';
+  return `\n\n【个性化】根据你与用户的使用交互与设置，系统掌握：${out.join('；')}。请在本次写作中${lead}这些偏好，让结果更贴合用户习惯。`;
+}
+
+/** 自学习独立页 HTML（含学习表现 + 手动调整） */
+export function learningPageHtml() {
+  const p = load();
+  const s = summary();
+  const actions = Object.entries(p.perAction).filter(([, a]) => a.used > 0).sort((a, b) => b[1].used - a[1].used);
+  const rows = actions.length ? actions.map(([id, a]) => `
+      <div class="learn-row"><span>${escapeLearn(a.label || id)}</span>
+        <div class="learn-track"><div class="learn-fill" style="width:${Math.max(6, ratio(a.accepted, a.used))}%"></div></div>
+        <b class="learn-num">使用 ${a.used} · 接受 ${ratio(a.accepted, a.used)}%</b>
+      </div>`).join('') : '<p class="desc">还没有 AI 交互记录。到写作台使用一次 AI 建议，这里会显示学习结果。</p>';
+  const insights = s.length ? `<ul class="learn-insights">${s.map(x => `<li>${escapeLearn(x)}</li>`).join('')}</ul>` : '';
+  const prefs = p.prefs || { tone: 'auto', intensity: 'standard' };
+  return `<section class="card learn-page">
+    <div class="learn-head"><div>
+      <h2><span class="mark"></span>个性化</h2>
+      <p class="desc">系统观察你的写作偏好，让 AI 建议更贴合你的表达。${p.interactions ? `已学习 <b>${p.interactions}</b> 次交互。` : '完成一次 AI 操作后开始学习。'}</p>
+    </div></div>
+
+    <h3 class="field-label">各功能使用与接受情况</h3>
+    <div class="item-list">${rows}</div>
+    ${insights}
+
+    <h3 class="field-label">手动调整（可选）</h3>
+    <div class="form-row">
+      <div><label class="field-label">语气偏好</label>
+        <select id="sl-tone">
+          <option value="auto"${prefs.tone === 'auto' ? ' selected' : ''}>自动（跟随学习结果）</option>
+          <option value="formal"${prefs.tone === 'formal' ? ' selected' : ''}>正式书面</option>
+          <option value="concise"${prefs.tone === 'concise' ? ' selected' : ''}>简洁克制</option>
+          <option value="detailed"${prefs.tone === 'detailed' ? ' selected' : ''}>详尽展开</option>
+        </select></div>
+      <div><label class="field-label">应用程度</label>
+        <select id="sl-intensity">
+          <option value="light"${prefs.intensity === 'light' ? ' selected' : ''}>轻度参考</option>
+          <option value="standard"${prefs.intensity === 'standard' ? ' selected' : ''}>标准调整</option>
+          <option value="strong"${prefs.intensity === 'strong' ? ' selected' : ''}>严格遵循</option>
+        </select></div>
+    </div>
+    <div style="margin-top:10px"><button class="btn" id="sl-save">保存偏好</button>
+      <button class="btn btn-ghost" id="sl-reset">重置学习记录</button></div>
+    <p class="desc" style="margin-top:10px">这里的调整会在后续 AI 建议中生效；重置会清空已学到的交互记录。</p>
+  </section>`;
 }
 
 /** 学习卡 HTML（供页面展示"系统在持续学习"） */
@@ -100,8 +160,8 @@ export function learningCardHtml() {
   const insights = s.length ? `<ul class="learn-insights">${s.map(x => `<li>${escapeLearn(x)}</li>`).join('')}</ul>` : '';
   return `<div class="card learn-card">
     <div class="learn-head"><div>
-      <h2><span class="mark"></span>自学习</h2>
-      <p class="desc">系统根据你与它的持续交互，自动学习并调整写作表现。${p.interactions ? `<b>已学习 ${p.interactions}</b> 次交互。` : ''}</p>
+      <h2><span class="mark"></span>个性化</h2>
+      <p class="desc">系统观察你的写作偏好，让 AI 建议更贴合你的表达。${p.interactions ? `<b>已学习 ${p.interactions}</b> 次交互。` : ''}</p>
     </div></div>
     ${bar}
     ${insights}

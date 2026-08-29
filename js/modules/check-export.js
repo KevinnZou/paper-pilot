@@ -5,7 +5,7 @@ import { citationMap, ensureCitationIds } from '../citation-utils.js';
 import { createDocxBlob } from '../docx-export.js';
 import { meaningfulTitle } from '../title-utils.js';
 
-function severityChip(level) {
+export function severityChip(level) {
   if (level === 'high') return 'uncited';
   if (level === 'medium') return 'doing';
   return 'done';
@@ -55,7 +55,7 @@ function openPrintPreview(title, html) {
   win.document.close();
 }
 
-function buildPreviewHtml(project, doc, citations) {
+export function buildPreviewHtml(project, doc, citations) {
   const blocks = buildRenderableBlocks(doc, citationMap(citations));
   return blocks.map(block => {
     if (block.type === 'title') return `<h1>${escapeHtml(block.text)}</h1>`;
@@ -100,7 +100,7 @@ function buildPreviewHtml(project, doc, citations) {
   }).join('');
 }
 
-function collectIssues(project, doc, citations) {
+export function collectIssues(project, doc, citations) {
   const state = extractProjectStateFromDoc(doc);
   const usage = collectCitationUsage(doc);
   const order = buildCitationNumberMap(doc);
@@ -196,7 +196,7 @@ function collectIssues(project, doc, citations) {
   return issues;
 }
 
-function issueActionLabel(item) {
+export function issueActionLabel(item) {
   if (item.nav === 'topic') return '去研究设计';
   if (item.nav === 'writing') return item.chapter ? '去对应章节' : '去写作台';
   if (item.nav === 'citation') return '去文献库';
@@ -228,7 +228,7 @@ function exportReadiness(issues) {
   };
 }
 
-function issueHtml(item, idx) {
+export function issueHtml(item, idx) {
   return `<div class="issue-row">
     <div class="item-main">
       <div class="issue-title"><span class="chip ${severityChip(item.level)}">${item.group}</span> ${escapeHtml(item.text)}</div>

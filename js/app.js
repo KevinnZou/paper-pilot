@@ -5,7 +5,7 @@ import topic from './modules/topic.js';
 import writing from './modules/writing.js';
 import citation from './modules/citation.js';
 import planner from './modules/planner.js';
-import checkExport from './modules/check-export.js';
+import selfLearning from './modules/self-learning.js';
 import projectSettings from './modules/project-settings.js';
 import settings from './modules/settings.js';
 import { ICONS } from './icons.js';
@@ -13,7 +13,7 @@ import { getConfig, shouldUseLiveAI } from './api.js';
 import { getProject, hasActiveProject, projectStoreReady } from './project.js';
 import { meaningfulTitle } from './title-utils.js';
 
-const MODULES = [dashboard, writing, citation, topic, planner, checkExport, projects, projectSettings, settings];
+const MODULES = [dashboard, writing, citation, topic, planner, selfLearning, projects, projectSettings, settings];
 const container = document.getElementById('module-container');
 const navEl = document.getElementById('nav');
 const sidebarToggleEl = document.getElementById('sidebar-toggle');
@@ -89,15 +89,15 @@ function updateApiPill() {
   const pill = document.getElementById('api-status');
   const cfg = getConfig();
   if (cfg.apiKey && shouldUseLiveAI()) {
-    pill.textContent = `API 已配置 · ${cfg.model}`;
+    pill.textContent = `AI 已启用 · ${cfg.model}`;
     pill.classList.add('ready');
     pill.classList.remove('demo');
     pill.title = '已启用真实 AI 调用';
   } else if (cfg.apiKey) {
-    pill.textContent = '演示模式 · 已配 Key 未启用';
+    pill.textContent = '演示模式 · 未启用真实 AI';
     pill.classList.add('demo');
     pill.classList.remove('ready');
-    pill.title = '已填入 API Key，但尚未打开「真实 AI 调用」。到「应用设置」打开即可使用真实模型。';
+    pill.title = '已填写调用凭据，但尚未开启「真实 AI」。到「应用设置」打开即可使用真实模型。';
   } else {
     pill.textContent = '演示模式 · 模拟结果';
     pill.classList.add('demo');

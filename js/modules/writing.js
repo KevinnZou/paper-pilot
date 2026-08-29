@@ -11,6 +11,7 @@ import { get } from '../storage.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence, saveEvidence, listProjects } from '../project.js';
 import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
 import { createDocxBlob } from '../docx-export.js';
+import { collectIssues as collectExportIssues, issueHtml as exportIssueHtml } from './check-export.js';
 import {
   paperSchema,
   docFromJSON,
@@ -1156,6 +1157,7 @@ export default {
                   <details class="wb-toolbar-more wb-export-menu">
                     <summary>导出</summary>
                     <div class="wb-toolbar-more-panel">
+                      <button class="btn btn-ghost btn-sm" id="wb-export-check" type="button">导出前检查</button>
                       <button class="btn btn-ghost btn-sm" id="wb-export-word" type="button">Word 文档</button>
                       <button class="btn btn-ghost btn-sm" id="wb-export-pdf" type="button">PDF 文件</button>
                       <button class="btn btn-ghost btn-sm" id="wb-download" type="button">Markdown</button>
@@ -2792,6 +2794,40 @@ export default {
 
     el.querySelector('#wb-preview').addEventListener('click', () => {
       openPrintPreview(viewState.view.state.doc, citations);
+    });
+    el.querySelector('#wb-export-check')?.addEventListener('click', () => {
+      const project = getProject();
+      const citations = ensureCitationIds(getCitations()).list;
+      const doc = docFromJSON({ ...project, citations });
+      const issues = collectExportIssues(project, doc, citations);
+      const cnt = g => issues.filter(i => i.group === g).length;
+      const existing = document.getElementById('wb-export-check-modal');
+      if (existing) existing.remove();
+      const modal = document.createElement('div');
+      modal.className = 'modal-backdrop';
+      modal.id = 'wb-export-check-modal';
+      modal.innerHTML = `
+        <div class="modal-panel">
+          <div class="hero-top modal-head"><div>
+            <h2>导出前检查</h2>
+            <p class="desc">导出前先看有无影响质量的问题（结构 / 逻辑 / 引用 / 格式）。</p>
+          </div><button class="btn btn-ghost btn-sm" data-ec-close aria-label="关闭">✕</button></div>
+          <div class="hero-stats">
+            <div class="stat"><span class="stat-num">${cnt('结构检查')}</span><span class="stat-label">结构</span></div>
+            <div class="stat"><span class="stat-num">${cnt('逻辑检查')}</span><span class="stat-label">逻辑</span></div>
+            <div class="stat"><span class="stat-num">${cnt('引用检查')}</span><span class="stat-label">引用</span></div>
+            <div class="stat"><span class="stat-num">${cnt('格式检查')}</span><span class="stat-label">格式</span></div>
+          </div>
+          <div class="item-list" style="max-height:260px;overflow:auto;margin-top:12px">
+            ${issues.length ? issues.map((i, idx) => exportIssueHtml(i, idx)).join('') : '<div class="result-box filled">当前没有明显问题，可以放心导出。</div>'}
+          </div>
+          <div class="result-actions" style="margin-top:14px"><button class="btn" data-ec-close>知道了</button></div>
+        </div>`;
+      document.body.appendChild(modal);
+      const onEcKey = e => { if (e.key === 'Escape') { modal.remove(); document.removeEventListener('keydown', onEcKey); } };
+      document.addEventListener('keydown', onEcKey);
+      modal.querySelectorAll('[data-ec-close]').forEach(b => b.addEventListener('click', () => { modal.remove(); document.removeEventListener('keydown', onEcKey); }));
+      modal.addEventListener('click', e => { if (e.target === modal) { modal.remove(); document.removeEventListener('keydown', onEcKey); } });
     });
     el.querySelector('#wb-export-word')?.addEventListener('click', () => {
       exportTemplateWord(viewState.view.state.doc, citations);
