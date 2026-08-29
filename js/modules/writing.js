@@ -968,31 +968,35 @@ function restoreMissingCitationsFromDoc(doc, list) {
     .filter(n => n && !existingLitNos.has(n) && ![...order.values()].includes(n))
     .sort((a, b) => a - b);
   if (!missing.length && !missingPlain.length) return list;
-  const restored = missing.map(([id, number]) => {
+  const restored = [];
+  missing.forEach(([id, number]) => {
     const source = findCitationSource(pools, { id, doi: id, litNo: number });
-    return restoreCitationEntry(source, {
+    if (!source) return; // 没有来源：不加占位
+    restored.push(restoreCitationEntry(source, {
       id,
       litNo: number,
-      type: source?.type || 'J',
-      title: source?.title || `正文引用文献 ${number}`,
-      source: source?.source || '待补全来源',
-      year: source?.year || '',
-      doi: source?.doi || (String(id).includes('/') || String(id).includes('.') ? id : ''),
-    });
+      type: source.type || 'J',
+      title: source.title || `正文引用文献 ${number}`,
+      source: source.source || '来源未核',
+      year: source.year || '',
+      doi: source.doi || '',
+    }));
   });
   missingPlain.forEach(number => {
     let source = findCitationSource(pools, { litNo: number });
     if (!source) source = sortedCitationsByNo[number - 1] || null;
+    if (!source) return; // 没有来源：不加占位
     restored.push(restoreCitationEntry(source, {
-      id: source?.id || `legacy-cit-${number}`,
+      id: source.id || `legacy-cit-${number}`,
       litNo: number,
-      type: source?.type || 'J',
-      title: source?.title || `正文引用文献 ${number}`,
-      source: source?.source || '待补全来源',
-      year: source?.year || '',
-      doi: source?.doi || '',
+      type: source.type || 'J',
+      title: source.title || `正文引用文献 ${number}`,
+      source: source.source || '来源未核',
+      year: source.year || '',
+      doi: source.doi || '',
     }));
   });
+  if (!restored.length) return list;
   const next = [...list, ...restored].sort((a, b) => (a.litNo || 999999) - (b.litNo || 999999));
   saveCitations(next);
   const complete = restored.filter(item => item.title && !/^正文引用文献 \d+$/.test(item.title)).length;

@@ -245,6 +245,26 @@ function upgradePlaceholderCitationsFromPools(list) {
   return next;
 }
 
+/** 移除"无来源占位"（无 DOI 且文献池里对不上）——避免文献库出现"待补全来源"空壳 */
+function pruneUnresolvablePlaceholders() {
+  const project = getProject();
+  const list = getCitations();
+  const pools = citationRestorePools(list);
+  let removed = 0;
+  let upgraded = 0;
+  const next = [];
+  list.forEach(item => {
+    if (!isPlaceholderCitation(item)) { next.push(item); return; }
+    const source = findCitationSource(pools, { id: item.id, doi: item.doi, litNo: item.litNo });
+    if (source && !isPlaceholderCitation(source)) { next.push(mergeCitationWithSource(item, source, project.referenceStandard)); upgraded++; return; }
+    if (item.doi) { next.push(item); return; } // 带 DOI，留待 CrossRef 补全
+    removed++; // 无来源无 DOI：直接移除
+  });
+  if (removed || upgraded) saveCitations(next);
+  if (removed) toast(`已移除 ${removed} 条无法解析的占位文献`, 'ok', 2400);
+  return next;
+}
+
 function restoreCitationEntry(source, fallback, standard) {
   return normalizeCitationEntry({
     ...fallback,
@@ -275,38 +295,39 @@ function restoreMissingCitationsFromDoc(list) {
     .filter(n => n && !existingLitNos.has(n) && ![...order.values()].includes(n))
     .sort((a, b) => a - b);
   if (!missing.length && !missingPlain.length) return list;
-  const restored = missing.map(([id, number]) => {
+  const restored = [];
+  missing.forEach(([id, number]) => {
     const source = findCitationSource(pools, { id, doi: id, litNo: number });
-    return restoreCitationEntry(source, {
+    if (!source) return; // 没有来源：不加占位，避免文献库出现“待补全来源”
+    restored.push(restoreCitationEntry(source, {
       id,
       litNo: number,
-      type: source?.type || 'J',
-      title: source?.title || `正文引用文献 ${number}`,
-      source: source?.source || '待补全来源',
-      year: source?.year || '',
-      doi: source?.doi || (String(id).includes('/') || String(id).includes('.') ? id : ''),
-    }, project.referenceStandard);
+      type: source.type || 'J',
+      title: source.title || `正文引用文献 ${number}`,
+      source: source.source || '来源未核',
+      year: source.year || '',
+      doi: source.doi || '',
+    }, project.referenceStandard));
   });
   missingPlain.forEach(number => {
     let source = findCitationSource(pools, { litNo: number });
-    // 兜底：正文用 [n] 时，若精确编号不存在（如整理后重排），按文献库顺序落到第 n 条完整条目，尽量补全而非占位
+    // 兜底：正文用 [n] 时，若精确编号不存在（如整理后重排），按文献库顺序落到第 n 条完整条目
     if (!source) source = sortedCitationsByNo[number - 1] || null;
+    if (!source) return; // 没有来源：不加占位
     restored.push(restoreCitationEntry(source, {
-      id: source?.id || `legacy-cit-${number}`,
+      id: source.id || `legacy-cit-${number}`,
       litNo: number,
-      type: source?.type || 'J',
-      title: source?.title || `正文引用文献 ${number}`,
-      source: source?.source || '待补全来源',
-      year: source?.year || '',
-      doi: source?.doi || '',
+      type: source.type || 'J',
+      title: source.title || `正文引用文献 ${number}`,
+      source: source.source || '来源未核',
+      year: source.year || '',
+      doi: source.doi || '',
     }, project.referenceStandard));
   });
+  if (!restored.length) return list;
   const next = [...list, ...restored].sort((a, b) => (a.litNo || 999999) - (b.litNo || 999999));
   saveCitations(next);
-  const complete = restored.filter(item => item.title && !/^正文引用文献 \d+$/.test(item.title)).length;
-  toast(complete === restored.length
-    ? `已从正文引用恢复 ${restored.length} 条文献`
-    : `已从正文引用恢复 ${restored.length} 条文献，其中 ${restored.length - complete} 条需要补全信息`, 'ok', 3600);
+  toast(`已从正文引用恢复 ${restored.length} 条文献`, 'ok', 3600);
   return next;
 }
 
@@ -815,6 +836,7 @@ function render(el) {
   ensureNumbers(list0);
   restoreMissingCitationsFromDoc(getCitations());
   upgradePlaceholderCitationsFromPools(getCitations());
+  pruneUnresolvablePlaceholders();
   const list = sortedList();
   const citedNums = collectCitedNums();
   const prj = getProject();
