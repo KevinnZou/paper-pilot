@@ -1309,3 +1309,8 @@
 - **人工修改**：（待作者补充）
 - **质量评估**：（待作者补充）
 - **用时**：（待作者补充）
+
+## 2026-08-29 · 再清 2 个口径/显示 bug（第 103 次会话）
+- **evidence 关联章节 label**：`citation.js:434` 用 `c.sectionId === linkedSectionIds[0]` 查找，无 sectionId 时恒显示"已关联章节"；改 `c.sectionId === id || c.chapter === id`。
+- **导出摘要总字数口径**：`check-export.js:256` 由只累加章节 drafts 改为 `fullTextFromDoc(doc, citationMap(citations))`（与写作台"全文字数"一致）。
+- 全站回归 0 溢出 0 报错；导出前检查弹窗正常。

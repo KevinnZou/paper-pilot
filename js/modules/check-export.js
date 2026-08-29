@@ -253,7 +253,7 @@ export default {
     const state = extractProjectStateFromDoc(doc);
     const exportTitle = meaningfulTitle(project.title, state.title);
     const exportFilename = (exportTitle || '论文全文').replace(/[\\/:*?"<>|]/g, '_');
-    const totalWords = Object.values(state.drafts || {}).reduce((s, d) => s + String(d?.content || '').replace(/\s/g, '').length, 0);
+    const totalWords = (fullTextFromDoc(doc, citationMap(citations)) || '').replace(/\s/g, '').length;
     const previewHtml = buildPreviewHtml(project, doc, citations);
     const readiness = exportReadiness(issues);
     const summary = {

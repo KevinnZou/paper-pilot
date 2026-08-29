@@ -431,7 +431,7 @@ function renderEvidenceList(items, chapters) {
         <div class="evidence-row-main">
           <div class="evidence-row-title">
             <span class="chip">${escapeHtml(item.type || 'finding')}</span>
-            ${item.linkedSectionIds?.length ? `<span class="chip doing">${escapeHtml(chapters.find(c => c.sectionId === item.linkedSectionIds[0])?.chapter || '已关联章节')}</span>` : ''}
+            ${item.linkedSectionIds?.length ? `<span class="chip doing">${escapeHtml(chapters.find(c => c.sectionId === item.linkedSectionIds[0] || c.chapter === item.linkedSectionIds[0])?.chapter || '已关联章节')}</span>` : ''}
             ${escapeHtml(item.citation?.title || '未关联文献')}
           </div>
           <div class="evidence-row-meta">${escapeHtml([
