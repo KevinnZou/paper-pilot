@@ -172,6 +172,7 @@ function renderList(list, citedNums, keyword = '', ctx = citationContext(list)) 
     const badge = currentNo ? `[${currentNo}]` : c.litNo != null ? `L${c.litNo}` : '未编';
     return `
     <article class="citation-row">
+      <input type="checkbox" class="cit-check" data-cit-id="${escapeHtml(c.id)}" aria-label="选择该文献" title="选择该文献">
       <div class="citation-row-main">
         <div class="citation-row-head">
           <div class="citation-row-title">${badge ? `<span class="chip ref-no">${badge}</span> ` : ''}${escapeHtml(c.title || '（无题名）')} <span class="chip">${escapeHtml(c.type || '?')}</span> ${
@@ -587,6 +588,16 @@ function renderLibraryTab(list, citedNums) {
           <button class="btn btn-ghost btn-sm icon-only" id="cit-search-clear" title="清空搜索" aria-label="清空搜索" ${list.length ? '' : 'disabled'}>${ICONS.close}</button>
           <span class="cit-search-count" id="cit-search-count" aria-live="polite"></span>
         </div>
+        <div class="cit-batch-bar">
+          <label class="cit-batch-select"><input type="checkbox" id="cit-select-all" aria-label="全选"> 全选</label>
+          <span class="cit-batch-count" id="cit-batch-count">已选 0</span>
+          <div class="cit-batch-actions">
+            <button class="btn btn-ghost btn-sm" id="cit-batch-del" disabled>删除所选</button>
+            <button class="btn btn-ghost btn-sm" id="cit-batch-uncited" ${list.length ? '' : 'disabled'}>删除未引用</button>
+            <button class="btn btn-ghost btn-sm" id="cit-batch-placeholder" ${list.length ? '' : 'disabled'}>删除占位</button>
+            <button class="btn btn-ghost btn-sm" id="cit-batch-enrich" ${list.length ? '' : 'disabled'}>自动补全</button>
+          </div>
+        </div>
         <div class="citation-list-shell">
           <div class="item-list citation-list-compact" id="cit-list">${renderList(list, citedNums)}</div>
         </div>
@@ -713,6 +724,66 @@ function bindListActions(el) {
       toast('已删除', 'ok');
       refreshLibrary(el);
     }));
+
+  // 批量操作
+  if (el.querySelector('.cit-batch-bar')) {
+    const checks = () => [...el.querySelectorAll('.cit-check')];
+    const syncCount = () => {
+      const selected = checks().filter(c => c.checked).length;
+      const count = el.querySelector('#cit-batch-count');
+      const del = el.querySelector('#cit-batch-del');
+      const all = el.querySelector('#cit-select-all');
+      if (count) count.textContent = `已选 ${selected}`;
+      if (del) del.disabled = !selected;
+      if (all) all.checked = selected > 0 && selected === checks().length;
+    };
+    el.querySelector('#cit-select-all')?.addEventListener('change', e => {
+      checks().forEach(c => { c.checked = e.target.checked; });
+      syncCount();
+    });
+    checks().forEach(c => c.addEventListener('change', syncCount));
+    el.querySelector('#cit-batch-del')?.addEventListener('click', () => {
+      const ids = checks().filter(c => c.checked).map(c => c.dataset.citId);
+      if (!ids.length) return;
+      if (!confirm(`确定删除所选 ${ids.length} 条文献吗？删除后无法恢复。`)) return;
+      const set = new Set(ids);
+      saveCitations(getCitations().filter(x => !set.has(x.id)));
+      toast(`已删除 ${ids.length} 条文献`, 'ok');
+      refreshLibrary(el);
+    });
+    el.querySelector('#cit-batch-uncited')?.addEventListener('click', () => {
+      const list = getCitations();
+      const ctx = citationContext(list);
+      const citedNums = collectCitedNums();
+      const drop = list.filter(c => !ctx.citedIds.has(c.id) && !(c.litNo != null && citedNums.has(c.litNo)));
+      if (!drop.length) { toast('没有未引用的文献可删除', 'ok', 1800); return; }
+      if (!confirm(`确定删除 ${drop.length} 条「未引用」文献吗？删除后无法恢复。`)) return;
+      const set = new Set(drop.map(c => c.id));
+      saveCitations(list.filter(x => !set.has(x.id)));
+      toast(`已删除 ${drop.length} 条未引用文献`, 'ok');
+      refreshLibrary(el);
+    });
+    el.querySelector('#cit-batch-placeholder')?.addEventListener('click', () => {
+      const list = getCitations();
+      const ctx = citationContext(list);
+      const drop = list.filter(isPlaceholderCitation);
+      if (!drop.length) { toast('没有占位 / 待补全的文献', 'ok', 1800); return; }
+      const citedDrop = drop.filter(c => ctx.citedIds.has(c.id)).length;
+      const tail = citedDrop ? `其中有 <b>${citedDrop}</b> 条在正文被引用，删除会使对应引用失效。` : '';
+      if (!confirm(`确定删除 ${drop.length} 条「占位 / 待补全」文献吗？${tail.replace(/<[^>]+>/g, '')}`)) return;
+      const set = new Set(drop.map(c => c.id));
+      saveCitations(list.filter(x => !set.has(x.id)));
+      toast(`已删除 ${drop.length} 条占位文献`, 'ok');
+      refreshLibrary(el);
+    });
+    el.querySelector('#cit-batch-enrich')?.addEventListener('click', async () => {
+      upgradePlaceholderCitationsFromPools(getCitations());
+      await enrichPlaceholderCitations(el);
+      refreshLibrary(el);
+      toast('已尝试补全（文献池比对 + CrossRef 按 DOI），可再刷新查看', 'ok', 2800);
+    });
+  }
+
   el.querySelectorAll('[data-evi-del]').forEach(b =>
     b.addEventListener('click', () => {
       const list = getEvidence();
