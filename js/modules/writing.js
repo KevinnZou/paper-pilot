@@ -972,10 +972,17 @@ function restoreMissingCitationsFromDoc(doc, list) {
     .sort((a, b) => a - b);
   if (!missing.length && !missingPlain.length) return list;
   const restored = [];
+  const dedupAgainst = () => [...list, ...restored];
+  const sameCitation = (a, b) => {
+    const n = s => String(s || '').toLowerCase().replace(/[\s.,:;!?'"()\[\]\/\-]+/g, '');
+    const doiA = n(a?.doi), doiB = n(b?.doi);
+    const tA = n(a?.title), tB = n(b?.title);
+    return (a?.id && a.id === b?.id) || (doiA && doiA === doiB) || (tA && tA === tB);
+  };
   missing.forEach(([id, number]) => {
     const source = findCitationSource(pools, { id, doi: id, litNo: number });
     if (!source) return; // 没有来源：不加占位
-    restored.push(restoreCitationEntry(source, {
+    const entry = restoreCitationEntry(source, {
       id,
       litNo: number,
       type: source.type || 'J',
@@ -983,13 +990,15 @@ function restoreMissingCitationsFromDoc(doc, list) {
       source: source.source || '来源未核',
       year: source.year || '',
       doi: source.doi || '',
-    }));
+    });
+    if (dedupAgainst().some(c => sameCitation(c, entry))) return;
+    restored.push(entry);
   });
   missingPlain.forEach(number => {
     let source = findCitationSource(pools, { litNo: number });
     if (!source) source = sortedCitationsByNo[number - 1] || null;
     if (!source) return; // 没有来源：不加占位
-    restored.push(restoreCitationEntry(source, {
+    const entry = restoreCitationEntry(source, {
       id: source.id || `legacy-cit-${number}`,
       litNo: number,
       type: source.type || 'J',
@@ -997,7 +1006,9 @@ function restoreMissingCitationsFromDoc(doc, list) {
       source: source.source || '来源未核',
       year: source.year || '',
       doi: source.doi || '',
-    }));
+    });
+    if (dedupAgainst().some(c => sameCitation(c, entry))) return;
+    restored.push(entry);
   });
   if (!restored.length) return list;
   const next = [...list, ...restored].sort((a, b) => (a.litNo || 999999) - (b.litNo || 999999));

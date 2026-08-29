@@ -296,10 +296,11 @@ function restoreMissingCitationsFromDoc(list) {
     .sort((a, b) => a - b);
   if (!missing.length && !missingPlain.length) return list;
   const restored = [];
+  const dedupAgainst = () => [...list, ...restored];
   missing.forEach(([id, number]) => {
     const source = findCitationSource(pools, { id, doi: id, litNo: number });
     if (!source) return; // 没有来源：不加占位，避免文献库出现“待补全来源”
-    restored.push(restoreCitationEntry(source, {
+    const entry = restoreCitationEntry(source, {
       id,
       litNo: number,
       type: source.type || 'J',
@@ -307,14 +308,16 @@ function restoreMissingCitationsFromDoc(list) {
       source: source.source || '来源未核',
       year: source.year || '',
       doi: source.doi || '',
-    }, project.referenceStandard));
+    }, project.referenceStandard);
+    if (citationExists(dedupAgainst(), entry)) return; // 已有同文献，避免重复
+    restored.push(entry);
   });
   missingPlain.forEach(number => {
     let source = findCitationSource(pools, { litNo: number });
     // 兜底：正文用 [n] 时，若精确编号不存在（如整理后重排），按文献库顺序落到第 n 条完整条目
     if (!source) source = sortedCitationsByNo[number - 1] || null;
     if (!source) return; // 没有来源：不加占位
-    restored.push(restoreCitationEntry(source, {
+    const entry = restoreCitationEntry(source, {
       id: source.id || `legacy-cit-${number}`,
       litNo: number,
       type: source.type || 'J',
@@ -322,7 +325,9 @@ function restoreMissingCitationsFromDoc(list) {
       source: source.source || '来源未核',
       year: source.year || '',
       doi: source.doi || '',
-    }, project.referenceStandard));
+    }, project.referenceStandard);
+    if (citationExists(dedupAgainst(), entry)) return; // 已有同文献，避免重复
+    restored.push(entry);
   });
   if (!restored.length) return list;
   const next = [...list, ...restored].sort((a, b) => (a.litNo || 999999) - (b.litNo || 999999));
@@ -380,17 +385,21 @@ function citationExists(list, entry) {
   });
 }
 
-/** 去除文献库中重复条目（同 DOI 或同题名，保留先入库的） */
+/** 删除文献库中重复条目（同 id / DOI / 规范化题名，保留先入库的） */
 function dedupeCitations(list) {
+  const norm = s => String(s || '').toLowerCase().replace(/[\s.,:;!?'"()\[\]\/\-—–··]+/g, '');
+  const seenId = new Set();
   const seenDoi = new Set();
   const seenTitle = new Set();
   const next = [];
   let removed = 0;
   list.forEach(item => {
-    const doi = String(item?.doi || '').trim().toLowerCase();
-    const title = String(item?.title || '').trim().toLowerCase();
-    const dup = (doi && seenDoi.has(doi)) || (title && seenTitle.has(title));
+    const id = item?.id;
+    const doi = norm(item?.doi);
+    const title = norm(item?.title);
+    const dup = (id && seenId.has(id)) || (doi && seenDoi.has(doi)) || (title && seenTitle.has(title));
     if (dup) { removed++; return; }
+    if (id) seenId.add(id);
     if (doi) seenDoi.add(doi);
     if (title) seenTitle.add(title);
     next.push(item);
@@ -864,10 +873,10 @@ function bindListActions(el) {
 function render(el) {
   const list0 = getCitations();
   ensureNumbers(list0);
-  dedupeCitations(getCitations());
   restoreMissingCitationsFromDoc(getCitations());
   upgradePlaceholderCitationsFromPools(getCitations());
   pruneUnresolvablePlaceholders();
+  dedupeCitations(getCitations());
   const list = sortedList();
   const citedNums = collectCitedNums();
   const prj = getProject();
