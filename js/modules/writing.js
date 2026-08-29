@@ -7,7 +7,7 @@ import { Fragment } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } from '../ui.js';
 import { chat, streamChat } from '../api.js';
 import { searchLiterature } from '../litsearch.js';
-import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence } from '../project.js';
+import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence, saveEvidence } from '../project.js';
 import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
 import { createDocxBlob } from '../docx-export.js';
 import {
@@ -304,7 +304,7 @@ function replaceDraftStream(view, range, text, refs = []) {
     target: range.target,
     subsections: range.subsections || [],
   });
-  const tr = view.state.tr.replaceWith(range.from, range.to, fragment).scrollIntoView();
+  const tr = view.state.tr.replaceWith(range.from, range.to, fragment);
   view.dispatch(tr);
   range.to = range.from + fragment.size;
 }
@@ -402,6 +402,9 @@ function selectionHitsHeading(view) {
 
 function buildPreviewHtml(doc, citations) {
   const blocks = buildRenderableBlocks(doc, citationMap(citations));
+  const pages = [];
+  let currentPage = [];
+  let currentPageClass = 'front-page';
   let chapterNo = 0;
   let figureNo = 0;
   let tableNo = 0;
@@ -410,18 +413,30 @@ function buildPreviewHtml(doc, citations) {
     const match = String(text || '').match(/第\s*(\d+)\s*章/);
     return match ? Number(match[1]) : 0;
   };
-  return blocks.map(block => {
+  const pushPage = () => {
+    const html = currentPage.join('').trim();
+    if (html) pages.push({ className: currentPageClass, html });
+    currentPage = [];
+    currentPageClass = 'front-page';
+  };
+  const renderBlock = block => {
     if (block.type === 'title') return `<h1 class="title">${escapeHtml(block.text)}</h1>`;
     if (block.type === 'heading') {
       if (block.role === 'section') {
+        pushPage();
+        currentPageClass = 'chapter-page';
         chapterNo = chapterIndexFrom(block.text) || chapterNo + 1;
         figureNo = 0;
         tableNo = 0;
         formulaNo = 0;
       }
+      if (['references', 'ack'].includes(block.role)) {
+        pushPage();
+        currentPageClass = 'chapter-page';
+      }
       const tag = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role) ? 'h2' : 'h3';
       const cls = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role)
-        ? `chapter-title ${block.role === 'section' ? 'chapter-break' : 'front-title'}`
+        ? 'chapter-title'
         : block.level >= 4
           ? 'subsec-3'
           : 'subsec';
@@ -473,7 +488,12 @@ function buildPreviewHtml(doc, citations) {
       </figure>`;
     }
     return '';
-  }).join('');
+  };
+  blocks.forEach(block => {
+    currentPage.push(renderBlock(block));
+  });
+  pushPage();
+  return pages.map(page => `<section class="template-page ${page.className}">${page.html}</section>`).join('');
 }
 
 function thesisTemplateCss() {
@@ -481,6 +501,12 @@ function thesisTemplateCss() {
     @page { size: A4; margin: 30mm; }
     html { background: #EEECE5; }
     body {
+      margin: 0;
+      padding: 28px 0 64px;
+      background: #EEECE5;
+      color: #000;
+    }
+    .template-page {
       width: 210mm;
       min-height: 297mm;
       box-sizing: border-box;
@@ -492,7 +518,10 @@ function thesisTemplateCss() {
       font-size: 12pt;
       line-height: 20pt;
       box-shadow: 0 16px 45px rgba(38,48,59,.16);
+      page-break-after: always;
+      break-after: page;
     }
+    .template-page:last-child { page-break-after: auto; break-after: auto; }
     .title {
       text-align: center;
       font-family: SimHei, "Heiti SC", sans-serif;
@@ -510,15 +539,6 @@ function thesisTemplateCss() {
       margin: 24pt 0 18pt;
       page-break-after: avoid;
       break-after: avoid;
-    }
-    .chapter-break {
-      page-break-before: always;
-      break-before: page;
-    }
-    .title + .chapter-break,
-    .front-title + .chapter-break {
-      page-break-before: always;
-      break-before: page;
     }
     .subsec {
       font-family: SimHei, "Heiti SC", sans-serif;
@@ -561,7 +581,12 @@ function thesisTemplateCss() {
     .pp-table thead th { border-bottom: 1pt solid #000; }
     .pp-table th { font-family: SimHei, "Heiti SC", sans-serif; font-weight: 700; }
     .tip { position: fixed; top: 14px; right: 16px; background: #2F4F66; color: #fff; padding: 8px 14px; border-radius: 5px; font-size: 13px; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.16); }
-    @media print { html { background:#fff; } .tip { display:none; } body { width:auto; min-height:auto; margin: 0; padding: 0; box-shadow:none; } }
+    @media print {
+      html, body { background:#fff; }
+      body { padding: 0; }
+      .tip { display:none; }
+      .template-page { width:auto; min-height:auto; margin: 0; padding: 0; box-shadow:none; }
+    }
   `;
 }
 
@@ -1019,6 +1044,7 @@ export default {
                   <button class="wb-icon-tool" type="button" id="wb-redo" title="重做" aria-label="重做">${ICONS.redo}</button>
                   <button class="wb-tool-btn" type="button" id="wb-save-version">保存版本</button>
                   <button class="wb-tool-btn" type="button" id="wb-format">格式整理</button>
+                  <button class="wb-tool-btn" type="button" id="wb-clean-citations">整理文献</button>
                   <button class="wb-tool-btn" type="button" id="wb-preview">模板预览</button>
                   <button class="wb-tool-btn" type="button" id="wb-export-word">导出 Word</button>
                   <button class="wb-tool-btn" type="button" id="wb-export-pdf">导出 PDF</button>
@@ -1504,6 +1530,33 @@ export default {
         viewState.view.focus();
         toast(`已插入引用 [${getCitationNumber(id)}]`, 'ok');
       });
+    }
+
+    function tidyCitationLibrary() {
+      const usage = collectCitationUsage(viewState.view.state.doc);
+      const order = buildCitationNumberMap(viewState.view.state.doc);
+      const current = ensureCitationIds(getCitations()).list;
+      const used = current
+        .filter(item => usage.has(item.id))
+        .sort((a, b) => (order.get(a.id) || 999999) - (order.get(b.id) || 999999))
+        .map((item, index) => ({ ...item, litNo: index + 1 }));
+      const removed = current.length - used.length;
+      const usedIds = new Set(used.map(item => item.id));
+      const evidence = getEvidence();
+      const nextEvidence = evidence.filter(item => !item.citationId || usedIds.has(item.citationId));
+      if (nextEvidence.length !== evidence.length) saveEvidence(nextEvidence);
+      saveCitations(used);
+      citations = used;
+      refreshCitationNumbers();
+      renderCitationPicker();
+      renderEvidencePanel();
+      renderChapterCard();
+      persistNow();
+      const evidenceRemoved = evidence.length - nextEvidence.length;
+      const parts = [];
+      if (removed) parts.push(`移除 ${removed} 条未使用文献`);
+      if (evidenceRemoved) parts.push(`清理 ${evidenceRemoved} 张失效证据卡`);
+      toast(parts.length ? `已按正文引用顺序整理：${parts.join('，')}` : '文献已按正文引用顺序整理', 'ok', 3000);
     }
 
     function renderEvidencePanel() {
@@ -2332,6 +2385,7 @@ export default {
       switchRightTab('versions');
     });
     el.querySelector('#wb-format')?.addEventListener('click', formatCurrentSection);
+    el.querySelector('#wb-clean-citations')?.addEventListener('click', tidyCitationLibrary);
     el.querySelector('#wb-insert-formula')?.addEventListener('click', () => openAssetModal('formula'));
     el.querySelector('#wb-insert-note')?.addEventListener('click', () => openAssetModal('footnote'));
     el.querySelector('#wb-insert-image')?.addEventListener('click', () => openAssetModal('image'));
