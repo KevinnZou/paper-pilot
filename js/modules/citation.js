@@ -38,9 +38,15 @@ function collectCitedNums() {
     const citations = getCitations();
     const { list, changed } = ensureCitationIds(citations);
     if (changed) saveCitations(list);
-    const usage = collectCitationUsage(docFromJSON({ ...project, citations: list }));
-    const order = buildCitationNumberMap(docFromJSON({ ...project, citations: list }));
-    return new Set([...usage.keys()].map(id => order.get(id)).filter(Boolean));
+    const doc = docFromJSON({ ...project, citations: list });
+    const usage = collectCitationUsage(doc);
+    const order = buildCitationNumberMap(doc);
+    const nums = new Set([...usage.keys()].map(id => order.get(id)).filter(Boolean));
+    doc.descendants(node => {
+      if (!node.isTextblock || node.type.name === 'heading') return;
+      (node.textContent.match(/\[(\d+)\]/g) || []).forEach(mark => nums.add(Number(mark.slice(1, -1))));
+    });
+    return nums;
   }
   const nums = new Set();
   Object.values(get('drafts', {})).forEach(d => {
@@ -135,7 +141,7 @@ function citedStatsHtml(citedNums, list) {
   if (!list.length) return '';
   const project = getProject();
   const cited = project.documentV2
-    ? citationContext(list).citedIds.size
+    ? list.filter(c => citationContext(list).citedIds.has(c.id) || citedNums.has(c.litNo)).length
     : list.filter(c => citedNums.has(c.litNo)).length;
   const uncited = list.length - cited;
   return uncited > 0
@@ -196,6 +202,50 @@ function ensureNumbers(list) {
     if (c.litNo == null) { c.litNo = next++; changed = true; }
   });
   if (changed || withIds.changed) saveCitations(list);
+}
+
+function restoreMissingCitationsFromDoc(list) {
+  const project = getProject();
+  if (!project.documentV2) return list;
+  const doc = docFromJSON({ ...project, citations: list });
+  const order = buildCitationNumberMap(doc);
+  const existing = new Set(list.map(item => item.id).filter(Boolean));
+  const existingLitNos = new Set(list.map(item => Number(item.litNo)).filter(Number.isFinite));
+  const missing = [...order.entries()]
+    .filter(([id]) => id && !existing.has(id))
+    .sort((a, b) => a[1] - b[1]);
+  const plainNumbers = new Set();
+  doc.descendants(node => {
+    if (!node.isTextblock || node.type.name === 'heading') return;
+    (node.textContent.match(/\[(\d+)\]/g) || []).forEach(mark => plainNumbers.add(Number(mark.slice(1, -1))));
+  });
+  const missingPlain = [...plainNumbers]
+    .filter(n => n && !existingLitNos.has(n) && ![...order.values()].includes(n))
+    .sort((a, b) => a - b);
+  if (!missing.length && !missingPlain.length) return list;
+  const restored = missing.map(([id, number]) => normalizeCitationEntry({
+    id,
+    litNo: number,
+    type: 'J',
+    title: `正文引用文献 ${number}`,
+    source: '待补全来源',
+    year: '',
+    doi: String(id).includes('/') || String(id).includes('.') ? id : '',
+  }, project.referenceStandard));
+  missingPlain.forEach(number => {
+    restored.push(normalizeCitationEntry({
+      id: `legacy-cit-${number}`,
+      litNo: number,
+      type: 'J',
+      title: `正文引用文献 ${number}`,
+      source: '待补全来源',
+      year: '',
+    }, project.referenceStandard));
+  });
+  const next = [...list, ...restored].sort((a, b) => (a.litNo || 999999) - (b.litNo || 999999));
+  saveCitations(next);
+  toast(`已从正文引用恢复 ${restored.length} 条待补全文献`, 'ok', 3200);
+  return next;
 }
 
 function nextLitNo(list) {
@@ -545,6 +595,7 @@ function bindListActions(el) {
 function render(el) {
   const list0 = getCitations();
   ensureNumbers(list0);
+  restoreMissingCitationsFromDoc(getCitations());
   const list = sortedList();
   const citedNums = collectCitedNums();
   const prj = getProject();
@@ -552,7 +603,7 @@ function render(el) {
   const ctx = citationContext(list);
   const citationStats = {
     total: list.length,
-    cited: prj.documentV2 ? ctx.citedIds.size : list.filter(c => citedNums.has(c.litNo)).length,
+    cited: prj.documentV2 ? list.filter(c => ctx.citedIds.has(c.id) || citedNums.has(c.litNo)).length : list.filter(c => citedNums.has(c.litNo)).length,
     evidence: getEvidence().length,
   };
 

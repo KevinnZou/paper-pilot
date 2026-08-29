@@ -167,7 +167,7 @@ function textNodes(schema, text) {
   if (!raw) return [schema.nodes.paragraph.create()];
   return raw.split(/\n{2,}/).map(par => {
     const pieces = [];
-    const regex = /\[\[CIT:([a-zA-Z0-9-]+)\]\]/g;
+    const regex = /\[\[CIT:([^\]]+)\]\]/g;
     let last = 0;
     let match;
     while ((match = regex.exec(par))) {
@@ -303,11 +303,29 @@ export function buildRenderableBlocks(doc, citationsById) {
   let tableNo = 0;
   let formulaNo = 0;
   let skipReferenceBody = false;
+  const citedPlainNumbers = new Set();
+  doc.descendants(node => {
+    if (!node.isTextblock || node.type.name === 'heading') return;
+    (node.textContent.match(/\[(\d+)\]/g) || []).forEach(mark => citedPlainNumbers.add(Number(mark.slice(1, -1))));
+  });
+  const numberedCitationItems = new Map(
+    [...citationsById.values()]
+      .map(item => [Number(item.litNo), item])
+      .filter(([litNo]) => Number.isFinite(litNo))
+  );
+  const nodeNumbers = new Set(numberMap.values());
   const refs = [...numberMap.entries()]
     .sort((a, b) => a[1] - b[1])
     .map(([id, n]) => {
       const item = citationsById.get(id);
       return `[${n}] ${item?.formatted || item?.title || '（缺失文献）'}`;
+    });
+  [...citedPlainNumbers]
+    .filter(n => n && !nodeNumbers.has(n))
+    .sort((a, b) => a - b)
+    .forEach(n => {
+      const item = numberedCitationItems.get(n);
+      refs.push(`[${n}] ${item?.formatted || item?.title || '（缺失文献）'}`);
     });
 
   doc.forEach(node => {

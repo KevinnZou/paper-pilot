@@ -152,7 +152,7 @@ function subsectionsForSection(doc, section) {
 
 function inlineContentFromText(text) {
   const pieces = [];
-  const regex = /\[\[CIT:([a-zA-Z0-9-]+)\]\]/g;
+  const regex = /\[\[CIT:([^\]]+)\]\]/g;
   let last = 0;
   let match;
   while ((match = regex.exec(text))) {
@@ -402,10 +402,12 @@ function selectionHitsHeading(view) {
 
 function buildPreviewHtml(doc, citations) {
   const blocks = buildRenderableBlocks(doc, citationMap(citations));
+  const outlineTitles = (getProject().outline || []).map(item => item.chapter).filter(Boolean);
   const pages = [];
   let currentPage = [];
   let currentPageClass = 'front-page';
   let chapterNo = 0;
+  let sectionIndex = 0;
   let figureNo = 0;
   let tableNo = 0;
   let formulaNo = 0;
@@ -422,10 +424,13 @@ function buildPreviewHtml(doc, citations) {
   const renderBlock = block => {
     if (block.type === 'title') return `<h1 class="title">${escapeHtml(block.text)}</h1>`;
     if (block.type === 'heading') {
+      let headingText = block.text;
       if (block.role === 'section') {
         pushPage();
         currentPageClass = 'chapter-page';
-        chapterNo = chapterIndexFrom(block.text) || chapterNo + 1;
+        headingText = headingText || outlineTitles[sectionIndex] || `第${sectionIndex + 1}章`;
+        sectionIndex += 1;
+        chapterNo = chapterIndexFrom(headingText) || chapterNo + 1;
         figureNo = 0;
         tableNo = 0;
         formulaNo = 0;
@@ -434,13 +439,13 @@ function buildPreviewHtml(doc, citations) {
         pushPage();
         currentPageClass = 'chapter-page';
       }
-      const tag = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role) ? 'h2' : 'h3';
+      const tag = block.role === 'section' ? 'h1' : ['abstract', 'references', 'ack'].includes(block.role) ? 'h2' : 'h3';
       const cls = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role)
         ? 'chapter-title'
         : block.level >= 4
           ? 'subsec-3'
           : 'subsec';
-      return `<${tag} class="${cls}">${escapeHtml(block.text)}</${tag}>`;
+      return `<${tag} class="${cls}">${escapeHtml(headingText)}</${tag}>`;
     }
     if (block.type === 'paragraph') return `<p>${escapeHtml(block.text)}</p>`;
     if (block.type === 'blockquote') return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
@@ -540,6 +545,7 @@ function thesisTemplateCss() {
       page-break-after: avoid;
       break-after: avoid;
     }
+    .chapter-page > .chapter-title:first-child { margin-top: 0; }
     .subsec {
       font-family: SimHei, "Heiti SC", sans-serif;
       font-size: 14pt;
@@ -910,6 +916,47 @@ function normalizeCitations() {
   return list;
 }
 
+function restoreMissingCitationsFromDoc(doc, list) {
+  const order = buildCitationNumberMap(doc);
+  const existing = new Set(list.map(item => item.id).filter(Boolean));
+  const existingLitNos = new Set(list.map(item => Number(item.litNo)).filter(Number.isFinite));
+  const missing = [...order.entries()]
+    .filter(([id]) => id && !existing.has(id))
+    .sort((a, b) => a[1] - b[1]);
+  const plainNumbers = new Set();
+  doc.descendants(node => {
+    if (!node.isTextblock || node.type.name === 'heading') return;
+    (node.textContent.match(/\[(\d+)\]/g) || []).forEach(mark => plainNumbers.add(Number(mark.slice(1, -1))));
+  });
+  const missingPlain = [...plainNumbers]
+    .filter(n => n && !existingLitNos.has(n) && ![...order.values()].includes(n))
+    .sort((a, b) => a - b);
+  if (!missing.length && !missingPlain.length) return list;
+  const restored = missing.map(([id, number]) => normalizeCitationEntry({
+    id,
+    litNo: number,
+    type: 'J',
+    title: `正文引用文献 ${number}`,
+    source: '待补全来源',
+    year: '',
+    doi: String(id).includes('/') || String(id).includes('.') ? id : '',
+  }, getProject().referenceStandard));
+  missingPlain.forEach(number => {
+    restored.push(normalizeCitationEntry({
+      id: `legacy-cit-${number}`,
+      litNo: number,
+      type: 'J',
+      title: `正文引用文献 ${number}`,
+      source: '待补全来源',
+      year: '',
+    }, getProject().referenceStandard));
+  });
+  const next = [...list, ...restored].sort((a, b) => (a.litNo || 999999) - (b.litNo || 999999));
+  saveCitations(next);
+  toast(`已从正文引用恢复 ${restored.length} 条待补全文献`, 'ok', 3200);
+  return next;
+}
+
 function normalizeAcademicText(text) {
   return String(text || '')
     .replace(/\u00a0/g, ' ')
@@ -988,6 +1035,7 @@ export default {
     const project = getProject();
     let citations = normalizeCitations();
     const doc = ensureOutlineSubsections(docFromJSON({ ...project, citations }), project);
+    citations = restoreMissingCitationsFromDoc(doc, citations);
     const viewState = { pending: null, rerun: null, view: null, currentChapter: project.currentChapter || project.outline?.[0]?.chapter || '' };
     const panelState = { outlineCollapsed: false, activeRightTab: 'assistant' };
 
