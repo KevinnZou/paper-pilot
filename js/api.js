@@ -146,9 +146,11 @@ function mockWritingSuggestion(prompt) {
 }
 
 function mockGenericReply(messages) {
-  const prompt = messages?.[messages.length - 1]?.content || '';
+  const contents = (Array.isArray(messages) ? messages : []).map(m => m?.content || '');
+  const prompt = contents[contents.length - 1] || '';
+  const blob = contents.join('\n');
   if (/只回复两个字：正常/.test(prompt)) return '正常';
-  if (/解析为 GB\/T 7714 条目|引用信息/.test(prompt)) return mockCitationParse();
+  if (/解析为 GB\/T 7714 条目|引用信息/.test(blob)) return mockCitationParse();
   if (/检索词|英文关键词短语|CrossRef\/OpenAlex/.test(prompt)) return mockSearchQueries();
   if (/推荐理由|最适合关联的章节/.test(prompt)) return mockAnnotations();
   if (/题目候选|中文论文题目候选/.test(prompt)) return mockTopicTitles();

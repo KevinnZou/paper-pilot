@@ -612,7 +612,7 @@ export function calcStreak(dates) {
   return streak;
 }
 
-function parseOutline(text) {
+export function parseOutline(text) {
   const chapters = [];
   const cnNums = '一二三四五六七八九十百';
   text.split('\n').map(l => l.trim()).forEach(line => {

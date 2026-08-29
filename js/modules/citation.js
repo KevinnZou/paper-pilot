@@ -207,8 +207,8 @@ function ensureNumbers(list) {
 
 function citationRestorePools(currentList) {
   const legacy = get('citations', []);
-  const projectPool = listProjects().flatMap(project => project.citations || []);
-  return [...currentList, ...(Array.isArray(legacy) ? legacy : []), ...projectPool].filter(Boolean);
+  // 只从当前项目 + 旧本地库恢复，避免从其它项目污染当前文献库
+  return [...currentList, ...(Array.isArray(legacy) ? legacy : [])].filter(Boolean);
 }
 
 function isPlaceholderCitation(item = {}) {
@@ -385,23 +385,20 @@ function citationExists(list, entry) {
   });
 }
 
-/** 删除文献库中重复条目（同 id / DOI / 规范化题名，保留先入库的） */
+/** 删除文献库中重复条目（渲染时仅按 id/DOI 强信号去重，避免重名不同文献被误删；题名匹配放到显式"检查并同步"） */
 function dedupeCitations(list) {
   const norm = s => String(s || '').toLowerCase().replace(/[\s.,:;!?'"()\[\]\/\-—–··]+/g, '');
   const seenId = new Set();
   const seenDoi = new Set();
-  const seenTitle = new Set();
   const next = [];
   let removed = 0;
   list.forEach(item => {
     const id = item?.id;
     const doi = norm(item?.doi);
-    const title = norm(item?.title);
-    const dup = (id && seenId.has(id)) || (doi && seenDoi.has(doi)) || (title && seenTitle.has(title));
+    const dup = (id && seenId.has(id)) || (doi && seenDoi.has(doi));
     if (dup) { removed++; return; }
     if (id) seenId.add(id);
     if (doi) seenDoi.add(doi);
-    if (title) seenTitle.add(title);
     next.push(item);
   });
   if (removed) saveCitations(next);

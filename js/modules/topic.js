@@ -1,6 +1,6 @@
 import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js';
 import { chat, shouldUseLiveAI } from '../api.js';
-import { getProject, adoptOutline, updateBasics, saveProject } from '../project.js';
+import { getProject, adoptOutline, parseOutline, updateBasics, saveProject } from '../project.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle, isPlaceholderTitle } from '../title-utils.js';
 
@@ -494,10 +494,8 @@ function renderOutlinePreview(text) {
 }
 
 function outlineChapterCount(text) {
-  return String(text || '').split('\n').filter(line => {
-    const clean = line.replace(/\*\*|__|`/g, '').replace(/^\s*(?:#{1,6}|[-•*])\s*/, '').trim();
-    return /^(第\s*[一二三四五六七八九十百\d]+\s*章|chapter\s+\d+[\s:：.-]+|\d+[、．.]\s*(?!\d)|\d+\s+)/i.test(clean);
-  }).length;
+  // 与"采用"时用的 parseOutline 同源，保证弹窗显示"已识别 N 章"与实际写入一致
+  return parseOutline(text).length;
 }
 
 function renderStepNav(step, maxStep, project, design) {

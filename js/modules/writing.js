@@ -930,8 +930,8 @@ function normalizeCitations() {
 
 function citationRestorePools(currentList) {
   const legacy = get('citations', []);
-  const projectPool = listProjects().flatMap(project => project.citations || []);
-  return [...currentList, ...(Array.isArray(legacy) ? legacy : []), ...projectPool].filter(Boolean);
+  // 只从当前项目 + 旧本地库恢复，避免从其它项目污染当前文献库
+  return [...currentList, ...(Array.isArray(legacy) ? legacy : [])].filter(Boolean);
 }
 
 function isPlaceholderCitation(item = {}) {
@@ -2237,6 +2237,7 @@ export default {
       renderTodosPanel();
       renderChapterCard();
       renderVersionsPanel();
+      renderOutline(); // 跳章/光标落章后刷新左侧目录高亮与轨道点
     }
 
     // 初始对齐：把光标落在「正在写」章节，使顶部标题 / 目录反色 / 右侧当前章节卡三处一致
