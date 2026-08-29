@@ -210,10 +210,44 @@ function citationRestorePools(currentList) {
   return [...currentList, ...(Array.isArray(legacy) ? legacy : []), ...projectPool].filter(Boolean);
 }
 
+function isPlaceholderCitation(item = {}) {
+  return /^正文引用文献 \d+$/.test(String(item.title || '')) || item.source === '待补全来源';
+}
+
+function findCitationSource(pools, { id, doi, litNo }) {
+  return pools.find(item =>
+    !isPlaceholderCitation(item) &&
+    ((id && item.id === id) || (doi && item.doi === doi) || (litNo && Number(item.litNo) === Number(litNo))));
+}
+
+function mergeCitationWithSource(item, source, standard) {
+  return normalizeCitationEntry({
+    ...item,
+    ...source,
+    id: item.id,
+    litNo: item.litNo,
+  }, standard);
+}
+
+function upgradePlaceholderCitationsFromPools(list) {
+  const project = getProject();
+  const pools = citationRestorePools(list);
+  let changed = false;
+  const next = list.map(item => {
+    if (!isPlaceholderCitation(item)) return item;
+    const source = findCitationSource(pools, { id: item.id, doi: item.doi, litNo: item.litNo });
+    if (!source) return item;
+    changed = true;
+    return mergeCitationWithSource(item, source, project.referenceStandard);
+  });
+  if (changed) saveCitations(next);
+  return next;
+}
+
 function restoreCitationEntry(source, fallback, standard) {
   return normalizeCitationEntry({
-    ...(source || {}),
     ...fallback,
+    ...(source || {}),
     id: fallback.id || source?.id,
     litNo: fallback.litNo,
   }, standard);
@@ -227,6 +261,7 @@ function restoreMissingCitationsFromDoc(list) {
   const existing = new Set(list.map(item => item.id).filter(Boolean));
   const existingLitNos = new Set(list.map(item => Number(item.litNo)).filter(Number.isFinite));
   const pools = citationRestorePools(list);
+  const sortedCitationsByNo = [...list].sort((a, b) => Number(a.litNo || 0) - Number(b.litNo || 0));
   const missing = [...order.entries()]
     .filter(([id]) => id && !existing.has(id))
     .sort((a, b) => a[1] - b[1]);
@@ -240,7 +275,7 @@ function restoreMissingCitationsFromDoc(list) {
     .sort((a, b) => a - b);
   if (!missing.length && !missingPlain.length) return list;
   const restored = missing.map(([id, number]) => {
-    const source = pools.find(item => item.id === id || item.doi === id);
+    const source = findCitationSource(pools, { id, doi: id, litNo: number });
     return restoreCitationEntry(source, {
       id,
       litNo: number,
@@ -252,7 +287,9 @@ function restoreMissingCitationsFromDoc(list) {
     }, project.referenceStandard);
   });
   missingPlain.forEach(number => {
-    const source = pools.find(item => Number(item.litNo) === number);
+    let source = findCitationSource(pools, { litNo: number });
+    // 兜底：正文用 [n] 时，若精确编号不存在（如整理后重排），按文献库顺序落到第 n 条完整条目，尽量补全而非占位
+    if (!source) source = sortedCitationsByNo[number - 1] || null;
     restored.push(restoreCitationEntry(source, {
       id: source?.id || `legacy-cit-${number}`,
       litNo: number,
@@ -270,6 +307,41 @@ function restoreMissingCitationsFromDoc(list) {
     ? `已从正文引用恢复 ${restored.length} 条文献`
     : `已从正文引用恢复 ${restored.length} 条文献，其中 ${restored.length - complete} 条需要补全信息`, 'ok', 3600);
   return next;
+}
+
+function crossRefItemToCitation(item, fallback = {}, standard) {
+  const authors = (item.author || [])
+    .map(a => [a.family, a.given].filter(Boolean).join(' ').trim())
+    .filter(Boolean);
+  const year = item.issued?.['date-parts']?.[0]?.[0];
+  return normalizeCitationEntry({
+    ...fallback,
+    doi: item.DOI || fallback.doi || '',
+    title: (item.title || [fallback.title || ''])[0],
+    author: authors.join(', '),
+    authors: authors.join(', '),
+    source: (item['container-title'] || [fallback.source || ''])[0],
+    year: year ? String(year) : (fallback.year || ''),
+    volume: item.volume || fallback.volume || '',
+    issue: item.issue || fallback.issue || '',
+    pages: item.page || fallback.pages || '',
+    type: fallback.type || 'J',
+    abstract: stripTags(item.abstract || fallback.abstract || ''),
+    provider: 'CrossRef',
+    url: item.URL || fallback.url || '',
+    id: fallback.id,
+    litNo: fallback.litNo,
+  }, standard);
+}
+
+async function lookupCitationByDoi(doi, fallback, standard, signal) {
+  const cleanDoi = String(doi || '').trim();
+  if (!cleanDoi) return null;
+  const url = `https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.message ? crossRefItemToCitation(data.message, fallback, standard) : null;
 }
 
 function nextLitNo(list) {
@@ -578,6 +650,43 @@ function refreshLibrary(el) {
   bindListActions(el);
 }
 
+async function enrichPlaceholderCitations(el) {
+  const project = getProject();
+  const list = getCitations();
+  const pending = list.filter(item => isPlaceholderCitation(item) && item.doi);
+  if (!pending.length) return;
+  if (!window.__tmCitationEnriching) window.__tmCitationEnriching = new Set();
+  const jobs = pending.filter(item => {
+    const key = `${project.id}:${item.id}:${item.doi}`;
+    if (window.__tmCitationEnriching.has(key)) return false;
+    window.__tmCitationEnriching.add(key);
+    item.__enrichKey = key;
+    return true;
+  });
+  if (!jobs.length) return;
+  let changed = false;
+  try {
+    for (const item of jobs) {
+      const enriched = await lookupCitationByDoi(item.doi, item, project.referenceStandard, abortSignal());
+      if (!enriched || isPlaceholderCitation(enriched)) continue;
+      const current = getCitations();
+      const idx = current.findIndex(row => row.id === item.id);
+      if (idx < 0 || !isPlaceholderCitation(current[idx])) continue;
+      current[idx] = enriched;
+      saveCitations(current);
+      changed = true;
+    }
+    if (changed) {
+      refreshLibrary(el);
+      toast('已自动补全正文引用对应的文献信息', 'ok', 2600);
+    }
+  } catch (error) {
+    if (isAbort(error)) return;
+  } finally {
+    jobs.forEach(item => window.__tmCitationEnriching.delete(item.__enrichKey));
+  }
+}
+
 function bindListActions(el) {
   el.querySelectorAll('[data-cit-copy]').forEach(b =>
     b.addEventListener('click', () => copyText(b.dataset.citCopy)));
@@ -620,6 +729,7 @@ function render(el) {
   const list0 = getCitations();
   ensureNumbers(list0);
   restoreMissingCitationsFromDoc(getCitations());
+  upgradePlaceholderCitationsFromPools(getCitations());
   const list = sortedList();
   const citedNums = collectCitedNums();
   const prj = getProject();
@@ -653,6 +763,7 @@ function render(el) {
       onDone: () => refreshLibrary(el),
     });
   }
+  enrichPlaceholderCitations(el);
 
   const eviModal = el.querySelector('#evi-modal');
   const openEvidenceModal = () => {

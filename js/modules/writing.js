@@ -288,13 +288,16 @@ function citationBrief(item, index) {
 
 function normalizeDraftCitationMarkers(text, refs) {
   let out = String(text || '');
+  if (!refs.length) return out;
   refs.forEach((item, index) => {
     const n = index + 1;
     const marker = `[[CIT:${item.id}]]`;
+    // 兼容模型可能写出的各种编号形式： [R1]、[文献1]、[1]、[[CIT:1]]（可带空格）
     out = out
-      .replace(new RegExp(`\\[R${n}\\]`, 'g'), marker)
-      .replace(new RegExp(`\\[文献${n}\\]`, 'g'), marker)
-      .replace(new RegExp(`\\[${n}\\]`, 'g'), marker);
+      .replace(new RegExp(`\\[\\s*R\\s*${n}\\s*\\]`, 'g'), marker)
+      .replace(new RegExp(`\\[\\s*文献\\s*${n}\\s*\\]`, 'g'), marker)
+      .replace(new RegExp(`\\[\\s*${n}\\s*\\]`, 'g'), marker)
+      .replace(new RegExp(`\\[\\[CIT:\\s*${n}\\s*\\]\\]`, 'g'), marker);
   });
   return out;
 }
@@ -923,10 +926,20 @@ function citationRestorePools(currentList) {
   return [...currentList, ...(Array.isArray(legacy) ? legacy : []), ...projectPool].filter(Boolean);
 }
 
+function isPlaceholderCitation(item = {}) {
+  return /^正文引用文献 \d+$/.test(String(item.title || '')) || item.source === '待补全来源';
+}
+
+function findCitationSource(pools, { id, doi, litNo }) {
+  return pools.find(item =>
+    !isPlaceholderCitation(item) &&
+    ((id && item.id === id) || (doi && item.doi === doi) || (litNo && Number(item.litNo) === Number(litNo))));
+}
+
 function restoreCitationEntry(source, fallback) {
   return normalizeCitationEntry({
-    ...(source || {}),
     ...fallback,
+    ...(source || {}),
     id: fallback.id || source?.id,
     litNo: fallback.litNo,
   }, getProject().referenceStandard);
@@ -937,6 +950,7 @@ function restoreMissingCitationsFromDoc(doc, list) {
   const existing = new Set(list.map(item => item.id).filter(Boolean));
   const existingLitNos = new Set(list.map(item => Number(item.litNo)).filter(Number.isFinite));
   const pools = citationRestorePools(list);
+  const sortedCitationsByNo = [...list].sort((a, b) => Number(a.litNo || 0) - Number(b.litNo || 0));
   const missing = [...order.entries()]
     .filter(([id]) => id && !existing.has(id))
     .sort((a, b) => a[1] - b[1]);
@@ -950,7 +964,7 @@ function restoreMissingCitationsFromDoc(doc, list) {
     .sort((a, b) => a - b);
   if (!missing.length && !missingPlain.length) return list;
   const restored = missing.map(([id, number]) => {
-    const source = pools.find(item => item.id === id || item.doi === id);
+    const source = findCitationSource(pools, { id, doi: id, litNo: number });
     return restoreCitationEntry(source, {
       id,
       litNo: number,
@@ -962,7 +976,8 @@ function restoreMissingCitationsFromDoc(doc, list) {
     });
   });
   missingPlain.forEach(number => {
-    const source = pools.find(item => Number(item.litNo) === number);
+    let source = findCitationSource(pools, { litNo: number });
+    if (!source) source = sortedCitationsByNo[number - 1] || null;
     restored.push(restoreCitationEntry(source, {
       id: source?.id || `legacy-cit-${number}`,
       litNo: number,
