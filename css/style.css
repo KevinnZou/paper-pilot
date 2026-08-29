@@ -4093,3 +4093,17 @@ kbd {
 .cit-batch-count { font-size: 12px; color: var(--mute); font-family: var(--font-mono); }
 .cit-batch-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 @media (max-width: 640px) { .cit-batch-actions { margin-left: 0; width: 100%; } }
+
+/* 自学习卡（主页） */
+.learn-card { margin-top: 18px; }
+.learn-head { margin-bottom: 10px; }
+.learn-head h2 { margin-bottom: 4px; }
+.learn-head .desc { margin: 0; }
+.learn-row { display: grid; grid-template-columns: minmax(0, 72px) minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 5px 0; }
+.learn-row > span { font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.learn-track { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.learn-fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--jade)); border-radius: 999px; }
+.learn-num { font-size: 12px; color: var(--ink-soft); font-family: var(--font-mono); white-space: nowrap; }
+.learn-insights { margin: 12px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.7; }
+.learn-insights li { margin-bottom: 2px; }
+@media (max-width: 640px) { .learn-row { grid-template-columns: minmax(0,1fr) auto; } .learn-row > span { grid-column: 1 / -1; } }

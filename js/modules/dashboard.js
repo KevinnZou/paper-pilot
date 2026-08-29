@@ -5,6 +5,7 @@ import { escapeHtml, toast, calGridHtml } from '../ui.js';
 import { loadDemoData, hasExistingData } from '../demo-data.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
+import { learningCardHtml } from '../self-learning.js';
 
 const CARDS = [
   { id: 'topic', title: '研究设计', desc: '研究想法 → 研究问题 → 可行性检查 → 论文大纲' },
@@ -315,7 +316,7 @@ export default {
       </section>`;
 
     // 版面顺序：hero → 工作区入口（高频）→ 今天该做什么/写作之旅 → 章节进度
-    el.innerHTML = `<div class="dashboard-stack">${heroHtml}${entranceHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}</div>`;
+    el.innerHTML = `<div class="dashboard-stack">${heroHtml}${entranceHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}${learningCardHtml()}</div>`;
 
     // 章节直写
     el.querySelectorAll('[data-write]').forEach(b =>

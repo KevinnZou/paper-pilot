@@ -28,8 +28,10 @@ import {
 import { ensureCitationIds, citationMap, normalizeCitationEntry } from '../citation-utils.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
+import { recordOutcome, recordLengthDelta, buildPreferencePrompt } from '../self-learning.js';
 
 const SYSTEM = '你是一位资深论文写作导师，帮助中国高校学生完成论文写作。遵守学术诚信：不代替用户完成整篇论文，只提供局部改写、结构建议和章节草稿辅助。回答直接给出结果，不要客套话和多余解释。';
+const systemPrompt = () => SYSTEM + buildPreferencePrompt();
 
 const AI_ACTIONS = [
   { id: 'academic', label: '学术润色', prompt: t => `请把下面这段话改写成更规范、更克制的学术表达，只输出改写后的文字。\n\n${t}`, mode: 'selection' },
@@ -2315,6 +2317,7 @@ export default {
       if (!viewState.pending) return;
       if (actionName === 'reject') {
         const wasLogic = viewState.pending.actionId === 'logic';
+        recordOutcome(viewState.pending.actionId, 'reject', viewState.pending.label);
         viewState.pending = null;
         clearReviewWidget();
         closeLogicModal();
@@ -2323,6 +2326,7 @@ export default {
         return;
       }
       if (actionName === 'regenerate') {
+        recordOutcome(viewState.pending.actionId, 'regenerate', viewState.pending.label);
         clearReviewWidget();
         closeLogicModal();
         viewState.rerun?.();
@@ -2347,7 +2351,7 @@ export default {
         return;
       }
       if (actionName !== 'accept') return;
-      const { replaceFrom, replaceTo, suggestion, actionId, target } = viewState.pending;
+      const { replaceFrom, replaceTo, suggestion, actionId, original, target } = viewState.pending;
       if (actionId === 'logic') {
         toast('检查结果保留为批注建议，不直接写回正文', 'ok');
         viewState.pending = null;
@@ -2356,6 +2360,8 @@ export default {
         renderSuggestionBox(suggestionBox, viewState);
         return;
       }
+      recordOutcome(actionId, 'accept', viewState.pending.label);
+      recordLengthDelta(actionId, original, suggestion);
       replaceAiTextRange(viewState.view, replaceFrom, replaceTo, suggestion, { target });
       viewState.pending = null;
       clearReviewWidget();
@@ -2577,7 +2583,7 @@ export default {
       setLoading(button, true, '生成中…');
       try {
         const reply = await chat([
-          { role: 'system', content: SYSTEM },
+          { role: 'system', content: systemPrompt() },
           { role: 'user', content: action.prompt(sourceText) },
         ], { temperature: action.id === 'logic' ? 0.2 : 0.6, signal: writingSignal() });
         viewState.pending = {
@@ -2676,7 +2682,7 @@ export default {
         streamRange = { from: target.bodyTo, to: target.bodyTo, target, subsections };
         replaceDraftStream(viewState.view, streamRange, '', draftCitations);
         const reply = await streamChat([
-          { role: 'system', content: SYSTEM },
+          { role: 'system', content: systemPrompt() },
           { role: 'user', content: `${userPrompt}${referencesBlock}` },
         ], {
           temperature: target.kind === 'keywords' ? 0.35 : 0.68,
