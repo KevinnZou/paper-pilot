@@ -1046,9 +1046,14 @@ export default {
                   <button class="wb-tool-btn" type="button" id="wb-format">格式整理</button>
                   <button class="wb-tool-btn" type="button" id="wb-clean-citations">整理文献</button>
                   <button class="wb-tool-btn" type="button" id="wb-preview">模板预览</button>
-                  <button class="wb-tool-btn" type="button" id="wb-export-word">导出 Word</button>
-                  <button class="wb-tool-btn" type="button" id="wb-export-pdf">导出 PDF</button>
-                  <button class="wb-tool-btn" type="button" id="wb-download">下载 Markdown</button>
+                  <details class="wb-toolbar-more wb-export-menu">
+                    <summary>导出</summary>
+                    <div class="wb-toolbar-more-panel">
+                      <button class="btn btn-ghost btn-sm" id="wb-export-word" type="button">Word 文档</button>
+                      <button class="btn btn-ghost btn-sm" id="wb-export-pdf" type="button">PDF 文件</button>
+                      <button class="btn btn-ghost btn-sm" id="wb-download" type="button">Markdown</button>
+                    </div>
+                  </details>
                 </div>
               </div>
               <div class="wb-editor-toolbar">

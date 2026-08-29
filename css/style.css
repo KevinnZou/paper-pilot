@@ -1774,6 +1774,7 @@ kbd {
 .wb-toolbar-quick {
   justify-content: flex-end;
   flex-wrap: wrap;
+  row-gap: 3px;
 }
 .wb-toolbar-spacer {
   flex: 1 1 auto;
@@ -1997,7 +1998,7 @@ kbd {
   min-height: 28px;
   padding: 3px 9px;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: 5px;
   background: transparent;
   color: #536171;
   font-size: 12.5px;
@@ -2017,14 +2018,24 @@ kbd {
   right: 0;
   top: calc(100% + 8px);
   z-index: 5;
-  min-width: 220px;
-  padding: 10px;
+  min-width: 154px;
+  padding: 7px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 7px;
   background: var(--surface);
   box-shadow: var(--shadow-lift);
   display: grid;
-  gap: 8px;
+  gap: 4px;
+}
+.wb-export-menu .wb-toolbar-more-panel .btn {
+  justify-content: flex-start;
+  width: 100%;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink);
+}
+.wb-export-menu .wb-toolbar-more-panel .btn:hover {
+  background: var(--surface-2);
 }
 .wb-logic-modal {
   width: min(760px, 92vw);
@@ -2972,10 +2983,10 @@ kbd {
   .chapter-group { flex: 0 0 220px; }
   .chapter-subsection-list { display: none; }
   .chapter-item { flex-shrink: 0; width: auto; }
-  .wb-toolbar-more { flex: 1 1 100%; width: 100%; }
-  .wb-toolbar-more summary { width: 100%; }
-  .wb-toolbar-more-panel { position: static; min-width: 0; width: 100%; }
-  .wb-toolbar-more-panel .btn { width: 100%; justify-content: center; }
+  .wb-toolbar-more:not(.wb-export-menu) { flex: 1 1 100%; width: 100%; }
+  .wb-toolbar-more:not(.wb-export-menu) summary { width: 100%; }
+  .wb-toolbar-more:not(.wb-export-menu) .wb-toolbar-more-panel { position: static; min-width: 0; width: 100%; }
+  .wb-toolbar-more:not(.wb-export-menu) .wb-toolbar-more-panel .btn { width: 100%; justify-content: center; }
   .workbench.outline-collapsed { grid-template-columns: 1fr; }
   .workbench.outline-collapsed .wb-left-collapsed { display: none; }
   .workbench.outline-collapsed .wb-left-expanded { display: flex; }
