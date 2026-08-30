@@ -1328,3 +1328,7 @@
 - **参考文献著录**（gbt7714.js）：D/R 补"城市: 单位"、C 会议去重+`//会议名. 城市: 出版者, 年: 页码`、S 改`标准名: 标准号[S]. 城市: 出版者, 年`、N 改`报纸名, 年(版次)`、西文作者>3 用`et al.`（修双句点）。
 - **正文引用上标**（GB/T 7714 顺序编码制）：模板预览（writing.buildPreviewHtml）+导出检查预览（check-export.buildPreviewHtml）把引用编号包`<sup>`；DOCX 导出（textRuns）把正文`[n]`拆成 superscript run。
 - 报告见 `report/academic-compliance-audit.md`（含每处依据 + 差异 + 已修）。
+
+## 2026-08-29 · GB/T 7713.2 结构：DOCX 补"目录"（第 106 次会话）
+- DOCX 导出在正文前（题目/摘要/关键词之后）插入**"目录"标题 + TOC 域**（`TOC \\o "1-3" \\t "HeadingChapter,1;Heading2,2;Heading3,3"`，Word 打开右键更新即生成）。实测解压 document.xml 含 TOC 域 + "目录"，且正文引用 `[n]` 为 superscript run。
+- 模板预览（网页）暂不含"目录"页，已记入合规报告（后续按校模板补）。
