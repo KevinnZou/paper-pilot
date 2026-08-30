@@ -136,7 +136,10 @@ export function learningPageHtml() {
         <div class="learn-track"><div class="learn-fill" style="width:${Math.max(6, ratio(a.accepted, a.used))}%"></div></div>
         <b class="learn-num">使用 ${a.used} · 接受 ${ratio(a.accepted, a.used)}%</b>
       </div>`).join('') : '<p class="desc">还没有 AI 交互记录。到写作台使用一次 AI 建议，这里会显示学习结果。</p>';
-  const insights = summary().length ? `<ul class="learn-insights">${summary().map(x => `<li>${escapeLearn(x)}</li>`).join('')}</ul>` : '';
+  const insights = summary();
+  const insightsHtml = insights.length
+    ? `<ul class="learn-insights">${insights.map(x => `<li>${escapeLearn(x)}</li>`).join('')}</ul>`
+    : '<p class="desc">还没有足够的交互记录。先在写作台采纳或拒绝几次 AI 建议，系统会逐步形成偏好画像。</p>';
   const trace = (p.log || []).length
     ? `<div class="learn-trace">${p.log.map(e => `<div class="learn-trace-item"><span class="dot"></span><span>${escapeLearn(e)}</span></div>`).join('')}</div>`
     : '<p class="desc">完成一次 AI 操作后，这里会记录学习轨迹。</p>';
@@ -149,44 +152,60 @@ export function learningPageHtml() {
     { key: 'terminology', label: '术语风格', val: ({ auto: '自动', academic: '规范学术', plain: '通俗易懂' })[prefs.terminology] },
   ].map(x => `<div class="learn-pref"><span>${x.label}</span><b>${x.val}</b></div>`).join('');
 
-  return `<section class="card learn-page">
-    <div class="learn-head"><div>
-      <h2><span class="mark"></span>个性化</h2>
-      <p class="desc">系统学习你的写作偏好，让 AI 建议更贴合你的表达。${p.interactions ? `已学习 <b>${p.interactions}</b> 次交互。` : '完成一次 AI 操作后开始学习。'}</p>
-    </div></div>
+  return `<div class="learn-page">
+    <section class="card learn-overview">
+      <div class="learn-head">
+        <div>
+          <h2><span class="mark"></span>个性化</h2>
+          <p class="desc">系统学习你的写作偏好，让 AI 建议更贴合你的表达。${p.interactions ? `已学习 <b>${p.interactions}</b> 次交互。` : '完成一次 AI 操作后开始学习。'}</p>
+        </div>
+      </div>
+      <div class="hero-stats learn-stats">
+        <div class="stat"><span class="stat-num">${p.interactions}</span><span class="stat-label">累计交互</span></div>
+        <div class="stat"><span class="stat-num">${usedTotal ? ratio(acceptedTotal, usedTotal) : 0}%</span><span class="stat-label">建议接受率</span></div>
+        <div class="stat"><span class="stat-num">${actions.length}</span><span class="stat-label">覆盖功能</span></div>
+        <div class="stat"><span class="stat-num">${relTime(p.updatedAt) || '—'}</span><span class="stat-label">最近学习</span></div>
+      </div>
+    </section>
 
-    <div class="hero-stats" style="margin-top:6px">
-      <div class="stat"><span class="stat-num">${p.interactions}</span><span class="stat-label">累计交互</span></div>
-      <div class="stat"><span class="stat-num">${usedTotal ? ratio(acceptedTotal, usedTotal) : 0}%</span><span class="stat-label">建议接受率</span></div>
-      <div class="stat"><span class="stat-num">${actions.length}</span><span class="stat-label">覆盖功能</span></div>
-      <div class="stat"><span class="stat-num">${relTime(p.updatedAt) || '—'}</span><span class="stat-label">最近学习</span></div>
+    <div class="learn-main-grid">
+      <section class="card learn-panel">
+        <h3><span class="mark"></span>偏好画像</h3>
+        <div class="learn-pref-grid">${prefCards}</div>
+        ${insightsHtml}
+      </section>
+
+      <section class="card learn-panel">
+        <h3><span class="mark"></span>手动微调</h3>
+        <div class="learn-form-grid">
+          <div><label class="field-label">语气偏好</label>
+            <select id="sl-tone">${selOpt('tone', ['auto,自动', 'formal,正式书面', 'concise,简洁克制', 'detailed,详尽展开'], prefs.tone)}</select></div>
+          <div><label class="field-label">术语风格</label>
+            <select id="sl-terminology">${selOpt('terminology', ['auto,自动', 'academic,规范学术', 'plain,通俗易懂'], prefs.terminology)}</select></div>
+          <div><label class="field-label">引用密度</label>
+            <select id="sl-cd">${selOpt('citationDensity', ['auto,自动', 'low,较少引用', 'mid,适中', 'high,较多引用'], prefs.citationDensity)}</select></div>
+          <div><label class="field-label">应用程度</label>
+            <select id="sl-intensity">${selOpt('intensity', ['light,轻度参考', 'standard,标准调整', 'strong,严格遵循'], prefs.intensity)}</select></div>
+        </div>
+        <div class="learn-actions">
+          <button class="btn" id="sl-save">保存偏好</button>
+          <button class="btn btn-ghost" id="sl-reset">重置学习记录</button>
+        </div>
+        <p class="desc learn-note">手动微调会影响后续 AI 建议；重置只清空学习记录，不会删除论文项目。</p>
+      </section>
     </div>
 
-    <h3 class="field-label">系统偏好画像</h3>
-    <div class="learn-pref-grid">${prefCards}</div>
-    ${insights ? `<ul class="learn-insights">${insights}</ul>` : ''}
-
-    <h3 class="field-label">各功能使用与接受情况</h3>
-    <div class="item-list">${rows}</div>
-
-    <h3 class="field-label">手动微调</h3>
-    <div class="form-row">
-      <div><label class="field-label">语气偏好</label>
-        <select id="sl-tone">${selOpt('tone', ['auto,自动', 'formal,正式书面', 'concise,简洁克制', 'detailed,详尽展开'], prefs.tone)}</select></div>
-      <div><label class="field-label">术语风格</label>
-        <select id="sl-terminology">${selOpt('terminology', ['auto,自动', 'academic,规范学术', 'plain,通俗易懂'], prefs.terminology)}</select></div>
-      <div><label class="field-label">引用密度</label>
-        <select id="sl-cd">${selOpt('citationDensity', ['auto,自动', 'low,较少引用', 'mid,适中', 'high,较多引用'], prefs.citationDensity)}</select></div>
-      <div><label class="field-label">应用程度</label>
-        <select id="sl-intensity">${selOpt('intensity', ['light,轻度参考', 'standard,标准调整', 'strong,严格遵循'], prefs.intensity)}</select></div>
+    <div class="learn-main-grid">
+      <section class="card learn-panel">
+        <h3><span class="mark"></span>功能表现</h3>
+        <div class="item-list">${rows}</div>
+      </section>
+      <section class="card learn-panel">
+        <h3><span class="mark"></span>学习轨迹</h3>
+        ${trace}
+      </section>
     </div>
-    <div style="margin-top:10px"><button class="btn" id="sl-save">保存偏好</button>
-      <button class="btn btn-ghost" id="sl-reset">重置学习记录</button></div>
-
-    <h3 class="field-label">学习轨迹</h3>
-    ${trace}
-    <p class="desc" style="margin-top:10px">手动微调会注入后续 AI 建议；重置会清空已学到的交互记录。</p>
-  </section>`;
+  </div>`;
 }
 
 function selOpt(key, list, cur) {
