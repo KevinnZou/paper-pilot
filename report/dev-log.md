@@ -1332,3 +1332,10 @@
 ## 2026-08-29 · GB/T 7713.2 结构：DOCX 补"目录"（第 106 次会话）
 - DOCX 导出在正文前（题目/摘要/关键词之后）插入**"目录"标题 + TOC 域**（`TOC \\o "1-3" \\t "HeadingChapter,1;Heading2,2;Heading3,3"`，Word 打开右键更新即生成）。实测解压 document.xml 含 TOC 域 + "目录"，且正文引用 `[n]` 为 superscript run。
 - 模板预览（网页）暂不含"目录"页，已记入合规报告（后续按校模板补）。
+
+## 2026-08-29 · 论文格式模板：通用默认 + 可自定义（第 107 次会话）
+- `project.js`：新增 `DEFAULT_THESIS_TEMPLATE`（通用学位论文默认：3cm 四边距、宋体小四正文、黑体三号标题、1.5 行距，**非单一学校样式**）+ `getTemplate(project)`（项目级 `template` 可覆盖）。
+- `docx-export.js`：`buildDocxParts`/`buildStylesXml`/`createDocxBlob` 按 `getTemplate(project)` 应用页边距（cm→twips）、正文/标题字体字号、行距；`DEFAULT_THEME` 兜底。
+- `project-settings.js`：新增「论文格式模板」卡（四边距/正文中西方/字号/标题/行距 + 保存/还原默认），保存写 `project.template`。
+- 实测：设 top=2.4cm → 导出 docx `pgMar top="1361"`；还原默认生效；全站 0 溢出 0 报错。
+- 说明：模板为通用默认（可自定义），不宣称是任一学校标准；GB/T 7714-2015 著录与规范化（学术红线）在上一步已单独合规。

@@ -1,5 +1,5 @@
 import { toast, escapeHtml } from '../ui.js';
-import { getProject, updateBasics, saveProject, hasActiveProject } from '../project.js';
+import { getProject, updateBasics, saveProject, hasActiveProject, getTemplate } from '../project.js';
 import { isPlaceholderTitle } from '../title-utils.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
@@ -25,6 +25,7 @@ export default {
     }
 
     const p = getProject();
+    const tm = getTemplate(p);
     const projectTitle = meaningfulTitle(p.researchDesign?.title, p.title);
     const researchQuestion = p.researchDesign?.researchQuestions?.[0]?.question || '未单独设定';
     const researchMethod = p.researchDesign?.methods?.[0] || '未单独设定';
@@ -108,7 +109,33 @@ export default {
             <button class="btn btn-ghost" id="ps-summary-action">${summaryAction}</button>
           </section>
         </aside>
+      </div>
+
+      <div class="card">
+        <h2><span class="mark"></span>论文格式模板</h2>
+        <p class="desc">通用学位论文默认样式（非某一学校专用）；可按你的学校规范自定义，主要影响 Word/DOCX 导出与排版预览。</p>
+        <div class="form-row">
+          <div><label class="field-label">上边距(cm)</label><input type="number" step="0.1" id="tf-mt" value="${tm.margins.top}"></div>
+          <div><label class="field-label">下边距(cm)</label><input type="number" step="0.1" id="tf-mb" value="${tm.margins.bottom}"></div>
+          <div><label class="field-label">左边距(cm)</label><input type="number" step="0.1" id="tf-ml" value="${tm.margins.left}"></div>
+          <div><label class="field-label">右边距(cm)</label><input type="number" step="0.1" id="tf-mr" value="${tm.margins.right}"></div>
+        </div>
+        <div class="form-row">
+          <div><label class="field-label">正文中文字体</label><input type="text" id="tf-bodyfont" value="${escapeHtml(tm.bodyFont)}"></div>
+          <div><label class="field-label">正文西文字体</label><input type="text" id="tf-bodylatin" value="${escapeHtml(tm.bodyFontLatin)}"></div>
+          <div><label class="field-label">正文字号(pt)</label><input type="number" step="0.5" id="tf-bodysz" value="${tm.bodySize}"></div>
+        </div>
+        <div class="form-row">
+          <div><label class="field-label">标题字体</label><input type="text" id="tf-headfont" value="${escapeHtml(tm.headingFont)}"></div>
+          <div><label class="field-label">标题字号(pt)</label><input type="number" step="0.5" id="tf-headsz" value="${tm.headingSize}"></div>
+          <div><label class="field-label">行距(倍)</label><input type="number" step="0.1" id="tf-line" value="${tm.lineHeight}"></div>
+        </div>
+        <div class="project-settings-actions">
+          <button class="btn" id="tf-save">保存格式模板</button>
+          <button class="btn btn-ghost" id="tf-reset">还原默认</button>
+        </div>
       </div>`;
+
 
     el.querySelector('#ps-save').addEventListener('click', () => {
       const title = el.querySelector('#ps-title').value.trim();
@@ -129,6 +156,25 @@ export default {
         if (title) updateBasics({ title });
       }
       toast('项目设置已保存', 'ok');
+    });
+
+    el.querySelector('#tf-save')?.addEventListener('click', () => {
+      const num = id => Number(el.querySelector(id).value);
+      saveProject({ template: {
+        margins: { top: num('#tf-mt'), bottom: num('#tf-mb'), left: num('#tf-ml'), right: num('#tf-mr') },
+        bodyFont: el.querySelector('#tf-bodyfont').value.trim() || '宋体',
+        bodyFontLatin: el.querySelector('#tf-bodylatin').value.trim() || 'Times New Roman',
+        bodySize: num('#tf-bodysz') || 12,
+        headingFont: el.querySelector('#tf-headfont').value.trim() || '黑体',
+        headingSize: num('#tf-headsz') || 16,
+        lineHeight: num('#tf-line') || 1.5,
+      } });
+      toast('格式模板已保存，导出与预览将按此生效', 'ok');
+    });
+    el.querySelector('#tf-reset')?.addEventListener('click', () => {
+      saveProject({ template: {} });
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'project-settings' }));
+      toast('已还原为通用默认模板', 'ok');
     });
 
     el.querySelector('#ps-next').addEventListener('click', () => {

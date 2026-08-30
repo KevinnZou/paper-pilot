@@ -60,6 +60,7 @@ function blankProject(id = makeId(), partial = {}) {
     advisor: '',
     dueDate: '',
     referenceStandard: 'GB/T 7714-2025',
+    template: {},
     createdAt: ts,
     updatedAt: ts,
     researchDesign: {},
@@ -673,3 +674,24 @@ globalThis.__paperpilotScopedStore = {
     return null;
   },
 };
+
+// 论文格式模板：默认"通用学位论文"参数（非单一学校样式），可被项目级 template 覆盖
+export const DEFAULT_THESIS_TEMPLATE = {
+  label: '通用学位论文（默认）',
+  margins: { top: 3.0, bottom: 3.0, left: 3.0, right: 3.0 }, // cm
+  bodyFont: '宋体',
+  bodyFontLatin: 'Times New Roman',
+  bodySize: 12,      // pt（小四）
+  headingFont: '黑体',
+  headingSize: 16,   // pt（三号）
+  lineHeight: 1.5,
+};
+
+export function getTemplate(project = getProject()) {
+  const t = (project && project.template) || {};
+  return {
+    ...DEFAULT_THESIS_TEMPLATE,
+    ...t,
+    margins: { ...DEFAULT_THESIS_TEMPLATE.margins, ...(t.margins || {}) },
+  };
+}

@@ -1,6 +1,7 @@
 import { buildRenderableBlocks, buildCitationNumberMap } from './document-model.js';
 import { citationMap } from './citation-utils.js';
 import { meaningfulTitle } from './title-utils.js';
+import { getTemplate } from './project.js';
 
 function xmlEscape(value) {
   return String(value ?? '')
@@ -218,7 +219,7 @@ function formulaTableXml(text, number) {
   </w:tbl>`;
 }
 
-function buildDocxParts(project, doc, citations) {
+function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
   const byId = citationMap(citations);
   const renderable = buildRenderableBlocks(doc, byId);
   const supNums = new Set([...buildCitationNumberMap(doc).values()]);
@@ -327,7 +328,7 @@ function buildDocxParts(project, doc, citations) {
       ${blocks.join('')}
       <w:sectPr>
         <w:pgSz w:w="11906" w:h="16838"/>
-        <w:pgMar w:top="1701" w:right="1701" w:bottom="1701" w:left="1701" w:header="1247" w:footer="1247" w:gutter="0"/>
+        <w:pgMar w:top="${Math.round((template.margins) ? template.margins.top*567 : 1701)}" w:right="${Math.round(template.margins.right*567)}" w:bottom="${Math.round(template.margins.bottom*567)}" w:left="${Math.round(template.margins.left*567)}" w:header="1247" w:footer="1247" w:gutter="0"/>
       </w:sectPr>
     </w:body>
   </w:document>`;
@@ -335,25 +336,30 @@ function buildDocxParts(project, doc, citations) {
   return { documentXml, media, relationships };
 }
 
-function buildStylesXml() {
+function buildStylesXml(t) {
+  const sz = pt => Math.round(pt * 2);
+  const body = `w:rFonts w:ascii="${t.bodyFontLatin}" w:eastAsia="${t.bodyFont}"`;
+  const bodySz = sz(t.bodySize);
+  const head = `w:b/><w:sz w:val="${sz(t.headingSize)}"/><w:rFonts w:ascii="Arial" w:eastAsia="${t.headingFont}"`;
+  const line = Math.round((t.lineHeight || 1.5) * 240); // 多倍行距 -> 2xx twips
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
     <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
       <w:name w:val="Normal"/>
       <w:qFormat/>
-      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="24"/></w:rPr>
+      <w:rPr><${body}/><w:sz w:val="${bodySz}"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Title">
       <w:name w:val="Title"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr>
-      <w:rPr><w:b/><w:sz w:val="44"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
+      <w:rPr><${head}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="HeadingChapter">
       <w:name w:val="Chapter Heading"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:jc w:val="center"/><w:spacing w:before="480" w:after="360" w:line="240" w:lineRule="auto"/></w:pPr>
-      <w:rPr><w:b/><w:sz w:val="32"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
+      <w:rPr><${head}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Heading1">
       <w:name w:val="Heading 1"/>
@@ -362,61 +368,64 @@ function buildStylesXml() {
     <w:style w:type="paragraph" w:styleId="Heading2">
       <w:name w:val="Heading 2"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:spacing w:before="360" w:after="120" w:line="400" w:lineRule="exact"/></w:pPr>
-      <w:rPr><w:b/><w:sz w:val="28"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
+      <w:pPr><w:spacing w:before="360" w:after="120" w:line="${Math.round(line*0.9)}" w:lineRule="exact"/></w:pPr>
+      <w:rPr><${head}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Heading3">
       <w:name w:val="Heading 3"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:spacing w:before="240" w:after="120" w:line="400" w:lineRule="exact"/></w:pPr>
-      <w:rPr><w:b/><w:sz w:val="26"/><w:rFonts w:ascii="Arial" w:eastAsia="黑体"/></w:rPr>
+      <w:pPr><w:spacing w:before="240" w:after="120" w:line="${Math.round(line*0.9)}" w:lineRule="exact"/></w:pPr>
+      <w:rPr><${head}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="BodyText">
       <w:name w:val="Body Text"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:ind w:firstLineChars="200" w:firstLine="480"/><w:spacing w:before="0" w:after="0" w:line="400" w:lineRule="exact"/></w:pPr>
-      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="24"/></w:rPr>
+      <w:pPr><w:ind w:firstLineChars="200" w:firstLine="480"/><w:spacing w:before="0" w:after="0" w:line="${line}" w:lineRule="auto"/></w:pPr>
+      <w:rPr><${body}/><w:sz w:val="${bodySz}"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="BodyQuote">
       <w:name w:val="Body Quote"/>
       <w:basedOn w:val="BodyText"/>
-      <w:pPr><w:ind w:left="480" w:firstLine="480"/><w:spacing w:before="0" w:after="0" w:line="400" w:lineRule="exact"/></w:pPr>
+      <w:pPr><w:ind w:left="480" w:firstLine="480"/><w:spacing w:before="0" w:after="0" w:line="${line}" w:lineRule="auto"/></w:pPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Caption">
       <w:name w:val="Caption"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:jc w:val="center"/><w:spacing w:before="120" w:after="120" w:line="240" w:lineRule="auto"/></w:pPr>
-      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+      <w:rPr><${body}/><w:sz w:val="${Math.max(21, bodySz - 2)}"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Formula">
       <w:name w:val="Formula"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:spacing w:before="120" w:after="120" w:line="240" w:lineRule="auto"/></w:pPr>
-      <w:rPr><w:rFonts w:ascii="Cambria Math" w:eastAsia="宋体"/><w:sz w:val="24"/></w:rPr>
+      <w:rPr><${body}/><w:sz w:val="${bodySz}"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="TableHead">
       <w:name w:val="Table Head"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="60" w:line="240" w:lineRule="auto"/></w:pPr>
-      <w:rPr><w:b/><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+      <w:rPr><w:b/><${body}/><w:sz w:val="${Math.max(21, bodySz - 2)}"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="TableCell">
       <w:name w:val="Table Cell"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="60" w:line="240" w:lineRule="auto"/></w:pPr>
-      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="22"/></w:rPr>
+      <w:rPr><${body}/><w:sz w:val="${Math.max(21, bodySz - 2)}"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Reference">
       <w:name w:val="Reference"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:ind w:left="567" w:hanging="567"/><w:spacing w:before="60" w:after="0" w:line="320" w:lineRule="exact"/></w:pPr>
-      <w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr>
+      <w:rPr><${body}/><w:sz w:val="${Math.max(21, bodySz - 4)}"/></w:rPr>
     </w:style>
   </w:styles>`;
 }
 
+const DEFAULT_THEME = { margins: { top: 3, bottom: 3, left: 3, right: 3 }, bodyFont: '宋体', bodyFontLatin: 'Times New Roman', bodySize: 12, headingFont: '黑体', headingSize: 16, lineHeight: 1.5 };
+
 export function createDocxBlob(project, doc, citations) {
-  const { documentXml, media, relationships } = buildDocxParts(project, doc, citations);
+  const template = getTemplate(project);
+  const { documentXml, media, relationships } = buildDocxParts(project, doc, citations, template);
   const files = [
     {
       name: '[Content_Types].xml',
@@ -449,7 +458,7 @@ export function createDocxBlob(project, doc, citations) {
       </Relationships>`,
     },
     { name: 'word/document.xml', content: documentXml },
-    { name: 'word/styles.xml', content: buildStylesXml() },
+    { name: 'word/styles.xml', content: buildStylesXml(template) },
     {
       name: 'docProps/core.xml',
       content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
