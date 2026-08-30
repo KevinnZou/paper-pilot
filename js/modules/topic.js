@@ -672,6 +672,7 @@ function render(el) {
             <p class="desc">确认 AI 基于题目给出的研究问题、方法与数据来源组合。</p>
           </div>
           <div class="topic-head-side">
+            ${hasPlanSuggestions ? '<button class="btn btn-ghost btn-sm" id="rd-plan-regen" type="button">重新生成方案</button>' : ''}
             <span class="chip doing">当前阶段</span>
           </div>
         </div>
@@ -1103,6 +1104,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
 
     el.querySelector('#rd-plan-gen')?.addEventListener('click', () => generatePlan());
     el.querySelector('#rd-plan-retry')?.addEventListener('click', () => generatePlan());
+    el.querySelector('#rd-plan-regen')?.addEventListener('click', () => generatePlan());
     if (design.planStatus === 'idle') {
       generatePlan();
       return;

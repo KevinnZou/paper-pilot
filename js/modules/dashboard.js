@@ -229,7 +229,7 @@ export default {
           ${nextAction.bullets.map(item => `<div class="focus-check">${escapeHtml(item)}</div>`).join('')}
         </div>
         <div class="hero-action-row dash-focus-actions">
-          <button class="btn btn-lg" data-nav="${nextAction.nav}" ${nextAction.nav === 'writing' && nextChapter ? `data-write="${escapeHtml(nextChapter)}"` : ''}>${escapeHtml(nextAction.cta)}</button>
+          <button class="btn btn-lg" ${nextAction.nav === 'writing' && nextChapter ? `data-write="${escapeHtml(nextChapter)}"` : `data-nav="${nextAction.nav}"`}>${escapeHtml(nextAction.cta)}</button>
           ${p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : '<button class="btn btn-ghost" data-nav="writing">检查整体状态</button>'}
         </div>
       </div>`;

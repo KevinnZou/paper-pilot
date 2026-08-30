@@ -102,7 +102,8 @@ function topLevelSections(doc) {
 }
 
 function sectionForPos(doc, pos) {
-  return topLevelSections(doc).find(sec => pos >= sec.headingFrom && pos <= sec.bodyTo) || null;
+  // 半开区间 [headingFrom, bodyTo)：标题行归属其所在章节，光标落在标题边界不漂移到下一节
+  return topLevelSections(doc).find(sec => pos >= sec.headingFrom && pos < sec.bodyTo) || null;
 }
 
 function specialSectionRange(doc, role, label) {
@@ -1290,6 +1291,7 @@ export default {
     const logicModal = el.querySelector('#wb-logic-modal');
     const logicResult = el.querySelector('#wb-logic-result');
     let saveTimer = null;
+    let saveProjectId = null;
     let assetDraft = null;
 
     function closeAssetModal() {
@@ -2251,6 +2253,8 @@ export default {
     function persistNow() {
       try {
         const current = getProject();
+        // 防抖窗口内已切到别的项目：不把旧文档写进新项目
+        if (saveProjectId && current.id !== saveProjectId) { saveTimer = null; return false; }
         const next = serializeProjectDoc(viewState.view.state.doc, viewState.currentChapter, current);
         saveProject(next);
         countEl.textContent = `全文字数 ${wordCount(fullTextFromDoc(viewState.view.state.doc, citationMap(citations)))}`;
@@ -2512,6 +2516,7 @@ export default {
         if (tr.docChanged) {
           if (saveTimer) clearTimeout(saveTimer);
           setSaveStatus('saving');
+          saveProjectId = getProject().id; // 记录保存目标项目，防止防抖窗口内切项目把旧文档写进新项目
           saveTimer = setTimeout(persistNow, 500);
         }
       },

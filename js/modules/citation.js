@@ -1088,7 +1088,10 @@ function render(el) {
 
   // 复制全部（按稳定编号排序）
   el.querySelector('#cit-copy-all')?.addEventListener('click', () => {
-    copyText(sortedList().map(c => `[${c.litNo}] ${c.formatted || c.title}`).join('\n'));
+    const list = sortedList();
+    const ctx = citationContext(list);
+    // 用正文引用编号 [n]（首次出现序），未引用项用库内 L#，与导出参考文献一致
+    copyText(list.map(c => `[${ctx.order.get(c.id) || `L${c.litNo}`}] ${c.formatted || c.title}`).join('\n'));
   });
 
   el.querySelector('#evi-save')?.addEventListener('click', () => {

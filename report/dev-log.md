@@ -1314,3 +1314,12 @@
 - **evidence 关联章节 label**：`citation.js:434` 用 `c.sectionId === linkedSectionIds[0]` 查找，无 sectionId 时恒显示"已关联章节"；改 `c.sectionId === id || c.chapter === id`。
 - **导出摘要总字数口径**：`check-export.js:256` 由只累加章节 drafts 改为 `fullTextFromDoc(doc, citationMap(citations))`（与写作台"全文字数"一致）。
 - 全站回归 0 溢出 0 报错；导出前检查弹窗正常。
+
+## 2026-08-29 · 继续清理剩余 P2（第 104 次会话）
+- **防抖保存切项目覆盖**：`persistNow` 防抖时记 `saveProjectId`，防抖窗口内切项目则跳过保存（避免旧文档写进新项目）。
+- **光标标题边界漂移**：`sectionForPos` 改半开区间 `[headingFrom, bodyTo)`。
+- **focus 卡 CTA 双触发**：有 `data-write` 时不再同时给 `data-nav`（避免二次 switchModule）。
+- **复制全部**：改用正文引用编号 `[n]`（首次出现序），未引用项用 `L#`，与导出参考文献一致。
+- **研究方案 ready 态补「重新生成方案」按钮**（`#rd-plan-regen`）。
+- **删死代码**：`taskChip`（planner 无引用）。
+- 全站回归 0 溢出 0 报错。

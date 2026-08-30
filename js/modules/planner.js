@@ -145,11 +145,6 @@ function isDone(task, plan) {
   return (plan.doneTaskIds || []).includes(task.id);
 }
 
-function taskChip(task) {
-  if (task.source === 'manual') return 'done';
-  return task.dueDate < isoLocal(Date.now()) ? 'uncited' : task.dueDate === isoLocal(Date.now()) ? 'doing' : '';
-}
-
 function taskActionLabel(task, done) {
   if (done) return '查看';
   if (task.nav === 'topic') return '去研究设计';
