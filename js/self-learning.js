@@ -227,10 +227,13 @@ export function learningCardHtml() {
       </div>`).join('') : '<p class="desc">还没有 AI 交互记录。在写作台使用一次 AI 建议后，这里会显示学习结果。</p>';
   const insights = s.length ? `<ul class="learn-insights">${s.map(x => `<li>${escapeLearn(x)}</li>`).join('')}</ul>` : '';
   return `<div class="card learn-card">
-    <div class="learn-head"><div>
-      <h2><span class="mark"></span>个性化</h2>
-      <p class="desc">系统观察你的写作偏好，让 AI 建议更贴合你的表达。${p.interactions ? `<b>已学习 ${p.interactions}</b> 次交互。` : ''}</p>
-    </div></div>
+    <div class="learn-head">
+      <div>
+        <h2><span class="mark"></span>个性化</h2>
+        <p class="desc">系统观察你的写作偏好，让 AI 建议更贴合你的表达。${p.interactions ? `<b>已学习 ${p.interactions}</b> 次交互。` : ''}</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-nav="self-learning">调整偏好</button>
+    </div>
     ${bar}
     ${insights}
   </div>`;

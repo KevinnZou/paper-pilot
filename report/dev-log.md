@@ -1485,3 +1485,14 @@
   - 展开后保留全部边距、字体、字号、行距字段，以及 `tf-save`、`tf-reset` 原事件入口。
   - 新增折叠面板样式，移动端摘要可换行，展开图标固定在右上。
 - **验证**：`npm run build` 通过；搜索确认 `template-settings-card`、`template-summary`、`tf-save`、`tf-reset` 均存在。
+
+## 2026-08-31 · 个性化入口降级（第 121 次会话）
+- **目标**：让主导航更聚焦论文日常推进路径，把后台偏好能力放到更合适的位置。
+- **发现**：
+  - `self-learning` 是跨项目偏好学习页，使用频率更接近设置/洞察，不应与写作台、文献、检查导出同层常驻。
+  - 论文主页已有 `learningCardHtml()`，可以自然承接“查看学习状态和调整偏好”的入口。
+- **修复**：
+  - `renderNav` 过滤 `self-learning`，但保留 `MODULES` 注册，确保仍可通过事件导航进入。
+  - 主页个性化卡 `learningCardHtml()` 增加「调整偏好」按钮，`data-nav="self-learning"`。
+  - `.learn-head` 改成标题/动作横排，移动端自然竖排。
+- **验证**：`npm run build` 通过；搜索确认 `self-learning` 仍注册在模块列表，导航可见列表已过滤，主页卡存在 `调整偏好` 入口。
