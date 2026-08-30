@@ -132,9 +132,15 @@ export default {
         </aside>
       </div>
 
-      <div class="card">
-        <h2><span class="mark"></span>论文格式模板</h2>
-        <p class="desc">通用学位论文默认样式（非某一学校专用）；可按你的学校规范自定义，主要影响 Word 文档导出与排版预览。</p>
+      <details class="card template-settings-card">
+        <summary>
+          <span>
+            <b><span class="mark"></span>论文格式模板</b>
+            <small>通用学位论文默认样式；需要按学校规范调整时再展开。</small>
+          </span>
+          <span class="template-summary">${escapeHtml(tm.bodyFont)} ${tm.bodySize}pt · ${tm.lineHeight} 倍行距 · 页边距 ${tm.margins.top}/${tm.margins.bottom}/${tm.margins.left}/${tm.margins.right}cm</span>
+        </summary>
+        <p class="desc">模板会影响 Word 文档导出与排版预览，不宣称属于某一学校；你可以按本校规范自定义。</p>
         <div class="form-row">
           <div><label class="field-label">上边距(cm)</label><input type="number" step="0.1" id="tf-mt" value="${tm.margins.top}"></div>
           <div><label class="field-label">下边距(cm)</label><input type="number" step="0.1" id="tf-mb" value="${tm.margins.bottom}"></div>
@@ -155,7 +161,7 @@ export default {
           <button class="btn" id="tf-save">保存格式模板</button>
           <button class="btn btn-ghost" id="tf-reset">还原默认</button>
         </div>
-      </div>`;
+      </details>`;
 
 
     el.querySelector('#ps-save').addEventListener('click', () => {
