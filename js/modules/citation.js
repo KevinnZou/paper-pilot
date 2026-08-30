@@ -16,9 +16,9 @@ export { formatCitation };
 const PARSE_SYSTEM = '你是参考文献解析助手。把用户粘贴的引用信息解析为 GB/T 7714 条目。只输出严格 JSON 数组，每项形如 {"authors":"张三, 李四","title":"题名","source":"期刊名/学校/出版社","year":"2024","volume":"34","issue":"3","pages":"45-52","doi":"","url":"","institution":"","publisher":"","place":"","type":"J"}，type 取值 J(期刊)/D(学位论文)/M(专著)/C(会议)/R(报告)/S(标准)/P(专利)/N(报纸)/EB/OL(电子资源)，不确定的字段用空字符串。不要输出 JSON 以外的任何内容。';
 const CITATION_TAB_KEY = 'citation.activeTab';
 const CITATION_TABS = [
-  { id: 'discover', label: '导入与检索' },
-  { id: 'library', label: '文献库' },
-  { id: 'evidence', label: '证据卡' },
+  { id: 'discover', label: '找文献', desc: '智能检索与补录' },
+  { id: 'library', label: '管文献', desc: '去重、补全、同步引用' },
+  { id: 'evidence', label: '做证据卡', desc: '沉淀可直接写进正文的证据' },
 ];
 
 // 中断恢复：导航离开时取消进行中的 AI 解析（与写作/文献模块一致；幂等——任一模块先初始化即生效）
@@ -507,9 +507,14 @@ function renderEvidenceModal(list, prj) {
 }
 
 function renderTabNav(activeTab, stats = {}) {
+  const statByTab = {
+    discover: `${stats.total || 0} 条已入库`,
+    library: `${stats.cited || 0} / ${stats.total || 0} 已引用`,
+    evidence: `${stats.evidence || 0} 张证据卡`,
+  };
   return `
-    <div class="citation-shell-head">
-      <div>
+    <div class="citation-shell-head card">
+      <div class="citation-title-block">
         <h2><span class="mark"></span>资料工作台</h2>
         <p class="desc">先找文献，再入库管理，需要写作支撑时整理成证据卡。</p>
         <div class="citation-quick-stats">
@@ -518,10 +523,15 @@ function renderTabNav(activeTab, stats = {}) {
           <span><b>${stats.evidence || 0}</b> 证据卡</span>
         </div>
       </div>
-      <div class="citation-tabbar" role="tablist" aria-label="文献与证据分区">
-        ${CITATION_TABS.map(tab => `
+      <div class="citation-tabbar" role="tablist" aria-label="资料工作台流程">
+        ${CITATION_TABS.map((tab, idx) => `
           <button class="citation-tab ${tab.id === activeTab ? 'active' : ''}" type="button" role="tab" aria-selected="${tab.id === activeTab}" data-citation-tab="${tab.id}">
-            ${tab.label}
+            <span class="citation-tab-index">${idx + 1}</span>
+            <span class="citation-tab-copy">
+              <b>${tab.label}</b>
+              <small>${tab.desc}</small>
+            </span>
+            <span class="citation-tab-stat">${statByTab[tab.id] || ''}</span>
           </button>
         `).join('')}
       </div>

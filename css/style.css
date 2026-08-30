@@ -2388,39 +2388,89 @@ kbd {
   padding: 0;
 }
 .citation-shell-head {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(260px, .78fr) minmax(0, 1.22fr);
   gap: 18px;
-  align-items: flex-start;
+  align-items: stretch;
   margin-bottom: 18px;
-  padding: 0 2px;
+  padding: 18px;
 }
 .citation-shell-head h2 {
   margin: 0;
 }
+.citation-title-block {
+  min-width: 0;
+  align-self: center;
+}
 .citation-tabbar {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding: 4px;
-  border-radius: 999px;
-  background: #F5F1EA;
-  border: 1px solid var(--line);
-  flex-wrap: wrap;
+  min-width: 0;
 }
 .citation-tab {
-  min-height: 38px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 0;
-  background: transparent;
+  min-height: 78px;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--ink-soft);
   font: inherit;
   cursor: pointer;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 10px;
+  text-align: left;
+  align-items: start;
 }
 .citation-tab.active {
-  background: var(--brand);
-  color: #fff;
+  background: var(--jade-soft);
+  border-color: rgba(41, 124, 83, .35);
+  color: var(--ink);
   font-weight: 600;
+}
+.citation-tab-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.citation-tab.active .citation-tab-index {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: #fff;
+}
+.citation-tab-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.citation-tab-copy b {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.citation-tab-copy small {
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.45;
+  font-weight: 400;
+}
+.citation-tab-stat {
+  grid-column: 2;
+  color: var(--jade);
+  font-size: 11px;
+  line-height: 1.3;
+  font-family: var(--font-mono);
+  white-space: nowrap;
 }
 .citation-shell-body {
   display: flex;
@@ -3309,6 +3359,10 @@ kbd {
   }
   .lit-results-head {
     align-items: flex-start;
+  }
+  .citation-shell-head,
+  .citation-tabbar {
+    grid-template-columns: 1fr;
   }
   .project-actions {
     flex-wrap: nowrap;
