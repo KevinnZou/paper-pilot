@@ -134,7 +134,7 @@ export default {
 
       <div class="card">
         <h2><span class="mark"></span>论文格式模板</h2>
-        <p class="desc">通用学位论文默认样式（非某一学校专用）；可按你的学校规范自定义，主要影响 Word/DOCX 导出与排版预览。</p>
+        <p class="desc">通用学位论文默认样式（非某一学校专用）；可按你的学校规范自定义，主要影响 Word 文档导出与排版预览。</p>
         <div class="form-row">
           <div><label class="field-label">上边距(cm)</label><input type="number" step="0.1" id="tf-mt" value="${tm.margins.top}"></div>
           <div><label class="field-label">下边距(cm)</label><input type="number" step="0.1" id="tf-mb" value="${tm.margins.bottom}"></div>

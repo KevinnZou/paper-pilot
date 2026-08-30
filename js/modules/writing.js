@@ -1416,7 +1416,7 @@ export default {
         });
       } else if (kind === 'formula') {
         assetTitle.textContent = payload?.pos != null ? '编辑公式' : '插入公式';
-        assetDesc.textContent = '支持录入 LaTeX 或普通公式文本。排版预览和 DOCX 导出会按公式块处理。';
+        assetDesc.textContent = '支持录入 LaTeX 或普通公式文本。排版预览和 Word 导出会按公式块处理。';
         assetForm.innerHTML = `
           <label class="field-label">公式标题</label>
           <input type="text" id="wb-formula-label" value="${escapeHtml(payload?.label || '')}" placeholder="例如：样本均值计算式">
@@ -1653,7 +1653,7 @@ export default {
             }).join('')}
           </select>
           <button class="btn btn-sm" id="wb-cit-insert">插入</button>
-        </div>` : '<p class="desc">文献库还没有条目，先去「文献与格式」收集文献。</p>';
+        </div>` : '<p class="desc">文献库还没有条目，先去「文献与证据」收集文献。</p>';
       citationBox.querySelector('#wb-cit-insert')?.addEventListener('click', () => {
         const id = citationBox.querySelector('#wb-cit-select').value;
         insertCitationNode(viewState.view, id);

@@ -227,7 +227,7 @@ function exportReadiness(issues) {
   return {
     tone: 'ready',
     title: '已具备导出基础',
-    desc: '当前没有发现关键问题，可以导出 DOCX 做最终排版和人工校对。',
+    desc: '当前没有发现关键问题，可以导出 Word 文档做最终排版和人工校对。',
   };
 }
 
@@ -244,7 +244,7 @@ export default {
   id: 'checkExport',
   icon: '',
   title: '检查与导出',
-  subtitle: '结构、引用、格式检查，以及 Markdown / DOCX / PDF 导出',
+  subtitle: '结构、引用、格式检查，以及 Word / PDF / Markdown 导出',
   projectScoped: true,
 
   render(el) {
@@ -349,7 +349,7 @@ export default {
     el.querySelector('#ce-docx').addEventListener('click', () => {
       const blob = createDocxBlob(project, doc, citations);
       downloadBlob(blob, `${exportFilename}.docx`);
-      toast('DOCX 已导出', 'ok');
+      toast('Word 文档已导出', 'ok');
     });
 
     el.querySelector('#ce-pdf').addEventListener('click', () => {
