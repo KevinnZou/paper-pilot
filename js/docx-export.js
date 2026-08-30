@@ -1,4 +1,4 @@
-import { buildRenderableBlocks } from './document-model.js';
+import { buildRenderableBlocks, buildCitationNumberMap } from './document-model.js';
 import { citationMap } from './citation-utils.js';
 import { meaningfulTitle } from './title-utils.js';
 
@@ -10,14 +10,24 @@ function xmlEscape(value) {
     .replace(/"/g, '&quot;');
 }
 
-function textRuns(text) {
-  return `<w:r><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
+function textRuns(text, supNums = null) {
+  if (!supNums || !/\[\d+\]/.test(String(text || ''))) {
+    return `<w:r><w:t xml:space="preserve">${xmlEscape(String(text || ''))}</w:t></w:r>`;
+  }
+  // GB/T 7714 顺序编码制：正文引用编号上标
+  return String(text).split(/(\[\d+\])/g).map(part => {
+    const m = /^\[(\d+)\]$/.exec(part);
+    if (m && supNums.has(Number(m[1]))) {
+      return `<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t xml:space="preserve">${xmlEscape(part)}</w:t></w:r>`;
+    }
+    return `<w:r><w:t xml:space="preserve">${xmlEscape(part)}</w:t></w:r>`;
+  }).join('');
 }
 
 function paragraph(text, style = 'BodyText', options = {}) {
   const pageBreak = options.pageBreakBefore ? '<w:pageBreakBefore/>' : '';
   const align = options.align ? `<w:jc w:val="${options.align}"/>` : '';
-  return `<w:p><w:pPr><w:pStyle w:val="${style}"/>${pageBreak}${align}</w:pPr>${textRuns(text)}</w:p>`;
+  return `<w:p><w:pPr><w:pStyle w:val="${style}"/>${pageBreak}${align}</w:pPr>${textRuns(text, options?.supNums)}</w:p>`;
 }
 
 function pageBreakParagraph() {
@@ -211,6 +221,7 @@ function formulaTableXml(text, number) {
 function buildDocxParts(project, doc, citations) {
   const byId = citationMap(citations);
   const renderable = buildRenderableBlocks(doc, byId);
+  const supNums = new Set([...buildCitationNumberMap(doc).values()]);
   const blocks = [];
   const media = [];
   const relationships = ['<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'];
@@ -243,8 +254,8 @@ function buildDocxParts(project, doc, citations) {
       return;
     }
     if (block.type === 'notes_heading') { blocks.push(paragraph(block.text, 'HeadingChapter')); return; }
-    if (block.type === 'paragraph') { blocks.push(paragraph(block.text, 'BodyText')); return; }
-    if (block.type === 'blockquote') { blocks.push(paragraph(block.text, 'BodyQuote')); return; }
+    if (block.type === 'paragraph') { blocks.push(paragraph(block.text, 'BodyText', { supNums })); return; }
+    if (block.type === 'blockquote') { blocks.push(paragraph(block.text, 'BodyQuote', { supNums })); return; }
     if (block.type === 'reference') { blocks.push(paragraph(block.text, 'Reference')); return; }
     if (block.type === 'note') { blocks.push(paragraph(`[注${block.number}] ${block.text}`, 'Reference')); return; }
     if (block.type === 'list') {

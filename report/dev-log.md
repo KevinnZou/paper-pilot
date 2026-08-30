@@ -1323,3 +1323,8 @@
 - **研究方案 ready 态补「重新生成方案」按钮**（`#rd-plan-regen`）。
 - **删死代码**：`taskChip`（planner 无引用）。
 - 全站回归 0 溢出 0 报错。
+
+## 2026-08-29 · 学术规范合规红线修复（对照 GB/T 7714-2015 等）（第 105 次会话）
+- **参考文献著录**（gbt7714.js）：D/R 补"城市: 单位"、C 会议去重+`//会议名. 城市: 出版者, 年: 页码`、S 改`标准名: 标准号[S]. 城市: 出版者, 年`、N 改`报纸名, 年(版次)`、西文作者>3 用`et al.`（修双句点）。
+- **正文引用上标**（GB/T 7714 顺序编码制）：模板预览（writing.buildPreviewHtml）+导出检查预览（check-export.buildPreviewHtml）把引用编号包`<sup>`；DOCX 导出（textRuns）把正文`[n]`拆成 superscript run。
+- 报告见 `report/academic-compliance-audit.md`（含每处依据 + 差异 + 已修）。

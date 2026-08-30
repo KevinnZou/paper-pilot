@@ -57,12 +57,15 @@ function openPrintPreview(title, html) {
 
 export function buildPreviewHtml(project, doc, citations) {
   const blocks = buildRenderableBlocks(doc, citationMap(citations));
+  // GB/T 7714-2015 顺序编码制：正文引用编号应上标
+  const supNums = new Set([...buildCitationNumberMap(doc).values()]);
+  const supify = text => String(text || '').replace(/\[(\d+)\]/g, (m, n) => supNums.has(Number(n)) ? `<sup>${m}</sup>` : m);
   return blocks.map(block => {
     if (block.type === 'title') return `<h1>${escapeHtml(block.text)}</h1>`;
     if (block.type === 'heading') return `<h2>${escapeHtml(block.text)}</h2>`;
     if (block.type === 'notes_heading') return `<h2>${escapeHtml(block.text)}</h2>`;
-    if (block.type === 'paragraph') return `<p>${escapeHtml(block.text)}</p>`;
-    if (block.type === 'blockquote') return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
+    if (block.type === 'paragraph') return `<p>${supify(escapeHtml(block.text))}</p>`;
+    if (block.type === 'blockquote') return `<blockquote>${supify(escapeHtml(block.text))}</blockquote>`;
     if (block.type === 'reference') return `<p class="ref">${escapeHtml(block.text)}</p>`;
     if (block.type === 'note') return `<p class="ref pp-note-row">[注${block.number}] ${escapeHtml(block.text)}</p>`;
     if (block.type === 'list') {

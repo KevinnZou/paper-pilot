@@ -7,7 +7,13 @@ function fmtAuthors(c) {
     : (c.authors || c.author || '');
   const authors = String(raw).split(/[,，;；]/).map(s => s.trim()).filter(Boolean);
   if (!authors.length) return '';
-  return authors.length > 3 ? `${authors.slice(0, 3).join(', ')}, 等` : authors.join(', ');
+  if (authors.length > 3) {
+    const head = authors.slice(0, 3).join(', ');
+    // GB/T 7714-2015 4.1.3：中文文献用"等"，西文文献用"et al."
+    const cjk = /[\u4e00-\u9fff]/.test(head);
+    return `${head}, ${cjk ? '等' : 'et al.'}`;
+  }
+  return authors.join(', ');
 }
 
 function issueBlock(c) {
@@ -21,11 +27,12 @@ function issueBlock(c) {
 
 export function formatCitation(c, standard = 'GB/T 7714-2025') {
   const a = fmtAuthors(c);
-  const head = a ? `${a}. ` : '';
+  const head = a ? (a.endsWith('.') ? `${a} ` : `${a}. `) : ''; // "et al." 已带句点时不再重复
   const t = c.title || '';
   const y = c.year ? String(c.year) : '';
   const s = c.source || '';
   const pub = [c.place, c.publisher].filter(Boolean).join(': ');
+  const pubOrg = [c.place, (c.institution || c.publisher || '')].filter(Boolean).join(': ');
   const issue = issueBlock(c);
   const access = c.accessDate ? `[${c.accessDate}]` : '';
   const onlineTail = [access, c.url].filter(Boolean).join('. ');
@@ -35,19 +42,24 @@ export function formatCitation(c, standard = 'GB/T 7714-2025') {
     case 'J':
       return `${head}${t}[J]${refTag}. ${[s, y, issue].filter(Boolean).join(', ')}.`;
     case 'D':
-      return `${head}${t}[D]${refTag}. ${[c.institution || s, y].filter(Boolean).join(', ')}.`;
+      // 学位论文：作者. 题名[D]. 城市: 保存单位, 年.
+      return `${head}${t}[D]${refTag}. ${[pubOrg, y].filter(Boolean).join(', ')}.`;
     case 'M':
       return `${head}${t}[M]${refTag}. ${[pub || s, y].filter(Boolean).join(', ')}.`;
     case 'C':
-      return `${head}${t}[C]${refTag}//${[s, y, issue].filter(Boolean).join(', ')}.`;
+      // 会议（析出文献）：作者. 题名[C]//会议名. 城市: 出版者, 年: 页码.
+      return `${head}${t}[C]${refTag}//${s}${pub ? `. ${pub}, ${[y, c.pages].filter(Boolean).join(': ')}` : `, ${[y, c.pages].filter(Boolean).join(': ')}`}.`;
     case 'R':
-      return `${head}${t}[R]${refTag}. ${[c.institution || s, y].filter(Boolean).join(', ')}.`;
+      // 报告：作者. 题名[R]. 城市: 机构, 年.
+      return `${head}${t}[R]${refTag}. ${[pubOrg, y].filter(Boolean).join(', ')}.`;
     case 'S':
-      return `${head}${t}[S]${refTag}. ${[c.standardNo, pub || s, y].filter(Boolean).join(', ')}.`;
+      // 标准：标准名: 标准号[S]. 城市: 出版者, 年.
+      return `${head}${c.standardNo ? `${t}: ${c.standardNo}` : t}[S]${refTag}. ${[pub || s, y].filter(Boolean).join(', ')}.`;
     case 'P':
       return `${head}${t}[P]${refTag}. ${[c.patentNo, y].filter(Boolean).join(', ')}.`;
     case 'N':
-      return `${head}${t}[N]${refTag}. ${[s, y, c.pages].filter(Boolean).join(', ')}.`;
+      // 报纸：作者. 题名[N]. 报纸名, 出版日期(版次).
+      return `${head}${t}[N]${refTag}. ${[s, y].filter(Boolean).join(', ')}${c.pages ? `(${c.pages})` : ''}.`;
     case 'EB/OL':
     case 'WEB':
       return joinStd(`${head}${t}[EB/OL]${refTag}`, [s, y].filter(Boolean).join(', '), onlineTail);
