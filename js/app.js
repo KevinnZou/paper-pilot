@@ -35,7 +35,7 @@ function researchDesignComplete() {
 
 function renderNav() {
   navEl.innerHTML = '';
-  const visible = MODULES.filter(m => m.id !== 'settings')
+  const visible = MODULES.filter(m => m.id !== 'settings' && m.id !== 'project-settings')
     .filter(m => m.id === 'projects' || hasActiveProject())
     .filter(m => m.id !== 'topic' || !researchDesignComplete());
   visible.forEach(m => {

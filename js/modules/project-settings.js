@@ -26,7 +26,7 @@ export default {
   id: 'project-settings',
   icon: '',
   title: '项目设置',
-  subtitle: '论文题目、学校、导师、截止日期与引用标准',
+  subtitle: '论文题目、学校、导师、格式与可选计划',
   projectScoped: true,
 
   render(el) {
@@ -64,7 +64,7 @@ export default {
           <div class="section-head">
             <div>
               <h2><span class="mark"></span>论文基础信息</h2>
-              <p class="desc">这里保存当前论文的学校、导师、截止日期与引用标准，后续计划和导出都会以这些信息为准。</p>
+              <p class="desc">这里保存当前论文的基础信息、引用标准和格式模板；截止日期只用于可选计划，不影响继续写作。</p>
             </div>
           </div>
 

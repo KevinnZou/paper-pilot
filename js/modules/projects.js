@@ -58,7 +58,7 @@ export default {
                   <span class="chip">${stats.progressPct}% 进度</span>
                   <span class="chip">${stats.chapterCount} 章</span>
                   <span class="chip">${stats.totalWords} 字</span>
-                  <span class="chip ${stats.daysLeft != null && stats.daysLeft <= 7 ? 'doing' : ''}">${stats.daysLeft == null ? '未设截止' : `距截止 ${stats.daysLeft} 天`}</span>
+                  ${stats.daysLeft == null ? '' : `<span class="chip ${stats.daysLeft <= 7 ? 'doing' : ''}">距截止 ${stats.daysLeft} 天</span>`}
                 </div>
                 <div class="project-facts">
                   <div><span>最近编辑</span><b>${fmtDate(project.updatedAt)}</b></div>
@@ -95,7 +95,7 @@ export default {
           <div class="hero-top modal-head project-create-head">
             <div>
               <h2><span class="mark"></span>创建论文项目</h2>
-              <p class="desc">先建立一条论文主线。题目是必填项，学位类型和截止日期可以一起带上，后面继续细化研究设计。</p>
+              <p class="desc">先建立一条论文主线。题目是必填项，学位类型和截止日期都可以后面再调整。</p>
             </div>
             <button class="btn btn-ghost btn-sm icon-only" id="pc-modal-close" type="button" aria-label="关闭">${ICONS.close}</button>
           </div>
