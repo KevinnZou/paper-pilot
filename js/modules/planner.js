@@ -194,6 +194,7 @@ function render(el) {
   const weekTasks = tasks.filter(task => task.dueDate > today && task.dueDate <= weekEnd && !isDone(task, plan));
   const overdueTasks = tasks.filter(task => task.dueDate < today && !isDone(task, plan));
   const weekPreview = weekExpanded ? weekTasks : weekTasks.slice(0, WEEK_PREVIEW);
+  const followupCount = overdueTasks.length + weekTasks.length;
 
   const calHtml = calGridHtml(checkins.map(c => c.date));
 
@@ -212,12 +213,12 @@ function render(el) {
         </div>
         <div class="planner-hero-metrics">
           <div class="planner-metric">
-            <span>截止</span>
-            <b class="${daysLeft != null && daysLeft < 0 ? 'danger' : ''}">${daysLeft != null ? (daysLeft >= 0 ? `${daysLeft} 天` : `已过 ${-daysLeft} 天`) : '未设定'}</b>
+            <span>今日行动</span>
+            <b>${todayTasks.length} 项</b>
           </div>
           <div class="planner-metric">
-            <span>当前阶段</span>
-            <b>${escapeHtml(currentStage)}</b>
+            <span>后续提醒</span>
+            <b class="${overdueTasks.length ? 'danger' : ''}">${followupCount} 项</b>
           </div>
           <div class="planner-metric">
             <span>章节完成</span>
@@ -307,7 +308,7 @@ function render(el) {
         <div class="planner-panel-head">
           <div>
             <h2><span class="mark"></span>计划与时间轴</h2>
-            <p class="desc">设定模板与截止日期后，这里展示整体时间节奏。</p>
+            <p class="desc">需要倒排时间时再设置截止日期；不设置也可以只使用今日行动和本周任务。</p>
           </div>
         </div>
         <div class="planner-timeline-controls">
@@ -317,7 +318,7 @@ function render(el) {
           </div>
           <div class="planner-actions-row"><button class="btn" id="plan-gen">生成 / 更新计划</button></div>
         </div>
-        <div id="plan-out" class="planner-timeline-shell">${stages.length ? renderGantt(stages, totalDays, project.chapterProgress) : '<div class="planner-empty">设定截止日期后，这里会显示倒排计划。</div>'}</div>
+        <div id="plan-out" class="planner-timeline-shell">${stages.length ? renderGantt(stages, totalDays, project.chapterProgress) : '<div class="planner-empty">需要倒排到某个提交日时，再选择截止日期生成时间轴。</div>'}</div>
       </section>
     </div>
   `;
@@ -325,7 +326,7 @@ function render(el) {
   el.querySelector('#plan-gen').addEventListener('click', () => {
     const dueVal = el.querySelector('#plan-due').value;
     if (!dueVal) {
-      toast('请先选择论文截止日期', 'err');
+      toast('需要倒排时间轴时，请先选择一个提交日期', 'err');
       return;
     }
     const tpl = TEMPLATES[Number(el.querySelector('#plan-tpl').value)];
