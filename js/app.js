@@ -4,6 +4,7 @@ import dashboard from './modules/dashboard.js';
 import topic from './modules/topic.js';
 import writing from './modules/writing.js';
 import citation from './modules/citation.js';
+import checkExport from './modules/check-export.js';
 import planner from './modules/planner.js';
 import selfLearning from './modules/self-learning.js';
 import projectSettings from './modules/project-settings.js';
@@ -13,7 +14,7 @@ import { getConfig, shouldUseLiveAI } from './api.js';
 import { getProject, hasActiveProject, projectStoreReady } from './project.js';
 import { meaningfulTitle } from './title-utils.js';
 
-const MODULES = [dashboard, writing, citation, topic, planner, selfLearning, projects, projectSettings, settings];
+const MODULES = [dashboard, writing, citation, checkExport, topic, planner, selfLearning, projects, projectSettings, settings];
 const container = document.getElementById('module-container');
 const navEl = document.getElementById('nav');
 const sidebarToggleEl = document.getElementById('sidebar-toggle');

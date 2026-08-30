@@ -1440,3 +1440,14 @@
   - `renderTabNav` 将页首改为卡片式流程总览，每个阶段显示序号、说明和对应统计。
   - CSS 将 `.citation-tabbar` 改为三列流程条，选中态使用轻量绿色底；移动端切换为单列。
 - **验证**：`npm run build` 通过；静态检查确认新增的 `citation-tab-index`、`citation-tab-copy`、`citation-tab-stat` 与渲染结构均存在，改动范围仅涉及 `js/modules/citation.js` 与 `css/style.css`。
+
+## 2026-08-31 · 检查与导出入口链路修复（第 117 次会话）
+- **目标**：保证交付前检查页不是孤立文件，用户可以从导航和首页稳定进入。
+- **发现**：
+  - `js/modules/check-export.js` 已存在，`ICONS.checkExport` 也存在，但 `js/app.js` 没有导入和注册该模块。
+  - 首页「去检查与导出」按钮实际 `data-nav="writing"`，文案与跳转目标不一致。
+- **修复**：
+  - `js/app.js` 导入 `checkExport`，并加入 `MODULES`，放在「文献与证据」之后。
+  - 首页写作态工作区卡片「检查与导出」改为 `id: 'checkExport'`。
+  - 首页辅助管理区「去检查与导出」和未进入写作态的检查入口改为 `data-nav="checkExport"`。
+- **验证**：`npm run build` 通过；搜索确认 `checkExport` 已注册，首页相关检查导出入口均指向 `checkExport`。
