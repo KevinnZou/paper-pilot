@@ -2981,9 +2981,9 @@ kbd {
   .wb-current .cur-note { min-width: 0; }
   /* 移动端：章节目录横排滑动，避免竖排占屏 */
   .chapter-list { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
-  .chapter-group { flex: 0 0 220px; }
+  .chapter-group { flex: 0 0 188px; }
   .chapter-subsection-list { display: none; }
-  .chapter-item { flex-shrink: 0; width: auto; }
+  .chapter-item { flex-shrink: 0; width: 100%; padding: 8px 10px; }
   .wb-toolbar-more:not(.wb-export-menu) { flex: 1 1 100%; width: 100%; }
   .wb-toolbar-more:not(.wb-export-menu) summary { width: 100%; }
   .wb-toolbar-more:not(.wb-export-menu) .wb-toolbar-more-panel { position: static; min-width: 0; width: 100%; }
@@ -3005,6 +3005,54 @@ kbd {
   .main { padding: 22px 16px 48px; }
   .main-header { align-items: flex-start; flex-direction: column; }
   .pills { flex-wrap: wrap; }
+  .wb-left-expanded .card {
+    padding: 18px 20px;
+  }
+  .wb-editor-chrome {
+    overflow: hidden;
+  }
+  .wb-header {
+    padding: 9px 12px;
+  }
+  .wb-format-toolbar,
+  .wb-editor-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 9px 12px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .wb-format-toolbar::-webkit-scrollbar,
+  .wb-editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .wb-toolbar-cluster,
+  .wb-command-group {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  .wb-command-label,
+  .wb-cluster-label {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: rgba(250,249,245,.96);
+  }
+  .wb-tool-btn,
+  .wb-command,
+  .wb-toolbar-more summary {
+    white-space: nowrap;
+  }
+  .paper-sheet {
+    height: calc(100vh - 210px);
+    min-height: 420px;
+    padding: 0;
+  }
+  .pm-editor .ProseMirror {
+    padding: 22px 24px 34px;
+  }
   .topic-shell-head,
   .topic-flow { grid-template-columns: 1fr; }
   .topic-step-head { flex-direction: column; }

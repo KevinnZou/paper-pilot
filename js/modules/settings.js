@@ -51,10 +51,11 @@ export default {
         <h2><span class="mark"></span>大模型 API 配置</h2>
         <p class="desc">论文数据默认仅存本机，无需登录。使用 AI 功能时，仅本次处理所需内容会从浏览器直接发送至你配置的模型服务商，PaperPilot 不经过自有服务器。</p>
 
+        <form class="settings-api-form" autocomplete="off">
         <label class="field-label">API Key</label>
         <div class="settings-key-row">
           <input type="password" id="cfg-key" class="mono-input" value="${escapeHtml(cfg.apiKey)}" placeholder="sk-..." autocomplete="off">
-          <button class="btn btn-ghost" id="cfg-key-toggle">显示</button>
+          <button class="btn btn-ghost" id="cfg-key-toggle" type="button">显示</button>
         </div>
         <p class="hint">还没有 Key？去 <a href="https://platform.deepseek.com" target="_blank" rel="noopener">DeepSeek 开放平台</a> 免费注册申请（兼容任何 OpenAI 协议服务商）</p>
 
@@ -85,10 +86,11 @@ export default {
           <span class="settings-switch" aria-hidden="true"></span>
         </label>
         <div class="settings-actions">
-          <button class="btn" id="cfg-save">保存配置</button>
-          <button class="btn btn-ai" id="cfg-test">测试连接</button>
+          <button class="btn" id="cfg-save" type="button">保存配置</button>
+          <button class="btn btn-ai" id="cfg-test" type="button">测试连接</button>
         </div>
         <div class="result-box" id="cfg-test-out"><span class="placeholder">测试结果将显示在这里</span></div>
+        </form>
       </div>
 
       <div class="card settings-card settings-demo-card">
@@ -129,6 +131,9 @@ export default {
       customWrap.hidden = false;
       customInput.value = cfg.baseURL;
     }
+    el.querySelector('.settings-api-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+    });
     provider.addEventListener('change', () => {
       customWrap.hidden = provider.value !== '__custom__';
     });

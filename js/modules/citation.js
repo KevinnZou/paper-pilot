@@ -511,7 +511,7 @@ function renderTabNav(activeTab, stats = {}) {
     <div class="citation-shell-head">
       <div>
         <h2><span class="mark"></span>资料工作台</h2>
-        <p class="desc">资料工作台：导入检索文献、管理文献库、整理证据卡，各有分工。</p>
+        <p class="desc">先找文献，再入库管理，需要写作支撑时整理成证据卡。</p>
         <div class="citation-quick-stats">
           <span><b>${stats.total || 0}</b> 文献</span>
           <span><b>${stats.cited || 0}</b> 已引用</span>
@@ -534,7 +534,7 @@ function renderDiscoverTab(prj) {
       <div class="citation-section-head">
         <div>
           <h3>导入与检索</h3>
-          <p class="desc">先根据课题拿到一批合适候选，再决定哪些要入库，最后才是补录零散文献。</p>
+          <p class="desc">输入课题或沿用当前论文题目，先拿到一批候选文献，再筛选入库。</p>
         </div>
       </div>
 
@@ -551,7 +551,7 @@ function renderDiscoverTab(prj) {
       <details class="card citation-supplement">
         <summary>
           <span>补录文献</span>
-          <small>已有引用文本或少量条目时再展开</small>
+          <small>补充已有引用文本或少量条目</small>
         </summary>
         <div class="citation-supplement-grid">
           <div class="citation-supplement-panel">

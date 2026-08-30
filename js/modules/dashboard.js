@@ -141,11 +141,12 @@ export default {
       ? (typeof lastRaw === 'string' ? lastRaw : `${lastRaw.date}${lastRaw.chapter ? ` · ${lastRaw.chapter}` : ''}`)
       : '';
     const hasWriting = chapters.length > 0 || totalWords > 0 || !!p.documentV2;
+    const designApplied = chapters.length > 0 || hasWriting;
 
     // 主线只保留论文产出必需动作；截止日期、打卡是辅助管理，不进入强制流程
     const steps = [
       { label: '确定题目', done: !!resolvedTitle, extra: resolvedTitle ? shortName(resolvedTitle, 8) : '', nav: hasWriting ? 'writing' : 'topic' },
-      { label: '形成方案', done: researchReadyCount >= 4 || hasWriting, extra: researchReadyCount >= 4 ? `${researchReadyCount}/6` : '', nav: hasWriting ? 'writing' : 'topic' },
+      { label: '形成方案', done: researchReadyCount >= 4 || hasWriting, extra: designApplied ? '已应用' : (researchReadyCount >= 4 ? `${researchReadyCount}/6` : ''), nav: hasWriting ? 'writing' : 'topic' },
       { label: '采用大纲', done: chapters.length > 0, extra: chapters.length ? `${chapters.length} 章` : '', nav: hasWriting ? 'writing' : 'topic' },
       { label: '开始写作', done: hasWriting && Object.values(drafts).some(d => (d?.content || '').trim()), nav: 'writing' },
     ];
@@ -186,11 +187,11 @@ export default {
           <div class="meta">
             ${p.degreeType ? `<span class="chip">${escapeHtml(p.degreeType)}</span>` : ''}
             ${p.dueDate ? `<span class="chip">截止 ${escapeHtml(p.dueDate)}</span>` : ''}
-            ${researchReadyCount ? `<span class="chip">研究设计 ${researchReadyCount}/6</span>` : ''}
+            ${designApplied ? '<span class="chip done">方案已应用</span>' : (researchReadyCount ? `<span class="chip">研究设计 ${researchReadyCount}/6</span>` : '')}
             ${chapters.length ? `<span class="chip">${chapters.length} 章大纲</span>` : ''}
             ${doneCount ? `<span class="chip done">已完成 ${doneCount} 章</span>` : ''}
             ${p.materials.length ? `<span class="chip">素材 ${p.materials.length} 条</span>` : ''}
-            ${doneSteps === steps.length ? '<span class="chip done">写作旅程已完成</span>' : ''}
+            ${hasWriting ? '<span class="chip done">已进入写作</span>' : ''}
           </div>
         </div>
         <p class="hero-lead">${resolvedTitle
@@ -301,7 +302,7 @@ export default {
             <h2><span class="mark"></span>工作区入口</h2>
             <p class="desc">${hasWriting ? '你已经进入写作状态，这里汇总继续推进论文的快捷入口。' : '先完成研究设计，再进入写作、文献和计划。'}</p>
           </div>
-          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'topic' : 'writing'}">${hasWriting ? '调整研究设计' : '检查与导出'}</button>
+          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'project-settings' : 'writing'}">${hasWriting ? '查看项目方案' : '检查与导出'}</button>
         </div>
         <div class="dash-grid">
         ${workspaceCards.map(c => `

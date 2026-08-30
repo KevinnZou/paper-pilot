@@ -109,25 +109,24 @@ function chapterTasks(project) {
 function derivedTasks(project) {
   const design = project.researchDesign || {};
   const tasks = [];
-  if (!project.dueDate) {
-    tasks.push({ id: 'auto-due', title: '设定论文截止日期', dueDate: plusDays(0), source: 'auto', nav: 'planner', note: '没有截止日期，系统无法准确倒排' });
-  }
+  const hasOutline = !!(project.outline || []).length;
+  const hasWriting = hasOutline || Object.values(project.drafts || {}).some(d => (d?.content || '').trim()) || !!project.documentV2;
   if (!meaningfulTitle(project.researchDesign?.title, project.title)) {
     tasks.push({ id: 'auto-title', title: '确定论文题目', dueDate: plusDays(0), source: 'auto', nav: 'topic', note: '先把研究想法落成明确题目' });
   }
-  if (!(design.researchQuestions || []).length) {
+  if (!hasWriting && !(design.researchQuestions || []).length) {
     tasks.push({ id: 'auto-rq', title: '补齐研究问题', dueDate: plusDays(0), source: 'auto', nav: 'topic', note: '至少生成 3-5 个候选问题' });
   }
-  if (!(design.methods || []).length) {
+  if (!hasWriting && !(design.methods || []).length) {
     tasks.push({ id: 'auto-method', title: '明确研究方法', dueDate: plusDays(1), source: 'auto', nav: 'topic', note: '方法决定后续写作结构' });
   }
-  if (!(design.dataSources || []).length) {
+  if (!hasWriting && !(design.dataSources || []).length) {
     tasks.push({ id: 'auto-data', title: '补充数据来源', dueDate: plusDays(1), source: 'auto', nav: 'topic', note: '至少确认数据或材料从哪里来' });
   }
-  if (!design.feasibility?.score && !(design.feasibility?.risks || []).length) {
+  if (!hasWriting && !design.feasibility?.score && !(design.feasibility?.risks || []).length) {
     tasks.push({ id: 'auto-feasibility', title: '做一轮可行性检查', dueDate: plusDays(2), source: 'auto', nav: 'topic', note: '确认时间、样本和方法都可落地' });
   }
-  if (!(project.outline || []).length) {
+  if (!hasOutline) {
     tasks.push({ id: 'auto-outline', title: '生成并采用论文大纲', dueDate: plusDays(2), source: 'auto', nav: 'topic', note: '大纲会驱动写作与文献推荐' });
   }
   tasks.push(...chapterTasks(project));
@@ -169,10 +168,12 @@ function renderTaskList(tasks, plan, emptyText) {
     </div>`;}).join('')}</div>`;
 }
 
-function currentStageText(stages) {
+function currentStageText(stages, project) {
   const now = Date.now();
   const stage = stages.find(item => item.start <= now && now <= item.end);
-  return stage ? `${stage.name}（${fmtDate(stage.start)} - ${fmtDate(stage.end)}）` : '尚未生成计划';
+  if (stage) return `${stage.name}（${fmtDate(stage.start)} - ${fmtDate(stage.end)}）`;
+  if ((project.outline || []).length) return '按章节推进';
+  return '未生成计划';
 }
 
 function render(el) {
@@ -197,7 +198,7 @@ function render(el) {
   const calHtml = calGridHtml(checkins.map(c => c.date));
 
   const doneChapters = chapters.filter(c => (project.chapterProgress?.[c.chapter] || '未开始') === '已完成').length;
-  const currentStage = currentStageText(stages);
+  const currentStage = currentStageText(stages, project);
   const latestCheckins = checkins.slice(0, 6);
   el.innerHTML = `
     <div class="planner-shell">
@@ -205,7 +206,7 @@ function render(el) {
         <div class="planner-hero-head">
           <div>
             <h2><span class="mark"></span>今日节奏</h2>
-            <p class="desc">今天做什么、是否打卡、当前处于哪个阶段，一目了然。</p>
+            <p class="desc">把今天要推进的章节和可选打卡放在一起，不设截止日期也能继续写。</p>
           </div>
           <button class="btn btn-sm" id="checkin-btn" ${checkedToday ? 'disabled title="今天已经打过卡，明天再来"' : ''}>${checkedToday ? '今日已打卡 ✓' : '今日打卡'}</button>
         </div>
