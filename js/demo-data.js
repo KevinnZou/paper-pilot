@@ -48,20 +48,18 @@ export function loadDemoData() {
     updatedAt: Date.now() - 3600000,
   };
   chapters.slice(2).forEach(c => { drafts[c] = { content: '', updatedAt: Date.now() }; });
-  set('drafts', drafts);
 
   const demoCitations = ensureCitationIds([
     normalizeCitationEntry({ litNo: 1, type: 'J', authors: 'Vaswani A, Shazeer N, Parmar N, 等', title: 'Attention is all you need', source: 'Advances in Neural Information Processing Systems', year: '2017', volume: '30' }),
     normalizeCitationEntry({ litNo: 2, type: 'J', authors: 'Snell J, Swersky K, Zemel R', title: 'Prototypical networks for few-shot learning', source: 'Advances in Neural Information Processing Systems', year: '2017', volume: '30' }),
     normalizeCitationEntry({ litNo: 3, type: 'J', authors: 'Ronneberger O, Fischer P, Brox T', title: 'U-Net: Convolutional networks for biomedical image segmentation', source: 'Medical Image Computing and Computer-Assisted Intervention', year: '2015' }),
   ]).list;
-  set('citations', demoCitations);
-
-  set('checkins', [
+  // 文献/草稿/打卡写入项目对象（IndexedDB 持久），而非旧版 localStorage（避免重启后丢失、且与 getCitations 读取一致）
+  saveProject({ drafts, citations: demoCitations, checkins: [
     { date: iso(Date.now()), chapter: '第二章 相关理论基础', note: '完成注意力机制小节，约900字' },
     { date: iso(Date.now() - DAY), chapter: '第一章 绪论', note: '绪论收尾，约1200字' },
     { date: iso(Date.now() - 2 * DAY), chapter: '第一章 绪论', note: '' },
-  ]);
+  ] });
 }
 
 /** 是否存在任何已保存的用户数据（用于提示覆盖风险） */

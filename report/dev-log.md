@@ -1339,3 +1339,10 @@
 - `project-settings.js`：新增「论文格式模板」卡（四边距/正文中西方/字号/标题/行距 + 保存/还原默认），保存写 `project.template`。
 - 实测：设 top=2.4cm → 导出 docx `pgMar top="1361"`；还原默认生效；全站 0 溢出 0 报错。
 - 说明：模板为通用默认（可自定义），不宣称是任一学校标准；GB/T 7714-2015 著录与规范化（学术红线）在上一步已单独合规。
+
+## 2026-08-29 · 修复"文献库重启后消失"（数据持久化根因）（第 108 次会话）
+- **现象**：文献库（以及草稿/打卡）在页面/服务器重启后丢失。
+- **根因**：`project.js` 的 `clearLegacyProjectKeys()`（在启动 `ensureProjectStore` 末尾调用）使用 storage.js 的 `remove(key)` 逐键清理 `LOCAL_PROJECT_KEYS`。而 storage.js 的 `get/set/remove` 会把 `drafts/citations/checkins/versions` 路由到 `__paperpilotScopedStore`（即项目库 shim），`remove('citations')`→`saveCitations([])`、`remove('drafts')`→`saveDrafts({})`…… → **每次启动都清空项目（IndexedDB）里的引用/草稿/打卡**。
+- **修复**：`clearLegacyProjectKeys` 改为直接 `localStorage.removeItem('paperpilot:' + key)`（绕过 shim），只清旧版 localStorage 键，不清项目库数据；移除未用的 `remove` 导入。
+- **验证**：载入演示 → 文献库 3 条 → **刷新后仍 3 条**（此前变 0）；写作正文/计划打卡正常；全站 0 溢出 0 报错。
+- **顺带**：demo-data 用 `set('drafts'/'citations'/'checkins')`（legacy localStorage）改为 `saveProject()`（项目对象，正确持久 + 可读）。

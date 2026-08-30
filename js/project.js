@@ -1,6 +1,6 @@
 // 项目仓库：V4 Phase 1 多项目模型 + IndexedDB 持久化。
 // 读写走同步内存缓存，启动时从 IndexedDB 回填，避免把整个应用改成异步链。
-import { get, remove } from './storage.js';
+import { get } from './storage.js';
 import { loadProjectSnapshot, saveProjectSnapshot, clearProjectSnapshot } from './project-db.js';
 
 const APP_KEY = 'app';
@@ -250,7 +250,10 @@ function normalizeCaches() {
 }
 
 function clearLegacyProjectKeys() {
-  LOCAL_PROJECT_KEYS.forEach(key => remove(key));
+  // 只清旧版 localStorage 键（paperpilot:*），不清项目库（IndexedDB）的 drafts/citations/checkins/versions。
+  // 注意：storage.js 的 get/set/remove 会把这几个键路由到 __paperpilotScopedStore（即项目库），
+  // 用它会误清项目数据，所以这里直接写 localStorage。
+  LOCAL_PROJECT_KEYS.forEach(key => localStorage.removeItem('paperpilot:' + key));
 }
 
 export async function ensureProjectStore() {
