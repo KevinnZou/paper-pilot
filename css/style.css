@@ -3540,19 +3540,21 @@ kbd {
 .issue-row .btn {
   flex: 0 0 auto;
 }
-.export-action-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin: 14px 0 0;
-}
-.export-readiness {
+.export-primary {
   margin-top: 12px;
-  padding: 11px 12px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-left-width: 3px;
   border-radius: var(--radius);
   background: var(--surface-2);
+}
+.export-primary .btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+}
+.export-readiness {
+  display: block;
 }
 .export-readiness strong {
   display: block;
@@ -3567,42 +3569,79 @@ kbd {
   line-height: 1.6;
   color: var(--ink-soft);
 }
-.export-readiness.danger {
+.export-primary.danger {
   border-left-color: var(--cinnabar);
   background: var(--cinnabar-soft);
 }
-.export-readiness.warn {
+.export-primary.warn {
   border-left-color: var(--amber);
   background: var(--amber-soft);
 }
-.export-readiness.ready {
+.export-primary.ready {
   border-left-color: var(--jade);
   background: var(--jade-soft);
 }
-.export-action-grid .btn {
+.export-secondary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+.export-secondary .btn {
   width: 100%;
   justify-content: center;
+  min-height: 38px;
+  padding-inline: 10px;
+}
+.export-secondary .btn:first-child {
+  grid-column: 1 / -1;
 }
 .export-summary { margin-top: 16px; }
 .export-summary-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 8px; }
-.export-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.export-summary-item { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
-.export-summary-item span { display: block; font-size: 11px; color: var(--mute); margin-bottom: 3px; }
-.export-summary-item b { font-size: 12.5px; color: var(--ink); font-weight: 600; line-height: 1.5; }
-.export-summary-title { grid-column: 1 / -1; }
+.export-meta-list {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.export-meta-list div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 9px 12px;
+  border-top: 1px solid var(--line);
+}
+.export-meta-list div:first-child { border-top: 0; }
+.export-meta-list dt,
+.export-meta-list dd {
+  margin: 0;
+  min-width: 0;
+  line-height: 1.5;
+}
+.export-meta-list dt {
+  font-size: 11px;
+  color: var(--mute);
+}
+.export-meta-list dd {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  word-break: break-word;
+}
 @media (max-width: 980px) {
   .check-main-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .check-metric-grid,
-  .export-action-grid { grid-template-columns: 1fr 1fr; }
+  .check-metric-grid { grid-template-columns: 1fr 1fr; }
   .issue-row { align-items: flex-start; flex-direction: column; }
 }
 @media (max-width: 560px) {
   .check-metric-grid,
-  .export-summary-grid,
-  .export-action-grid { grid-template-columns: 1fr; }
-  .export-summary-title { grid-column: auto; }
+  .export-secondary { grid-template-columns: 1fr; }
+  .export-secondary .btn:first-child { grid-column: auto; }
+  .export-meta-list div { grid-template-columns: 58px minmax(0, 1fr); }
 }
 
 /* 计划任务卡：清晰勾选 + 标题/日期/备注 + 单主行动 */

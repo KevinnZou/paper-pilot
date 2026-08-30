@@ -259,6 +259,8 @@ export default {
     const totalWords = (fullTextFromDoc(doc, citationMap(citations)) || '').replace(/\s/g, '').length;
     const previewHtml = buildPreviewHtml(project, doc, citations);
     const readiness = exportReadiness(issues);
+    const citationCount = buildCitationNumberMap(doc).size;
+    const evidenceCount = getEvidence().length;
     const summary = {
       structure: issues.filter(item => item.group === '结构检查').length,
       logic: issues.filter(item => item.group === '逻辑检查').length,
@@ -294,27 +296,29 @@ export default {
           </section>
 
           <aside class="card export-panel">
-            <h2><span class="mark"></span>导出与预览</h2>
-            <p class="desc">优先导出 DOCX 做最终排版；Markdown 和 HTML 适合备份或迁移。</p>
-            <div class="export-readiness ${readiness.tone}">
-              <strong>${escapeHtml(readiness.title)}</strong>
-              <span>${escapeHtml(readiness.desc)}</span>
+            <h2><span class="mark"></span>交付导出</h2>
+            <p class="desc">先生成 Word 文档做最终排版；其他格式用于预览、备份或迁移。</p>
+            <div class="export-primary ${readiness.tone}">
+              <div class="export-readiness">
+                <strong>${escapeHtml(readiness.title)}</strong>
+                <span>${escapeHtml(readiness.desc)}</span>
+              </div>
+              <button class="btn" id="ce-docx">导出 Word 文档</button>
             </div>
-            <div class="export-action-grid">
-              <button class="btn" id="ce-docx">导出 DOCX</button>
+            <div class="export-secondary">
               <button class="btn btn-ghost" id="ce-pdf">排版预览 / PDF</button>
-              <button class="btn btn-ghost" id="ce-md">导出 Markdown</button>
-              <button class="btn btn-ghost" id="ce-html">导出 HTML</button>
+              <button class="btn btn-ghost" id="ce-md">Markdown</button>
+              <button class="btn btn-ghost" id="ce-html">HTML</button>
             </div>
             <div class="export-summary">
-              <div class="export-summary-label">导出摘要</div>
-              <div class="export-summary-grid">
-                <div class="export-summary-item export-summary-title"><span>标题</span><b>${escapeHtml(exportTitle || '未设置')}</b></div>
-                <div class="export-summary-item"><span>章节数</span><b>${state.outline.length}</b></div>
-                <div class="export-summary-item"><span>引用数</span><b>${buildCitationNumberMap(doc).size}</b></div>
-                <div class="export-summary-item"><span>证据卡</span><b>${getEvidence().length}</b></div>
-                <div class="export-summary-item"><span>总字数</span><b>${totalWords}</b></div>
-              </div>
+              <div class="export-summary-label">交付信息</div>
+              <dl class="export-meta-list">
+                <div><dt>题目</dt><dd>${escapeHtml(exportTitle || '未设置')}</dd></div>
+                <div><dt>章节</dt><dd>${state.outline.length}</dd></div>
+                <div><dt>引用</dt><dd>${citationCount}</dd></div>
+                <div><dt>证据卡</dt><dd>${evidenceCount}</dd></div>
+                <div><dt>字数</dt><dd>${totalWords}</dd></div>
+              </dl>
             </div>
           </aside>
         </div>
