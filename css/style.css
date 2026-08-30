@@ -1205,13 +1205,74 @@ kbd {
 .project-facts b { font-family: var(--font-mono); color: var(--ink); }
 .project-actions {
   margin-top: auto;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
   gap: 8px;
-  align-items: stretch;
+  align-items: center;
+  position: relative;
 }
-.project-actions .btn { width: 100%; min-height: 36px; }
-.project-actions .btn:first-child { grid-column: span 2; }
+.project-actions .btn { width: auto; min-height: 36px; }
+.project-actions [data-open] { flex: 1 1 auto; }
+.project-actions [data-settings] { flex: 0 0 auto; }
+.project-more {
+  position: relative;
+  flex: 0 0 auto;
+}
+.project-more summary {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.project-more summary::-webkit-details-marker { display: none; }
+.project-more summary:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+.project-more-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 10;
+  min-width: 132px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+}
+.project-more-menu button {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.project-more-menu button:hover {
+  background: var(--surface-2);
+}
+.project-more-menu button.danger {
+  color: var(--cinnabar-strong);
+}
+.project-more-menu button.danger:hover {
+  background: var(--cinnabar-soft);
+}
 .modal-head { padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
 
 @media (max-width: 980px) {
@@ -3218,9 +3279,12 @@ kbd {
   .lit-results-head {
     align-items: flex-start;
   }
-  .project-actions { grid-template-columns: 1fr; }
-  .project-actions .btn:first-child,
-  .project-actions .btn:nth-child(2) { grid-column: span 1; }
+  .project-actions {
+    flex-wrap: nowrap;
+  }
+  .project-actions [data-settings] {
+    padding-inline: 10px;
+  }
   .item,
   .task-item { flex-direction: column; }
   /* 主页：旅程节点卡内横向滚动防溢出；hero 统计条收窄 */

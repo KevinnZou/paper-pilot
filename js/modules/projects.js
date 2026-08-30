@@ -67,9 +67,14 @@ export default {
                 <div class="result-actions project-actions">
                   <button class="btn" data-open="${project.id}">继续写作</button>
                   <button class="btn btn-ghost" data-settings="${project.id}">项目设置</button>
-                  <button class="btn btn-ghost btn-sm" data-dup="${project.id}">复制项目</button>
-                  <button class="btn btn-ghost btn-sm" data-export="${project.id}">导出备份</button>
-                  <button class="btn btn-danger btn-sm" data-del="${project.id}">删除</button>
+                  <details class="project-more">
+                    <summary aria-label="更多项目操作">更多</summary>
+                    <div class="project-more-menu">
+                      <button type="button" data-dup="${project.id}">复制项目</button>
+                      <button type="button" data-export="${project.id}">导出备份</button>
+                      <button type="button" class="danger" data-del="${project.id}">删除项目</button>
+                    </div>
+                  </details>
                 </div>
               </div>`;
           }).join('')}
