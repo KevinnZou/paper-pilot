@@ -4,6 +4,24 @@ import { isPlaceholderTitle } from '../title-utils.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
 
+function choiceText(value) {
+  if (Array.isArray(value)) return choiceText(value[0]);
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+  if (typeof value === 'object') {
+    const keys = ['question', 'title', 'label', 'name', 'text', 'content', 'value'];
+    for (const key of keys) {
+      const text = choiceText(value[key]);
+      if (text) return text;
+    }
+  }
+  return '';
+}
+
+function summaryValue(value, fallback = '未单独设定') {
+  return choiceText(value) || fallback;
+}
+
 export default {
   id: 'project-settings',
   icon: '',
@@ -27,11 +45,13 @@ export default {
     const p = getProject();
     const tm = getTemplate(p);
     const projectTitle = meaningfulTitle(p.researchDesign?.title, p.title);
-    const researchQuestion = p.researchDesign?.researchQuestions?.[0]?.question || '未单独设定';
-    const researchMethod = p.researchDesign?.methods?.[0] || '未单独设定';
-    const dataSource = p.researchDesign?.dataSources?.[0] || '未单独设定';
-    const keywords = p.researchDesign?.keywords || '未设置';
     const hasOutline = !!(p.outline || []).length;
+    const adoptedFallback = hasOutline ? '已随大纲采用，后续在写作台细化' : '未单独设定';
+    const researchQuestion = summaryValue(p.researchDesign?.researchQuestions, hasOutline ? '以当前题目和大纲为主线' : '未单独设定');
+    const researchMethod = summaryValue(p.researchDesign?.methods, adoptedFallback);
+    const dataSource = summaryValue(p.researchDesign?.dataSources, adoptedFallback);
+    const keywords = summaryValue(p.researchDesign?.keywords || p.keywords, '未设置');
+    const currentChapter = summaryValue(p.currentChapter, hasOutline ? (p.outline[0]?.chapter || '未开始写作') : '未开始写作');
     const nextLabel = hasOutline ? '去写作工作台' : '去研究设计';
     const summaryDesc = hasOutline
       ? '这里展示已采用方案的核心信息。章节结构和正文调整请在写作工作台完成。'
@@ -105,6 +125,7 @@ export default {
               <div><dt>研究方法</dt><dd>${escapeHtml(researchMethod)}</dd></div>
               <div><dt>数据来源</dt><dd>${escapeHtml(dataSource)}</dd></div>
               <div><dt>关键词</dt><dd>${escapeHtml(keywords)}</dd></div>
+              ${hasOutline ? `<div><dt>大纲章节</dt><dd>${p.outline.length} 章 · 当前 ${escapeHtml(currentChapter)}</dd></div>` : ''}
             </dl>
             <button class="btn btn-ghost" id="ps-summary-action">${summaryAction}</button>
           </section>

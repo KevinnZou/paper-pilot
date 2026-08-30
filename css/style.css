@@ -135,8 +135,8 @@ body {
 /* ---------- 主区域 ---------- */
 .main { flex: 1; min-width: 0; padding: 30px 40px 56px; }
 .module-container { max-width: 1140px; margin: 0 auto; }
-.module-writing .module-container,
-.module-writing .main-header {
+body[data-module="writing"] .module-container,
+body[data-module="writing"] .main-header {
   max-width: 1320px;
 }
 body.sidebar-collapsed .sidebar {
@@ -168,8 +168,8 @@ body.sidebar-collapsed .btn-side {
 body.sidebar-collapsed .sidebar-foot {
   padding-inline: 8px;
 }
-body.sidebar-collapsed .module-writing .module-container,
-body.sidebar-collapsed .module-writing .main-header {
+body.sidebar-collapsed[data-module="writing"] .module-container,
+body.sidebar-collapsed[data-module="writing"] .main-header {
   max-width: 1380px;
 }
 .main-header {
@@ -2938,8 +2938,8 @@ kbd {
   .page-foot {
     max-width: 1080px;
   }
-  .module-writing .module-container,
-  .module-writing .main-header {
+  body[data-module="writing"] .module-container,
+  body[data-module="writing"] .main-header {
     max-width: 1240px;
   }
 }
@@ -2995,18 +2995,123 @@ kbd {
 }
 @media (max-width: 760px) {
   .layout { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; position: static; }
-  .brand { padding: 14px 16px 10px; }
-  .nav { display: flex; flex-wrap: wrap; padding: 6px 12px; }
-  .nav-item { width: auto; }
-  .sidebar-foot { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
-  .btn-side { width: auto; }
-  .side-note { margin: 0 0 0 auto; }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    box-shadow: 0 8px 24px rgba(30,43,54,.14);
+  }
+  body.sidebar-collapsed .sidebar { width: 100%; }
+  .brand,
+  body.sidebar-collapsed .brand {
+    min-height: 58px;
+    padding: 10px 104px 8px 14px;
+  }
+  .brand-main,
+  body.sidebar-collapsed .brand-main {
+    justify-content: flex-start;
+  }
+  .brand-copy,
+  body.sidebar-collapsed .brand-copy {
+    display: block;
+  }
+  .brand-name {
+    font-size: 18px;
+  }
+  .brand-sub {
+    display: none;
+  }
+  .sidebar-toggle {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    width: 34px;
+    height: 34px;
+  }
+  .nav,
+  body.sidebar-collapsed .nav {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 12px 10px;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-divider { display: none; }
+  .nav-item,
+  body.sidebar-collapsed .nav-item {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 34px;
+    margin: 0;
+    padding: 7px 10px;
+    gap: 7px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 13px;
+    white-space: nowrap;
+    justify-content: flex-start;
+  }
+  body.sidebar-collapsed .nav-item span:not(.nav-icon) {
+    display: inline;
+  }
+  .nav-item.active {
+    border-color: rgba(255,255,255,.16);
+  }
+  .nav-item.active::before {
+    display: none;
+  }
+  .nav-icon,
+  .nav-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .sidebar-foot,
+  body.sidebar-collapsed .sidebar-foot {
+    position: absolute;
+    top: 12px;
+    right: 56px;
+    display: block;
+    padding: 0;
+    border-top: 0;
+  }
+  .btn-side,
+  body.sidebar-collapsed .btn-side {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(255,255,255,.04);
+  }
+  .btn-side span:not(.nav-icon),
+  body.sidebar-collapsed .btn-side span:not(.nav-icon),
+  .side-note,
+  body.sidebar-collapsed .side-note {
+    display: none;
+  }
   .main { padding: 22px 16px 48px; }
   .main-header { align-items: flex-start; flex-direction: column; }
+  body[data-module="writing"] .main-header {
+    display: none;
+  }
   .pills { flex-wrap: wrap; }
   .wb-left-expanded .card {
-    padding: 18px 20px;
+    padding: 14px 16px;
+  }
+  .wb-left-expanded .section-head {
+    margin-bottom: 10px;
+  }
+  .wb-left-expanded .section-head .desc {
+    display: none;
+  }
+  .wb-left-expanded h2 {
+    font-size: 17px;
   }
   .wb-editor-chrome {
     overflow: hidden;

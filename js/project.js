@@ -7,6 +7,7 @@ const APP_KEY = 'app';
 const PROJECTS_KEY = 'projects';
 const DAY = 86400000;
 const LOCAL_PROJECT_KEYS = ['project', 'drafts', 'citations', 'checkins', 'versions', APP_KEY, PROJECTS_KEY];
+const PROGRESS_WEIGHT = { '已完成': 1, '进行中': 0.5, '未开始': 0 };
 
 let cacheApp = blankApp();
 let cacheProjects = {};
@@ -491,13 +492,14 @@ export function projectStats(projectId = getActiveProjectId()) {
   const chapters = p.outline || [];
   const progress = p.chapterProgress || {};
   const done = chapters.filter(c => progress[c.chapter] === '已完成').length;
+  const weighted = chapters.reduce((sum, c) => sum + (PROGRESS_WEIGHT[progress[c.chapter]] || 0), 0);
   const due = p.dueDate ? Math.ceil((new Date(p.dueDate).getTime() - Date.now()) / DAY) : null;
   const drafts = getDrafts(projectId);
   const totalWords = Object.values(drafts).reduce((sum, d) => sum + String(d?.content || '').replace(/\s/g, '').length, 0);
   return {
     chapterCount: chapters.length,
     doneCount: done,
-    progressPct: chapters.length ? Math.round(done / chapters.length * 100) : 0,
+    progressPct: chapters.length ? Math.round(weighted / chapters.length * 100) : 0,
     daysLeft: due,
     totalWords,
   };
