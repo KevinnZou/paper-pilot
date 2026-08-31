@@ -2750,7 +2750,9 @@ export default {
           return suggestion;
         };
         if (hasSubs) {
-          for (const sub of allSubs) {
+          // 逆序插入：先插高位置（后一个小节），避免前一次插入使后一小节的 bodyFrom 过期（文档位置会后移）
+          for (let i = allSubs.length - 1; i >= 0; i--) {
+            const sub = allSubs[i];
             const subRange = { from: sub.bodyFrom, to: sub.bodyFrom, target, subsections: [sub.title], sub };
             streamRange = subRange;
             await streamInto(subRange, chapterPrompt(sub));
