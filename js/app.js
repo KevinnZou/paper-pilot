@@ -74,13 +74,31 @@ export function switchModule(id) {
   } catch (e) {
     console.error('模块渲染失败：', m.id, e);
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card module-error-card';
     const h = document.createElement('h2');
-    h.textContent = '页面加载失败';
+    const mark = document.createElement('span');
+    mark.className = 'mark';
+    h.append(mark, '页面暂时没有打开');
     const pEl = document.createElement('p');
     pEl.className = 'desc';
-    pEl.textContent = `${e.message}（请把这条信息反馈给开发者）`;
-    card.append(h, pEl);
+    pEl.textContent = '这个页面加载时遇到问题。你可以先回到主页面，或重新打开当前页面。';
+    const detail = document.createElement('p');
+    detail.className = 'module-error-detail';
+    detail.textContent = e?.message ? `错误信息：${e.message}` : '错误信息暂不可用';
+    const actions = document.createElement('div');
+    actions.className = 'module-error-actions';
+    const home = document.createElement('button');
+    home.className = 'btn';
+    home.type = 'button';
+    home.textContent = hasActiveProject() ? '回到论文主页' : '去项目中心';
+    home.addEventListener('click', () => switchModule(hasActiveProject() ? 'dashboard' : 'projects'));
+    const retry = document.createElement('button');
+    retry.className = 'btn btn-ghost';
+    retry.type = 'button';
+    retry.textContent = '重新打开本页';
+    retry.addEventListener('click', () => switchModule(m.id));
+    actions.append(home, retry);
+    card.append(h, pEl, detail, actions);
     container.append(card);
   }
   window.scrollTo({ top: 0 });

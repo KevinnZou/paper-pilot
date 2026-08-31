@@ -212,6 +212,41 @@ body.sidebar-collapsed[data-module="writing"] .main-header {
 .card .desc { margin: 0 0 16px; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
 .card .desc b { color: var(--ink); }
 
+.module-error-card {
+  max-width: 680px;
+  margin: 48px auto;
+}
+
+.module-error-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.module-error-card .mark {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.module-error-detail {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.module-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; align-items: start; }
 .grid-2 > * { min-width: 0; }
 @media (max-width: 980px) { .grid-2 { grid-template-columns: minmax(0,1fr); } }
