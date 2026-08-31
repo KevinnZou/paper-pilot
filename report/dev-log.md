@@ -1543,6 +1543,26 @@
   - `writing` 中新增 `closeToolbarMenus`，实现写作台工具栏菜单互斥打开、点击外部收起和 Esc 收起。
 - **验证**：`npm run build` 通过；diff 仅涉及项目中心、写作台菜单绑定与日志。
 
+## 2026-08-31 · 学位论文模板预览与 Word 导出版式规范（第 126 次会话）
+- **目标**：参考用户提供的论文 PDF，把系统的模板预览和导出文件从“网页式排版”收敛为通用学位论文格式，但不写死为单一学校模板。
+- **参考抽样**：
+  - 两份参考 PDF 均为 A4。
+  - 摘要、目录和正文页有明确页眉横线与底部居中页码；前置页使用罗马页码，正文从第 1 章开始使用阿拉伯页码。
+  - 正文章节标题居中，一级小节左对齐；正文为中文论文常见宋体小四、首行缩进两字符、约 1.5 倍行距。
+  - 目录使用点线引导和页码，正文每章另起页。
+- **修复**：
+  - `writing.js` 模板预览增加页面页眉、页脚页码、正文页/前置页编号区分、目录点线引导，并按章节序号估算目录页码。
+  - `writing.js` 移除模板预览按钮中的 `DBG-liveDoc` 调试输出。
+  - `docx-export.js` 增加 `header1.xml`、`footer1.xml`、关系声明和内容类型声明，导出 Word 带页眉横线与页码字段。
+  - `docx-export.js` 修复目录和第 1 章之间的重复分页风险，同时保证目录前、各章前、参考文献前正确断页。
+  - `docx-export.js` 将目录从普通正文段落改为 `Toc1`/`Toc2` 样式，使用点线制表位和页码；移除“Word 中右键更新目录”产品提示。
+  - `docx-export.js` 表格改为固定 A4 可用宽度与显式列宽，公式编号列收窄，减少导出后宽度漂移。
+- **验证**：
+  - `npm run build` 通过；构建仅提示 chunk size 偏大。
+  - 临时生成 `/private/tmp/paperpilot-docx-render/paperpilot-template-test.docx` 成功。
+  - 解包确认 `[Content_Types].xml` 包含 header/footer 类型，`word/_rels/document.xml.rels` 包含 header/footer 关系，`word/document.xml` 包含 header/footer 引用、目录样式、章节分页，且无“Word 中右键更新目录”残留。
+  - 尝试用 LibreOffice 将临时 Word 转 PDF 进行视觉 QA，但 `soffice` 超过 60 秒未返回且未产出 PDF，已终止；本轮未完成 LibreOffice 渲染级验收。
+
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。
 - **改造**：

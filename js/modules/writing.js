@@ -425,6 +425,7 @@ function buildPreviewHtml(doc, citations) {
   const pages = [];
   let currentPage = [];
   let currentPageClass = 'front-page';
+  let currentPageLabel = '';
   let chapterNo = 0;
   let sectionIndex = 0;
   let figureNo = 0;
@@ -436,9 +437,10 @@ function buildPreviewHtml(doc, citations) {
   };
   const pushPage = () => {
     const html = currentPage.join('').trim();
-    if (html) pages.push({ className: currentPageClass, html });
+    if (html) pages.push({ className: currentPageClass, label: currentPageLabel, html });
     currentPage = [];
     currentPageClass = 'front-page';
+    currentPageLabel = '';
   };
   const renderBlock = block => {
     if (block.type === 'title') return `<h1 class="title">${escapeHtml(block.text)}</h1>`;
@@ -451,6 +453,9 @@ function buildPreviewHtml(doc, citations) {
         figureNo = 0;
         tableNo = 0;
         formulaNo = 0;
+      }
+      if (block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role)) {
+        currentPageLabel = headingText;
       }
       const tag = block.role === 'section' ? 'h1' : ['abstract', 'references', 'ack'].includes(block.role) ? 'h2' : 'h3';
       const cls = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role)
@@ -512,8 +517,11 @@ function buildPreviewHtml(doc, citations) {
     .filter(b => b.type === 'heading' && (b.role === 'section' || b.role === 'subsection'))
     .map(b => ({ section: b.role === 'section', text: (b.text || '').trim() }))
     .filter(e => e.text);
-  const tocHtml = `<h2 class="chapter-title">目录</h2><ol class="toc">${tocEntries.map(e =>
-    `<li class="${e.section ? 'toc-chapter' : 'toc-sub'}">${escapeHtml(e.text)}</li>`).join('')}</ol>`;
+  let tocChapterPage = 0;
+  const tocHtml = `<h2 class="chapter-title">目录</h2><ol class="toc">${tocEntries.map(e => {
+    if (e.section) tocChapterPage += 1;
+    return `<li class="${e.section ? 'toc-chapter' : 'toc-sub'}"><span>${escapeHtml(e.text)}</span><i></i><b>${tocChapterPage || ''}</b></li>`;
+  }).join('')}</ol>`;
   // 确定性页组装：章节/参考文献/致谢标题处断页，正文标题归该页；在首页（题目/摘要/关键词）后插入目录页
   let tocInserted = false;
   blocks.forEach(block => {
@@ -521,17 +529,50 @@ function buildPreviewHtml(doc, citations) {
       pushPage();
       currentPageClass = 'chapter-page';
       if (!tocInserted) {
-        pages.push({ className: 'chapter-page', html: tocHtml });
+        pages.push({ className: 'front-page toc-page', label: '目录', html: tocHtml });
         tocInserted = true;
       }
+      currentPageLabel = block.text;
     } else if (block.type === 'heading' && ['references', 'ack'].includes(block.role)) {
       pushPage();
       currentPageClass = 'chapter-page';
+      currentPageLabel = block.text;
     }
     currentPage.push(renderBlock(block));
   });
   pushPage();
-  return pages.map(page => `<section class="template-page ${page.className}">${page.html}</section>`).join('');
+  let bodyStarted = false;
+  let frontNo = 0;
+  let bodyNo = 0;
+  return pages.map(page => {
+    const isBody = bodyStarted || /^第\s*\d+\s*章/.test(page.label || '') || ['参考文献', '致谢'].includes(page.label || '');
+    if (isBody) {
+      bodyStarted = true;
+      bodyNo += 1;
+    } else {
+      frontNo += 1;
+    }
+    const pageNo = isBody ? String(bodyNo) : romanNumeral(frontNo);
+    const label = escapeHtml(page.label || meaningfulTitle(getProject().title) || '论文');
+    return `<section class="template-page ${page.className}">
+      <header class="template-page-header">${label}</header>
+      <main class="template-page-body">${page.html}</main>
+      <footer class="template-page-footer">${pageNo}</footer>
+    </section>`;
+  }).join('');
+}
+
+function romanNumeral(num) {
+  const pairs = [['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1]];
+  let n = Math.max(1, Number(num) || 1);
+  let out = '';
+  pairs.forEach(([mark, value]) => {
+    while (n >= value) {
+      out += mark;
+      n -= value;
+    }
+  });
+  return out;
 }
 
 function thesisTemplateCss() {
@@ -544,16 +585,18 @@ function thesisTemplateCss() {
       background: #EEECE5;
       color: #000;
     }
-    .toc { list-style: none; margin: 12px 0; padding: 0; }
-    .toc li { padding: 5px 0; line-height: 1.6; }
+    .toc { list-style: none; margin: 12pt 0 0; padding: 0; font-size: 12pt; }
+    .toc li { display: grid; grid-template-columns: auto 1fr auto; gap: 4pt; align-items: baseline; padding: 3pt 0; line-height: 20pt; }
+    .toc li i { border-bottom: 1px dotted #000; transform: translateY(-2pt); }
+    .toc li b { min-width: 18pt; text-align: right; font-family: "Times New Roman", SimSun, serif; font-weight: 400; }
     .toc .toc-chapter { font-weight: 600; }
-    .toc .toc-sub { padding-left: 2em; font-size: 0.92em; color: #333; }
+    .toc .toc-sub { padding-left: 2em; font-size: 11.5pt; color: #000; }
     .template-page {
       width: 210mm;
       min-height: 297mm;
       box-sizing: border-box;
       margin: 28px auto;
-      padding: 30mm;
+      padding: 18mm 30mm 16mm;
       background: #fff;
       color: #000;
       font-family: SimSun, "Songti SC", STSong, serif;
@@ -562,8 +605,34 @@ function thesisTemplateCss() {
       box-shadow: 0 16px 45px rgba(38,48,59,.16);
       page-break-after: always;
       break-after: page;
+      display: flex;
+      flex-direction: column;
     }
     .template-page:last-child { page-break-after: auto; break-after: auto; }
+    .template-page-header {
+      height: 12mm;
+      border-bottom: 1px solid #000;
+      text-align: center;
+      font-size: 10.5pt;
+      line-height: 10mm;
+      color: #000;
+    }
+    .template-page-body {
+      flex: 1 1 auto;
+      padding-top: 18mm;
+    }
+    .front-page .template-page-body,
+    .toc-page .template-page-body {
+      padding-top: 16mm;
+    }
+    .template-page-footer {
+      height: 10mm;
+      text-align: center;
+      font-family: "Times New Roman", SimSun, serif;
+      font-size: 10.5pt;
+      line-height: 10mm;
+      color: #000;
+    }
     .title {
       text-align: center;
       font-family: SimHei, "Heiti SC", sans-serif;
@@ -578,7 +647,7 @@ function thesisTemplateCss() {
       font-weight: 700;
       text-align: center;
       line-height: 1;
-      margin: 24pt 0 18pt;
+      margin: 0 0 28pt;
       page-break-after: avoid;
       break-after: avoid;
     }
@@ -2882,8 +2951,6 @@ export default {
     });
 
     el.querySelector('#wb-preview').addEventListener('click', () => {
-      const _b = buildRenderableBlocks(viewState.view.state.doc, citationMap(citations));
-      console.log('DBG-liveDoc blocks=', _b.length, JSON.stringify(_b.map(x=>x.type+':'+(x.role||'')) ));
       openPrintPreview(viewState.view.state.doc, citations);
     });
     el.querySelector('#wb-export-check')?.addEventListener('click', () => {

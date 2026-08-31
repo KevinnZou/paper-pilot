@@ -31,8 +31,20 @@ function paragraph(text, style = 'BodyText', options = {}) {
   return `<w:p><w:pPr><w:pStyle w:val="${style}"/>${pageBreak}${align}</w:pPr>${textRuns(text, options?.supNums)}</w:p>`;
 }
 
+function tocParagraph(text, style, pageNo) {
+  return `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t xml:space="preserve">${xmlEscape(String(text || ''))}</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>${xmlEscape(String(pageNo || ''))}</w:t></w:r></w:p>`;
+}
+
 function pageBreakParagraph() {
   return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+}
+
+function isPageBreakXml(xml) {
+  return /<w:br w:type="page"/.test(xml || '');
+}
+
+function fieldRun(instruction) {
+  return `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${instruction} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
 }
 
 function crc32(bytes) {
@@ -187,9 +199,13 @@ function imageDrawingXml(relId, widthPx, heightPx) {
 }
 
 function tableXml(rows) {
+  const colCount = Math.max(1, ...rows.map(row => row.length));
+  const tableWidth = 8504;
+  const colWidth = Math.floor(tableWidth / colCount);
   return `<w:tbl>
     <w:tblPr>
-      <w:tblW w:w="0" w:type="auto"/>
+      <w:tblW w:w="${tableWidth}" w:type="dxa"/>
+      <w:tblLayout w:type="fixed"/>
       <w:tblBorders>
         <w:top w:val="single" w:sz="12" w:space="0" w:color="000000"/>
         <w:left w:val="nil"/>
@@ -205,7 +221,8 @@ function tableXml(rows) {
         <w:right w:w="120" w:type="dxa"/>
       </w:tblCellMar>
     </w:tblPr>
-    ${rows.map((row, rowIndex) => `<w:tr>${row.map(cell => `<w:tc><w:tcPr>${rowIndex === 0 ? '<w:shd w:fill="F4EFE4"/>' : ''}</w:tcPr>${paragraph(cell || '', rowIndex === 0 ? 'TableHead' : 'TableCell')}</w:tc>`).join('')}</w:tr>`).join('')}
+    <w:tblGrid>${Array.from({ length: colCount }, () => `<w:gridCol w:w="${colWidth}"/>`).join('')}</w:tblGrid>
+    ${rows.map((row, rowIndex) => `<w:tr>${Array.from({ length: colCount }, (_, i) => row[i] || '').map(cell => `<w:tc><w:tcPr><w:tcW w:w="${colWidth}" w:type="dxa"/>${rowIndex === 0 ? '<w:shd w:fill="F4EFE4"/>' : ''}</w:tcPr>${paragraph(cell || '', rowIndex === 0 ? 'TableHead' : 'TableCell')}</w:tc>`).join('')}</w:tr>`).join('')}
   </w:tbl>`;
 }
 
@@ -213,10 +230,36 @@ function formulaTableXml(text, number) {
   return `<w:tbl>
     <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr>
     <w:tr>
-      <w:tc><w:tcPr><w:tcW w:w="8500" w:type="dxa"/></w:tcPr>${paragraph(text || '', 'Formula', { align: 'center' })}</w:tc>
-      <w:tc><w:tcPr><w:tcW w:w="1100" w:type="dxa"/></w:tcPr>${paragraph(`（${number}）`, 'Formula', { align: 'right' })}</w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="7400" w:type="dxa"/></w:tcPr>${paragraph(text || '', 'Formula', { align: 'center' })}</w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/></w:tcPr>${paragraph(`（${number}）`, 'Formula', { align: 'right' })}</w:tc>
     </w:tr>
   </w:tbl>`;
+}
+
+function buildHeaderXml(project) {
+  const title = meaningfulTitle(project?.researchDesign?.title, project?.title) || '论文正文';
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  <w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="center"/>
+        <w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="000000"/></w:pBdr>
+        <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+      </w:pPr>
+      <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr><w:t>${xmlEscape(title)}</w:t></w:r>
+    </w:p>
+  </w:hdr>`;
+}
+
+function buildFooterXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  <w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:p>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>
+      <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr></w:r>
+      ${fieldRun('PAGE')}
+    </w:p>
+  </w:ftr>`;
 }
 
 function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
@@ -243,16 +286,17 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
       // GB/T 7713.2：学位论文应有"目录"（正文前）。放在第一个正文章节标题前；并给一份静态章节列表（打开即见）
       if (block.role === 'section' && !tocAdded) {
         tocAdded = true;
+        if (blocks.length && !isPageBreakXml(blocks[blocks.length - 1])) blocks.push(pageBreakParagraph());
         blocks.push(paragraph('目录', 'HeadingChapter'));
-        (project.outline || []).forEach(ch => {
+        (project.outline || []).forEach((ch, chapterIndex) => {
           const chapterTitle = String(ch?.chapter || '').trim();
-          if (chapterTitle) blocks.push(paragraph(chapterTitle, 'BodyText'));
-          (Array.isArray(ch?.sections) ? ch.sections : []).forEach(s => {
+          const chapterPageNo = chapterIndex + 1;
+          if (chapterTitle) blocks.push(tocParagraph(chapterTitle, 'Toc1', chapterPageNo));
+          (Array.isArray(ch?.sections) ? ch.sections : []).forEach((s, sectionIndex) => {
             const subTitle = String(s || '').trim();
-            if (subTitle) blocks.push(paragraph(`　${subTitle}`, 'BodyText'));
+            if (subTitle) blocks.push(tocParagraph(subTitle, 'Toc2', sectionIndex ? '' : chapterPageNo));
           });
         });
-        blocks.push(`<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u \\t "HeadingChapter,1;Heading2,2;Heading3,3" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t xml:space="preserve">（Word 中右键更新目录可生成带页码的页码目录）</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>`);
         blocks.push(pageBreakParagraph());
       }
       if (block.role === 'section') {
@@ -260,10 +304,14 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
         figureNo = 0;
         tableNo = 0;
         formulaNo = 0;
-        blocks.push(pageBreakParagraph(), paragraph(block.text, 'HeadingChapter'));
+        if (blocks.length && !isPageBreakXml(blocks[blocks.length - 1])) {
+          blocks.push(pageBreakParagraph());
+        }
+        blocks.push(paragraph(block.text, 'HeadingChapter'));
         return;
       }
       if (['abstract', 'references', 'ack'].includes(block.role)) {
+        if (blocks.length) blocks.push(pageBreakParagraph());
         blocks.push(paragraph(block.text, 'HeadingChapter'));
         return;
       }
@@ -335,6 +383,8 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
     <w:body>
       ${blocks.join('')}
       <w:sectPr>
+        <w:headerReference w:type="default" r:id="rIdHeader"/>
+        <w:footerReference w:type="default" r:id="rIdFooter"/>
         <w:pgSz w:w="11906" w:h="16838"/>
         <w:pgMar w:top="${Math.round((template.margins) ? template.margins.top*567 : 1701)}" w:right="${Math.round(template.margins.right*567)}" w:bottom="${Math.round(template.margins.bottom*567)}" w:left="${Math.round(template.margins.left*567)}" w:header="1247" w:footer="1247" w:gutter="0"/>
       </w:sectPr>
@@ -348,7 +398,7 @@ function buildStylesXml(t) {
   const sz = pt => Math.round(pt * 2);
   const body = `w:rFonts w:ascii="${t.bodyFontLatin}" w:eastAsia="${t.bodyFont}"`;
   const bodySz = sz(t.bodySize);
-  const head = `w:b/><w:sz w:val="${sz(t.headingSize)}"/><w:rFonts w:ascii="Arial" w:eastAsia="${t.headingFont}"`;
+  const head = size => `w:b/><w:sz w:val="${sz(size)}"/><w:rFonts w:ascii="Arial" w:eastAsia="${t.headingFont}"`;
   const line = Math.round((t.lineHeight || 1.5) * 240); // 多倍行距 -> 2xx twips
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -361,13 +411,13 @@ function buildStylesXml(t) {
       <w:name w:val="Title"/>
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr>
-      <w:rPr><${head}/></w:rPr>
+      <w:rPr><${head(22)}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="HeadingChapter">
       <w:name w:val="Chapter Heading"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:jc w:val="center"/><w:spacing w:before="480" w:after="360" w:line="240" w:lineRule="auto"/></w:pPr>
-      <w:rPr><${head}/></w:rPr>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="560" w:line="240" w:lineRule="auto"/><w:keepNext/></w:pPr>
+      <w:rPr><${head(t.headingSize)}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Heading1">
       <w:name w:val="Heading 1"/>
@@ -376,14 +426,14 @@ function buildStylesXml(t) {
     <w:style w:type="paragraph" w:styleId="Heading2">
       <w:name w:val="Heading 2"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:spacing w:before="360" w:after="120" w:line="${Math.round(line*0.9)}" w:lineRule="exact"/></w:pPr>
-      <w:rPr><${head}/></w:rPr>
+      <w:pPr><w:spacing w:before="360" w:after="120" w:line="${Math.round(line*0.9)}" w:lineRule="exact"/><w:keepNext/></w:pPr>
+      <w:rPr><${head(14)}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="Heading3">
       <w:name w:val="Heading 3"/>
       <w:basedOn w:val="Normal"/>
-      <w:pPr><w:spacing w:before="240" w:after="120" w:line="${Math.round(line*0.9)}" w:lineRule="exact"/></w:pPr>
-      <w:rPr><${head}/></w:rPr>
+      <w:pPr><w:spacing w:before="240" w:after="120" w:line="${Math.round(line*0.9)}" w:lineRule="exact"/><w:keepNext/></w:pPr>
+      <w:rPr><${head(12)}/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="BodyText">
       <w:name w:val="Body Text"/>
@@ -426,6 +476,18 @@ function buildStylesXml(t) {
       <w:pPr><w:ind w:left="567" w:hanging="567"/><w:spacing w:before="60" w:after="0" w:line="320" w:lineRule="exact"/></w:pPr>
       <w:rPr><${body}/><w:sz w:val="${Math.max(21, bodySz - 4)}"/></w:rPr>
     </w:style>
+    <w:style w:type="paragraph" w:styleId="Toc1">
+      <w:name w:val="TOC 1"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8504"/></w:tabs><w:spacing w:before="0" w:after="0" w:line="${line}" w:lineRule="auto"/></w:pPr>
+      <w:rPr><${body}/><w:sz w:val="${bodySz}"/><w:b/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Toc2">
+      <w:name w:val="TOC 2"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:ind w:left="420"/><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8504"/></w:tabs><w:spacing w:before="0" w:after="0" w:line="${line}" w:lineRule="auto"/></w:pPr>
+      <w:rPr><${body}/><w:sz w:val="${Math.max(21, bodySz - 1)}"/></w:rPr>
+    </w:style>
   </w:styles>`;
 }
 
@@ -445,6 +507,8 @@ export function createDocxBlob(project, doc, citations) {
         ${media.some(file => file.mime === 'image/jpeg') ? '<Default Extension="jpg" ContentType="image/jpeg"/>' : ''}
         <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
         <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+        <Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>
+        <Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>
         <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
         <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
       </Types>`,
@@ -463,10 +527,14 @@ export function createDocxBlob(project, doc, citations) {
       content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
         ${relationships.join('')}
+        <Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>
+        <Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>
       </Relationships>`,
     },
     { name: 'word/document.xml', content: documentXml },
     { name: 'word/styles.xml', content: buildStylesXml(template) },
+    { name: 'word/header1.xml', content: buildHeaderXml(project) },
+    { name: 'word/footer1.xml', content: buildFooterXml() },
     {
       name: 'docProps/core.xml',
       content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
