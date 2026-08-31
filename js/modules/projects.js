@@ -95,12 +95,12 @@ export default {
           <div class="hero-top modal-head project-create-head">
             <div>
               <h2><span class="mark"></span>创建论文项目</h2>
-              <p class="desc">先建立一条论文主线。题目是必填项，学位类型和截止日期都可以后面再调整。</p>
+              <p class="desc">先建一条论文主线。题目可以先留空，创建后进入研究设计，从描述研究想法开始、由 AI 生成候选题目再定稿；学位类型和截止日期之后都能改。</p>
             </div>
             <button class="btn btn-ghost btn-sm icon-only" id="pc-modal-close" type="button" aria-label="关闭">${ICONS.close}</button>
           </div>
-          <label class="field-label">论文题目</label>
-          <input type="text" id="pc-title" placeholder="例如：基于大语言模型的智能客服满意度研究">
+          <label class="field-label">项目名称<span class="field-hint">（可选，留空则先去研究设计定题目）</span></label>
+          <input type="text" id="pc-title" placeholder="例如：基于大语言模型的智能客服满意度研究（可留空）">
           <div class="form-row">
             <div>
               <label class="field-label">学位类型</label>
@@ -114,7 +114,7 @@ export default {
             </div>
           </div>
           <div class="result-actions project-create-actions">
-            <button class="btn" id="pc-create-submit" type="button">创建并进入项目</button>
+            <button class="btn" id="pc-create-submit" type="button">创建并前往研究设计</button>
             <button class="btn btn-ghost" id="pc-create-cancel" type="button">取消</button>
           </div>
         </div>
@@ -149,19 +149,15 @@ export default {
 
     function submitCreate() {
       const title = titleInput.value.trim();
-      if (!title) {
-        toast('请先填写论文题目', 'err');
-        titleInput.focus();
-        return;
-      }
       const project = createProject({
         title,
         degreeType: degreeInput.value,
         dueDate: dueInput.value || '',
       });
       closeCreateModal();
-      toast('论文项目已创建，先到论文主页开始写作', 'ok');
-      openProject(project.id, 'dashboard');
+      // 新建后直接进入研究设计：从描述方向开始，AI 生成候选题目 → 确定 → 方案 → 大纲
+      toast(title ? `论文项目已创建，去研究设计把题目定下来` : '项目已创建，先到研究设计描述方向、定题目', 'ok');
+      openProject(project.id, 'topic');
     }
 
     el.querySelector('#pc-new')?.addEventListener('click', openCreateModal);
@@ -184,6 +180,22 @@ export default {
     titleInput?.addEventListener('keydown', e => {
       if (e.key === 'Enter') submitCreate();
     });
+    const closeProjectMenus = (except = null) => {
+      el.querySelectorAll('.project-more[open]').forEach(menu => {
+        if (menu !== except) menu.open = false;
+      });
+    };
+    el.querySelectorAll('.project-more').forEach(menu => {
+      menu.addEventListener('toggle', () => {
+        if (menu.open) closeProjectMenus(menu);
+      });
+    });
+    el.addEventListener('click', e => {
+      if (!e.target.closest('.project-more')) closeProjectMenus();
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeProjectMenus();
+    });
 
     el.querySelectorAll('[data-open]').forEach(btn =>
       btn.addEventListener('click', () => openProject(btn.dataset.open, 'dashboard')));
@@ -198,6 +210,7 @@ export default {
       }));
     el.querySelectorAll('[data-export]').forEach(btn =>
       btn.addEventListener('click', () => {
+        closeProjectMenus();
         const project = projects.find(x => x.id === btn.dataset.export);
         if (!project) return;
         const displayTitle = meaningfulTitle(project.researchDesign?.title, project.title) || '论文项目';
@@ -216,6 +229,7 @@ export default {
       }));
     el.querySelectorAll('[data-del]').forEach(btn =>
       btn.addEventListener('click', () => {
+        closeProjectMenus();
         const project = projects.find(x => x.id === btn.dataset.del);
         if (!project) return;
         const displayTitle = meaningfulTitle(project.researchDesign?.title, project.title) || '未定题项目';

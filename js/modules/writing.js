@@ -2561,6 +2561,19 @@ export default {
       switchRightTab('citation');
       citationBox.querySelector('#wb-cit-select')?.focus();
     });
+    const closeToolbarMenus = (except = null) => {
+      el.querySelectorAll('.wb-toolbar-more[open]').forEach(menu => {
+        if (menu !== except) menu.open = false;
+      });
+    };
+    el.querySelectorAll('.wb-toolbar-more').forEach(menu => {
+      menu.addEventListener('toggle', () => {
+        if (menu.open) closeToolbarMenus(menu);
+      });
+    });
+    el.addEventListener('click', evt => {
+      if (!evt.target.closest('.wb-toolbar-more')) closeToolbarMenus();
+    });
     el.querySelector('#wb-asset-close-top')?.addEventListener('click', closeAssetModal);
     assetModal?.addEventListener('click', evt => {
       if (evt.target === assetModal) closeAssetModal();
@@ -2569,6 +2582,7 @@ export default {
       if (evt.key !== 'Escape') return;
       if (assetModal && !assetModal.hidden) closeAssetModal();
       else if (logicModal && !logicModal.hidden) dismissLogicReview();
+      else closeToolbarMenus();
     });
     imageInput?.addEventListener('change', async () => {
       const file = imageInput.files?.[0];

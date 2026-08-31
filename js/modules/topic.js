@@ -612,7 +612,7 @@ function render(el) {
           <div>
             <div class="topic-step-label">Step 1</div>
             <h2><span class="mark"></span>先从想法里挑出题目</h2>
-            <p class="desc">描述研究想法与限制条件，AI 会给出题目候选，你只需挑选最合适的。</p>
+            <p class="desc">先不用急着定稿。把研究方向、关键词、约束与对象描述出来，AI 会基于这些生成候选题目；你逐个理清思路，挑出最合适的一条主线。</p>
           </div>
           <div class="topic-head-side">
             <span class="chip doing">当前阶段</span>
