@@ -142,6 +142,10 @@ document.addEventListener('tm:projects-changed', renderNav);
 
 document.getElementById('nav-settings').addEventListener('click', () =>
   document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'settings' })));
+document.getElementById('project-badge')?.addEventListener('click', () =>
+  document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'projects' })));
+document.getElementById('api-status')?.addEventListener('click', () =>
+  document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'settings' })));
 
 sidebarToggleEl?.addEventListener('click', () => {
   const collapsed = !document.body.classList.contains('sidebar-collapsed');

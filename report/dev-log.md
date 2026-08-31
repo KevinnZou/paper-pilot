@@ -1496,3 +1496,14 @@
   - 主页个性化卡 `learningCardHtml()` 增加「调整偏好」按钮，`data-nav="self-learning"`。
   - `.learn-head` 改成标题/动作横排，移动端自然竖排。
 - **验证**：`npm run build` 通过；搜索确认 `self-learning` 仍注册在模块列表，导航可见列表已过滤，主页卡存在 `调整偏好` 入口。
+
+## 2026-08-31 · 全局状态标签可点击（第 122 次会话）
+- **目标**：把全局头部状态从被动信息改成可行动入口，减少用户找入口的成本。
+- **发现**：
+  - `project-badge` 和 `api-status` 一直显示在页头，但原本是静态 `span`。
+  - 用户看到未打开项目、未配置 API 或演示模式时，仍需要自己去找项目中心或应用设置。
+- **修复**：
+  - `index.html` 将 `project-badge`、`api-status` 改为 `button.status-pill`。
+  - `js/app.js` 为项目状态绑定跳转项目中心，为 AI 状态绑定跳转应用设置。
+  - `.status-pill` 补 hover、cursor 和 `:focus-visible` 样式，保留原 pill 视觉。
+- **验证**：`npm run build` 通过；搜索确认状态更新逻辑仍使用相同 ID，点击事件已绑定到 `projects` 和 `settings`。

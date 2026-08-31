@@ -188,7 +188,10 @@ body.sidebar-collapsed[data-module="writing"] .main-header {
   font-size: 12px; padding: 5px 11px; border-radius: 999px;
   background: var(--surface); border: 1px solid var(--line); color: var(--ink-soft); white-space: nowrap;
   font-family: var(--font-mono);
+  cursor: pointer;
 }
+.status-pill:hover { border-color: var(--line-strong); filter: brightness(.99); }
+.status-pill:focus-visible { outline: 2px solid rgba(47,79,102,.28); outline-offset: 2px; }
 .status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); }
 .status-pill.ready { background: var(--jade-soft); border-color: transparent; color: var(--jade); }
 .status-pill.ready::before { background: var(--jade); }
