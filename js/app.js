@@ -35,7 +35,7 @@ function researchDesignComplete() {
 
 function renderNav() {
   navEl.innerHTML = '';
-  const visible = MODULES.filter(m => !['settings', 'project-settings', 'self-learning'].includes(m.id))
+  const visible = MODULES.filter(m => !['settings', 'project-settings', 'checkExport'].includes(m.id))
     .filter(m => m.id === 'projects' || hasActiveProject())
     .filter(m => m.id !== 'topic' || !researchDesignComplete());
   visible.forEach(m => {

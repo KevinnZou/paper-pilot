@@ -1584,3 +1584,8 @@
   - 每次插入一个小节后，**重新 `topLevelSections`/`subsectionsForSection` 取当前文档里该章节的小节位置**，避免 ProseMirror 文档后移导致后续小节 `bodyFrom` 过期（正向但位置正确）。
   - 光标不在小节内的兼容：`hasSubs` 取决于"该章节是否含小节"（而非光标是否在某小节里）；光标在章节标题/引言/无小节章节 → 分别走 per-subsection / 单块，均正常。
 - **验证**：第五章 5.1/5.2/5.3 正向各小节下都有内容；无堆叠/截断；全站 0 溢出 0 报错。
+
+## 2026-08-29 · 导航调整：去掉"检查与导出"，加回"个性化"（第 114 次会话）
+- `app.js` `renderNav` 过滤条件：由排除 `['settings','project-settings','self-learning']` 改为 `['settings','project-settings','checkExport']`。
+- 效果：**"检查与导出" tab 移除**（写作台已有导出前检查）；**"个性化" tab 加回**（导航项）。
+- 验证：nav = [dashboard, writing, citation, planner, self-learning, projects]；个性化页正常渲染（含偏好）；全站 0 溢出 0 报错。
