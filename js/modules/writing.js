@@ -1311,6 +1311,12 @@ export default {
       document.body.style.overflow = '';
     }
 
+    function dismissLogicReview() {
+      viewState.pending = null;
+      closeLogicModal();
+      renderSuggestionBox(suggestionBox, viewState);
+    }
+
     function renderLogicModal(pending) {
       if (!logicModal || !logicResult || !pending) return;
       logicResult.innerHTML = `
@@ -2396,15 +2402,11 @@ export default {
       handleReviewAction(btn.dataset.reviewAction);
     });
     el.querySelector('#wb-logic-close')?.addEventListener('click', () => {
-      viewState.pending = null;
-      closeLogicModal();
-      renderSuggestionBox(suggestionBox, viewState);
+      dismissLogicReview();
     });
     logicModal?.addEventListener('click', evt => {
       if (evt.target !== logicModal) return;
-      viewState.pending = null;
-      closeLogicModal();
-      renderSuggestionBox(suggestionBox, viewState);
+      dismissLogicReview();
     });
 
     function createReviewWidget(pending) {
@@ -2562,6 +2564,11 @@ export default {
     el.querySelector('#wb-asset-close-top')?.addEventListener('click', closeAssetModal);
     assetModal?.addEventListener('click', evt => {
       if (evt.target === assetModal) closeAssetModal();
+    });
+    el.addEventListener('keydown', evt => {
+      if (evt.key !== 'Escape') return;
+      if (assetModal && !assetModal.hidden) closeAssetModal();
+      else if (logicModal && !logicModal.hidden) dismissLogicReview();
     });
     imageInput?.addEventListener('change', async () => {
       const file = imageInput.files?.[0];

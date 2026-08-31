@@ -132,11 +132,15 @@ export default {
     const dueInput = el.querySelector('#pc-due');
 
     function closeCreateModal() {
+      if (!modal) return;
       modal.hidden = true;
+      document.body.style.overflow = '';
     }
 
     function openCreateModal() {
+      if (!modal) return;
       modal.hidden = false;
+      document.body.style.overflow = 'hidden';
       titleInput.value = '';
       degreeInput.value = '硕士论文';
       dueInput.value = '';
@@ -173,6 +177,9 @@ export default {
     el.querySelector('#pc-create-submit')?.addEventListener('click', submitCreate);
     modal?.addEventListener('click', e => {
       if (e.target === modal) closeCreateModal();
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && modal && !modal.hidden) closeCreateModal();
     });
     titleInput?.addEventListener('keydown', e => {
       if (e.key === 'Enter') submitCreate();

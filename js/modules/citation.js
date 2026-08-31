@@ -937,6 +937,9 @@ function render(el) {
   eviModal?.addEventListener('click', (evt) => {
     if (evt.target === eviModal) closeEvidenceModal();
   });
+  el.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Escape' && eviModal && !eviModal.hidden) closeEvidenceModal();
+  });
 
   // 文献库实时搜索：输入即过滤，搜索词在局部刷新中保留（不整页重渲染）
   const searchEl = el.querySelector('#cit-search');

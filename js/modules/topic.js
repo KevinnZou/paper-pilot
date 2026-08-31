@@ -1282,10 +1282,17 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
       }
       const confirmBtn = el.querySelector('#oc-confirm');
       if (confirmBtn) confirmBtn.disabled = !chapterCount;
-      if (ocModal) ocModal.hidden = false;
+      if (ocModal) {
+        ocModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+      }
     }
 
-    function closeOutlineConfirm() { if (ocModal) ocModal.hidden = true; }
+    function closeOutlineConfirm() {
+      if (!ocModal) return;
+      ocModal.hidden = true;
+      document.body.style.overflow = '';
+    }
 
     el.querySelector('#outline-adopt')?.addEventListener('click', () => {
       const text = outlineEditor?.value || outlineOut?.dataset.outlineText || outlineOut?.textContent || '';
@@ -1305,6 +1312,9 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
     el.querySelector('#oc-cancel')?.addEventListener('click', closeOutlineConfirm);
     el.querySelector('#oc-close')?.addEventListener('click', closeOutlineConfirm);
     ocModal?.addEventListener('click', e => { if (e.target === ocModal) closeOutlineConfirm(); });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && ocModal && !ocModal.hidden) closeOutlineConfirm();
+    });
   }
 }
 
