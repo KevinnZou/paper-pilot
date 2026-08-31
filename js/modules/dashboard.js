@@ -17,7 +17,7 @@ const CARDS = [
 const WRITING_CARDS = [
   { id: 'writing', title: '继续写作', desc: '回到当前章节，生成草稿、润色和插入引用' },
   { id: 'citation', title: '补充文献', desc: '检索文献、整理证据卡，给正文补支撑' },
-  { id: 'checkExport', title: '检查与导出', desc: '导出 Word/PDF，导出前自动检查结构、引用与格式' },
+  { id: 'writing', title: '导出与检查', desc: '写作台内：导出前自动检查结构、引用与格式，再导出 Word/PDF' },
   { id: 'planner', title: '计划辅助', desc: '可选：设置时间轴、记录打卡和本周任务' },
 ];
 
@@ -289,7 +289,7 @@ export default {
           <p class="desc">${lastText ? `最近一次：${escapeHtml(lastText)}` : '还没有打卡记录。'}</p>
           <div class="hero-action-row dash-status-actions">
             <button class="btn btn-ghost" data-nav="planner">${p.dueDate ? '查看计划' : '可选：设置计划'}</button>
-            <button class="btn btn-ghost" data-nav="checkExport">去检查与导出</button>
+            <button class="btn btn-ghost" data-nav="writing">去导出与检查</button>
           </div>
         </div>
       </div>`;
@@ -302,7 +302,7 @@ export default {
             <h2><span class="mark"></span>工作区入口</h2>
             <p class="desc">${hasWriting ? '你已经进入写作状态，这里汇总继续推进论文的快捷入口。' : '先完成研究设计，再进入写作、文献和计划。'}</p>
           </div>
-          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'project-settings' : 'checkExport'}">${hasWriting ? '查看项目方案' : '检查与导出'}</button>
+          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'project-settings' : 'writing'}">${hasWriting ? '查看项目方案' : '去导出与检查'}</button>
         </div>
         <div class="dash-grid">
         ${workspaceCards.map(c => `
