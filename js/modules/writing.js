@@ -443,7 +443,11 @@ function buildPreviewHtml(doc, citations) {
     currentPageLabel = '';
   };
   const renderBlock = block => {
-    if (block.type === 'title') return `<h1 class="title">${escapeHtml(block.text)}</h1>`;
+    if (block.type === 'title') {
+      currentPageClass = 'front-page cover-page';
+      currentPageLabel = '';
+      return buildCoverHtml(block.text);
+    }
     if (block.type === 'heading') {
       let headingText = block.text;
       if (block.role === 'section') {
@@ -545,14 +549,17 @@ function buildPreviewHtml(doc, citations) {
   let frontNo = 0;
   let bodyNo = 0;
   return pages.map(page => {
+    const isCover = page.className.includes('cover-page');
     const isBody = bodyStarted || /^第\s*\d+\s*章/.test(page.label || '') || ['参考文献', '致谢'].includes(page.label || '');
-    if (isBody) {
+    if (isCover) {
+      // 封面不参与摘要/目录的罗马页码编号。
+    } else if (isBody) {
       bodyStarted = true;
       bodyNo += 1;
     } else {
       frontNo += 1;
     }
-    const pageNo = isBody ? String(bodyNo) : romanNumeral(frontNo);
+    const pageNo = isCover ? '' : (isBody ? String(bodyNo) : romanNumeral(frontNo));
     const label = escapeHtml(page.label || meaningfulTitle(getProject().title) || '论文');
     return `<section class="template-page ${page.className}">
       <header class="template-page-header">${label}</header>
@@ -573,6 +580,37 @@ function romanNumeral(num) {
     }
   });
   return out;
+}
+
+function degreeLabel(project) {
+  const degree = project.degreeType || '硕士论文';
+  if (degree === '本科论文') return '本科毕业论文';
+  if (degree === '硕士论文') return '硕士学位论文';
+  if (degree === '博士论文') return '博士学位论文';
+  return degree;
+}
+
+function formatCoverDate(date = new Date()) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+}
+
+function buildCoverHtml(title) {
+  const project = getProject();
+  const rows = [
+    ['学校', project.school],
+    ['院系', project.college],
+    ['指导教师', project.advisor],
+  ].filter(([, value]) => String(value || '').trim());
+  return `<div class="cover-layout">
+    <div class="cover-title-block">
+      <h1 class="title">${escapeHtml(title)}</h1>
+      <p class="cover-subtitle">${escapeHtml(degreeLabel(project))}</p>
+    </div>
+    ${rows.length ? `<dl class="cover-meta">${rows.map(([label, value]) => `
+      <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>
+    `).join('')}</dl>` : ''}
+    <p class="cover-date">${escapeHtml(formatCoverDate())}</p>
+  </div>`;
 }
 
 function thesisTemplateCss() {
@@ -609,6 +647,64 @@ function thesisTemplateCss() {
       flex-direction: column;
     }
     .template-page:last-child { page-break-after: auto; break-after: auto; }
+    .cover-page .template-page-header,
+    .cover-page .template-page-footer {
+      visibility: hidden;
+    }
+    .cover-page .template-page-body {
+      display: flex;
+      flex-direction: column;
+      padding-top: 18mm;
+    }
+    .cover-layout {
+      min-height: 215mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .cover-title-block {
+      margin-top: 32mm;
+      max-width: 128mm;
+    }
+    .cover-subtitle {
+      text-indent: 0;
+      text-align: center;
+      font-size: 13pt;
+      line-height: 22pt;
+      margin-top: 18pt;
+    }
+    .cover-meta {
+      width: 90mm;
+      margin: 34mm auto 0;
+      text-align: left;
+      font-size: 12pt;
+    }
+    .cover-meta div {
+      display: grid;
+      grid-template-columns: 28mm 1fr;
+      gap: 8mm;
+      align-items: baseline;
+      margin: 9pt 0;
+    }
+    .cover-meta dt {
+      font-weight: 700;
+      text-align: justify;
+      text-align-last: justify;
+    }
+    .cover-meta dd {
+      margin: 0;
+      border-bottom: 1px solid #000;
+      min-height: 18pt;
+      text-align: center;
+    }
+    .cover-date {
+      margin: auto 0 20mm;
+      text-indent: 0;
+      text-align: center;
+      font-family: "Times New Roman", SimSun, serif;
+      font-size: 12pt;
+    }
     .template-page-header {
       height: 12mm;
       border-bottom: 1px solid #000;

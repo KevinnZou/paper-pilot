@@ -1563,6 +1563,23 @@
   - 解包确认 `[Content_Types].xml` 包含 header/footer 类型，`word/_rels/document.xml.rels` 包含 header/footer 关系，`word/document.xml` 包含 header/footer 引用、目录样式、章节分页，且无“Word 中右键更新目录”残留。
   - 尝试用 LibreOffice 将临时 Word 转 PDF 进行视觉 QA，但 `soffice` 超过 60 秒未返回且未产出 PDF，已终止；本轮未完成 LibreOffice 渲染级验收。
 
+## 2026-08-31 · 标题页改为正式封面（第 127 次会话）
+- **目标**：修复导出 Word 第一页只有一个大标题、大片空白的问题，让标题页承担论文封面功能。
+- **发现**：
+  - `writing.js` 预览中 `block.type === 'title'` 只输出 `<h1 class="title">`，标题页没有元信息结构。
+  - `docx-export.js` 中标题块只使用 `Title` 样式段落，后续摘要另起页，导致 Word 第一页只有一个标题段落。
+- **修复**：
+  - `writing.js` 新增 `buildCoverHtml`、`degreeLabel`、`formatCoverDate`，把标题页渲染为封面布局。
+  - 预览封面显示论文题名、论文类型、学校/院系/导师等已填写项目字段和年月；未填写字段自动隐藏。
+  - 预览封面隐藏页眉页脚，且不参与摘要/目录罗马页码编号。
+  - `docx-export.js` 新增 `coverParagraphs`，把标题导出为 `CoverTitle`、`CoverSubtitle`、`CoverMeta`、`CoverDate` 多段封面结构。
+  - `docx-export.js` 新增封面专用样式，并配置 `w:titlePg`、首页空白 header/footer，避免正文页眉页码出现在封面。
+- **验证**：
+  - `npm run build` 通过；构建仅提示 chunk size 偏大。
+  - 临时生成 `/private/tmp/paperpilot-cover-test.docx` 成功。
+  - 解包确认 `CoverTitle/CoverSubtitle/CoverMeta/CoverDate` 已写入 `word/document.xml`，`word/styles.xml` 存在对应样式，`document.xml.rels` 存在首页空白 header/footer 与正文 header/footer 关系。
+  - 搜索确认没有写死参考学校名、示例学校名、调试输出或目录提示文案。
+
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。
 - **改造**：

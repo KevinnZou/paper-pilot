@@ -35,6 +35,10 @@ function tocParagraph(text, style, pageNo) {
   return `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t xml:space="preserve">${xmlEscape(String(text || ''))}</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>${xmlEscape(String(pageNo || ''))}</w:t></w:r></w:p>`;
 }
 
+function coverMetaParagraph(label, value) {
+  return paragraph(`${label}：${value}`, 'CoverMeta');
+}
+
 function pageBreakParagraph() {
   return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
 }
@@ -262,6 +266,40 @@ function buildFooterXml() {
   </w:ftr>`;
 }
 
+function buildEmptyHeaderXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p/></w:hdr>`;
+}
+
+function buildEmptyFooterXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p/></w:ftr>`;
+}
+
+function degreeLabel(project) {
+  const degree = project?.degreeType || '硕士论文';
+  if (degree === '本科论文') return '本科毕业论文';
+  if (degree === '硕士论文') return '硕士学位论文';
+  if (degree === '博士论文') return '博士学位论文';
+  return degree;
+}
+
+function formatCoverDate(date = new Date()) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+}
+
+function coverParagraphs(project, title) {
+  const rows = [
+    ['学校', project?.school],
+    ['院系', project?.college],
+    ['指导教师', project?.advisor],
+  ].filter(([, value]) => String(value || '').trim());
+  return [
+    paragraph(title, 'CoverTitle'),
+    paragraph(degreeLabel(project), 'CoverSubtitle'),
+    ...rows.map(([label, value]) => coverMetaParagraph(label, value)),
+    paragraph(formatCoverDate(), 'CoverDate'),
+  ];
+}
+
 function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
   const byId = citationMap(citations);
   const renderable = buildRenderableBlocks(doc, byId);
@@ -281,7 +319,7 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
 
   let tocAdded = false;
   renderable.forEach(block => {
-    if (block.type === 'title') { blocks.push(paragraph(block.text, 'Title')); return; }
+    if (block.type === 'title') { blocks.push(...coverParagraphs(project, block.text)); return; }
     if (block.type === 'heading') {
       // GB/T 7713.2：学位论文应有"目录"（正文前）。放在第一个正文章节标题前；并给一份静态章节列表（打开即见）
       if (block.role === 'section' && !tocAdded) {
@@ -311,7 +349,7 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
         return;
       }
       if (['abstract', 'references', 'ack'].includes(block.role)) {
-        if (blocks.length) blocks.push(pageBreakParagraph());
+        if (blocks.length && !isPageBreakXml(blocks[blocks.length - 1])) blocks.push(pageBreakParagraph());
         blocks.push(paragraph(block.text, 'HeadingChapter'));
         return;
       }
@@ -383,6 +421,9 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
     <w:body>
       ${blocks.join('')}
       <w:sectPr>
+        <w:titlePg/>
+        <w:headerReference w:type="first" r:id="rIdHeaderFirst"/>
+        <w:footerReference w:type="first" r:id="rIdFooterFirst"/>
         <w:headerReference w:type="default" r:id="rIdHeader"/>
         <w:footerReference w:type="default" r:id="rIdFooter"/>
         <w:pgSz w:w="11906" w:h="16838"/>
@@ -412,6 +453,30 @@ function buildStylesXml(t) {
       <w:basedOn w:val="Normal"/>
       <w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr>
       <w:rPr><${head(22)}/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="CoverTitle">
+      <w:name w:val="Cover Title"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="2200" w:after="420" w:line="480" w:lineRule="exact"/></w:pPr>
+      <w:rPr><${head(22)}/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="CoverSubtitle">
+      <w:name w:val="Cover Subtitle"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="1500" w:line="360" w:lineRule="exact"/></w:pPr>
+      <w:rPr><${body}/><w:sz w:val="${sz(13)}"/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="CoverMeta">
+      <w:name w:val="Cover Metadata"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="180" w:line="360" w:lineRule="exact"/></w:pPr>
+      <w:rPr><${body}/><w:sz w:val="${bodySz}"/></w:rPr>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="CoverDate">
+      <w:name w:val="Cover Date"/>
+      <w:basedOn w:val="Normal"/>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="1700" w:after="0" w:line="360" w:lineRule="exact"/></w:pPr>
+      <w:rPr><${body}/><w:sz w:val="${bodySz}"/></w:rPr>
     </w:style>
     <w:style w:type="paragraph" w:styleId="HeadingChapter">
       <w:name w:val="Chapter Heading"/>
@@ -509,6 +574,8 @@ export function createDocxBlob(project, doc, citations) {
         <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
         <Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>
         <Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>
+        <Override PartName="/word/header2.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>
+        <Override PartName="/word/footer2.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>
         <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
         <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
       </Types>`,
@@ -529,12 +596,16 @@ export function createDocxBlob(project, doc, citations) {
         ${relationships.join('')}
         <Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>
         <Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>
+        <Relationship Id="rIdHeaderFirst" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header2.xml"/>
+        <Relationship Id="rIdFooterFirst" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer2.xml"/>
       </Relationships>`,
     },
     { name: 'word/document.xml', content: documentXml },
     { name: 'word/styles.xml', content: buildStylesXml(template) },
     { name: 'word/header1.xml', content: buildHeaderXml(project) },
     { name: 'word/footer1.xml', content: buildFooterXml() },
+    { name: 'word/header2.xml', content: buildEmptyHeaderXml() },
+    { name: 'word/footer2.xml', content: buildEmptyFooterXml() },
     {
       name: 'docProps/core.xml',
       content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
