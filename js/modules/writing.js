@@ -149,15 +149,18 @@ function currentWritingTarget(view) {
 function subsectionsForSection(doc, section) {
   const items = [];
   if (!section) return items;
+  const found = [];
   doc.nodesBetween(section.bodyFrom, section.bodyTo, (node, pos) => {
     if (node.type.name === 'heading' && node.attrs.role === 'subsection') {
-      items.push({
-        title: node.textContent.trim(),
-        pos: pos + 1,
-      });
+      found.push({ title: node.textContent.trim(), pos: pos + 1, headingFrom: pos, bodyFrom: pos + node.nodeSize });
     }
   });
-  return items;
+  // 计算每个小节的正文区间 [bodyFrom, bodyTo)：本节标题后 → 下一个小节标题前（或章节体末尾）
+  found.forEach((item, idx) => {
+    const next = found[idx + 1];
+    item.bodyTo = next ? next.headingFrom - 1 : section.bodyTo;
+  });
+  return found;
 }
 
 function inlineContentFromText(text) {
@@ -2661,8 +2664,18 @@ export default {
       const currentText = viewState.view.state.doc.textBetween(target.bodyFrom, target.bodyTo, '\n').trim();
       const btn = el.querySelector('#wb-draft');
       const title = meaningfulTitle(getProject().title) || '（未定题）';
-      const subsections = target.kind === 'chapter' ? subsectionsForSection(viewState.view.state.doc, target).map(item => item.title).filter(Boolean) : [];
-      const searchQuery = [title, target.label, ...subsections.slice(0, 3)].filter(Boolean).join(' ');
+      const allSubs = target.kind === 'chapter' ? subsectionsForSection(viewState.view.state.doc, target) : [];
+      const subTitles = allSubs.map(item => item.title).filter(Boolean);
+      const hasSubs = target.kind === 'chapter' && allSubs.length > 0;
+            // 分小节时用宽检索（题目+章节）提供共享引用池，避免过多小节标题让检索过于具体；无小节才带小节标题
+      const searchQuery = [title, target.label, ...(hasSubs ? [] : subTitles.slice(0, 3))].filter(Boolean).join(' ');
+      const chapterPrompt = (sub = null) => {
+        if (sub) {
+          const subBody = viewState.view.state.doc.textBetween(sub.bodyFrom, sub.bodyTo, '\n').trim();
+          return `请为论文《${title}》的章节「${target.chapter}」下的小节「${sub.title}」撰写 300-600 字中文内容，紧扣该小节主题与分论点展开。需要自然引用下方文献，至少使用 1 条引用，引用必须使用 [[CIT:id]] 标记，不要使用 [1] 这类普通文本编号。只输出正文，不要输出小节标题，不要使用 Markdown。\n\n该小节当前已有内容：\n${subBody || '暂无'}`;
+        }
+        return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subTitles.length ? `编辑器里已经有这些小节标题：${subTitles.join('；')}。请按这些小节的顺序展开正文，但不要重复输出章节标题或小节标题。` : '请按章节主题自行组织清晰段落。'}需要自然引用下方文献，至少使用 2 条引用，引用必须使用 [[CIT:id]] 标记，不要使用 [1] 这类普通文本编号。只输出正文，不要输出客套说明，不要使用 Markdown 标题。\n\n当前已有内容：\n${currentText || '暂无'}`;
+      };
       const userPrompt = (() => {
         if (target.kind === 'abstract') {
           return `请为论文《${title}》生成一版中文摘要，300-500 字，覆盖研究背景、目的、方法、主要发现和结论。需要自然引入下方文献中的 1-2 条作为支撑，引用必须使用提供的 [[CIT:id]] 标记。只输出摘要正文，不要输出“摘要”标题，不要使用 Markdown。`;
@@ -2670,7 +2683,7 @@ export default {
         if (target.kind === 'keywords') {
           return `请为论文《${title}》生成 3-5 个中文关键词，用中文分号分隔。只输出关键词，不要解释。\n\n已有关键词：\n${currentText || '暂无'}`;
         }
-        return `请为论文《${title}》的章节「${target.chapter}」撰写 1000-1500 字中文初稿。${subsections.length ? `编辑器里已经有这些小节标题：${subsections.join('；')}。请按这些小节的顺序展开正文，但不要重复输出章节标题或小节标题。` : '请按章节主题自行组织清晰段落。'}需要自然引用下方文献，至少使用 2 条引用，引用必须使用提供的 [[CIT:id]] 标记，不要使用 [1] 这类普通文本编号。只输出正文，不要输出客套说明，不要使用 Markdown 标题。\n\n当前已有内容：\n${currentText || '暂无'}`;
+        return chapterPrompt(null);
       })();
       setLoading(btn, true, target.kind === 'keywords' ? '生成中…' : '检索文献…');
       let streamRange = null;
@@ -2717,21 +2730,36 @@ export default {
         const referencesBlock = draftCitations.length
           ? `\n\n可引用文献：\n${draftCitations.map(citationBrief).join('\n\n')}`
           : '';
-        streamRange = { from: target.bodyTo, to: target.bodyTo, target, subsections };
-        replaceDraftStream(viewState.view, streamRange, '', draftCitations);
-        const reply = await streamChat([
-          { role: 'system', content: systemPrompt() },
-          { role: 'user', content: `${userPrompt}${referencesBlock}` },
-        ], {
-          temperature: target.kind === 'keywords' ? 0.35 : 0.68,
-          signal: writingSignal(),
-          onDelta: delta => {
-            streamed += delta;
-            replaceDraftStream(viewState.view, streamRange, streamed, draftCitations);
-          },
-        });
-        const suggestion = normalizeDraftCitationMarkers(cleanAiText(reply), draftCitations);
-        replaceDraftStream(viewState.view, streamRange, suggestion, draftCitations);
+        // 分小节生成：章节已有小节标题（分论点）时，逐个小节生成并插入到该小节标题下方
+        const streamInto = async (range, prompt) => {
+          replaceDraftStream(viewState.view, range, '', draftCitations);
+          let got = '';
+          const reply = await streamChat([
+            { role: 'system', content: systemPrompt() },
+            { role: 'user', content: `${prompt}${referencesBlock}` },
+          ], {
+            temperature: target.kind === 'keywords' ? 0.35 : 0.68,
+            signal: writingSignal(),
+            onDelta: delta => {
+              got += delta;
+              replaceDraftStream(viewState.view, range, got, draftCitations);
+            },
+          });
+          const suggestion = normalizeDraftCitationMarkers(cleanAiText(reply), draftCitations);
+          replaceDraftStream(viewState.view, range, suggestion, draftCitations);
+          return suggestion;
+        };
+        if (hasSubs) {
+          for (const sub of allSubs) {
+            const subRange = { from: sub.bodyFrom, to: sub.bodyFrom, target, subsections: [sub.title], sub };
+            streamRange = subRange;
+            await streamInto(subRange, chapterPrompt(sub));
+          }
+        } else {
+          streamRange = { from: target.bodyTo, to: target.bodyTo, target, subsections: [] };
+          await streamInto(streamRange, userPrompt);
+        }
+        streamRange = null; // 生成完毕，避免异常时误删已成功生成的正文
         saveCitations(citations);
         if (target.kind === 'chapter' && target.chapter && (getProject().chapterProgress?.[target.chapter] || '未开始') === '未开始') {
           setChapterProgress(target.chapter, '进行中');
