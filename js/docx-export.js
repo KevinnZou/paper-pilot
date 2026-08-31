@@ -240,11 +240,19 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
   renderable.forEach(block => {
     if (block.type === 'title') { blocks.push(paragraph(block.text, 'Title')); return; }
     if (block.type === 'heading') {
-      // GB/T 7713.2：学位论文应有"目录"（正文前）。放在第一个正文章节标题前。
+      // GB/T 7713.2：学位论文应有"目录"（正文前）。放在第一个正文章节标题前；并给一份静态章节列表（打开即见）
       if (block.role === 'section' && !tocAdded) {
         tocAdded = true;
         blocks.push(paragraph('目录', 'HeadingChapter'));
-        blocks.push(`<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u \\t "HeadingChapter,1;Heading2,2;Heading3,3" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t xml:space="preserve">（打开 Word 后右键更新目录）</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>`);
+        (project.outline || []).forEach(ch => {
+          const chapterTitle = String(ch?.chapter || '').trim();
+          if (chapterTitle) blocks.push(paragraph(chapterTitle, 'BodyText'));
+          (Array.isArray(ch?.sections) ? ch.sections : []).forEach(s => {
+            const subTitle = String(s || '').trim();
+            if (subTitle) blocks.push(paragraph(`　${subTitle}`, 'BodyText'));
+          });
+        });
+        blocks.push(`<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u \\t "HeadingChapter,1;Heading2,2;Heading3,3" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t xml:space="preserve">（Word 中右键更新目录可生成带页码的页码目录）</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>`);
         blocks.push(pageBreakParagraph());
       }
       if (block.role === 'section') {

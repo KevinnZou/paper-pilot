@@ -445,18 +445,12 @@ function buildPreviewHtml(doc, citations) {
     if (block.type === 'heading') {
       let headingText = block.text;
       if (block.role === 'section') {
-        pushPage();
-        currentPageClass = 'chapter-page';
         headingText = headingText || outlineTitles[sectionIndex] || `第${sectionIndex + 1}章`;
         sectionIndex += 1;
         chapterNo = chapterIndexFrom(headingText) || chapterNo + 1;
         figureNo = 0;
         tableNo = 0;
         formulaNo = 0;
-      }
-      if (['references', 'ack'].includes(block.role)) {
-        pushPage();
-        currentPageClass = 'chapter-page';
       }
       const tag = block.role === 'section' ? 'h1' : ['abstract', 'references', 'ack'].includes(block.role) ? 'h2' : 'h3';
       const cls = block.role === 'section' || ['abstract', 'references', 'ack'].includes(block.role)
@@ -513,7 +507,27 @@ function buildPreviewHtml(doc, citations) {
     }
     return '';
   };
+  // 目录：收集章节标题（含二级小节），用于生成独立的"目录"页
+  const tocEntries = blocks
+    .filter(b => b.type === 'heading' && (b.role === 'section' || b.role === 'subsection'))
+    .map(b => ({ section: b.role === 'section', text: (b.text || '').trim() }))
+    .filter(e => e.text);
+  const tocHtml = `<h2 class="chapter-title">目录</h2><ol class="toc">${tocEntries.map(e =>
+    `<li class="${e.section ? 'toc-chapter' : 'toc-sub'}">${escapeHtml(e.text)}</li>`).join('')}</ol>`;
+  // 确定性页组装：章节/参考文献/致谢标题处断页，正文标题归该页；在首页（题目/摘要/关键词）后插入目录页
+  let tocInserted = false;
   blocks.forEach(block => {
+    if (block.type === 'heading' && block.role === 'section') {
+      pushPage();
+      currentPageClass = 'chapter-page';
+      if (!tocInserted) {
+        pages.push({ className: 'chapter-page', html: tocHtml });
+        tocInserted = true;
+      }
+    } else if (block.type === 'heading' && ['references', 'ack'].includes(block.role)) {
+      pushPage();
+      currentPageClass = 'chapter-page';
+    }
     currentPage.push(renderBlock(block));
   });
   pushPage();
@@ -530,6 +544,10 @@ function thesisTemplateCss() {
       background: #EEECE5;
       color: #000;
     }
+    .toc { list-style: none; margin: 12px 0; padding: 0; }
+    .toc li { padding: 5px 0; line-height: 1.6; }
+    .toc .toc-chapter { font-weight: 600; }
+    .toc .toc-sub { padding-left: 2em; font-size: 0.92em; color: #333; }
     .template-page {
       width: 210mm;
       min-height: 297mm;
@@ -2864,6 +2882,8 @@ export default {
     });
 
     el.querySelector('#wb-preview').addEventListener('click', () => {
+      const _b = buildRenderableBlocks(viewState.view.state.doc, citationMap(citations));
+      console.log('DBG-liveDoc blocks=', _b.length, JSON.stringify(_b.map(x=>x.type+':'+(x.role||'')) ));
       openPrintPreview(viewState.view.state.doc, citations);
     });
     el.querySelector('#wb-export-check')?.addEventListener('click', () => {
