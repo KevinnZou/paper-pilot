@@ -1061,8 +1061,8 @@ function render(el) {
         }
         if (!Array.isArray(entries)) throw new Error('not array');
       } catch {
-        out.innerHTML = `<span class="placeholder">AI 返回格式异常，原始内容如下：</span>\n${escapeHtml(reply)}`;
-        toast('解析失败：AI 返回格式异常', 'err');
+        out.innerHTML = `<span class="placeholder">没能自动识别出引用条目。下面是返回的内容，可手动核对或复制其中的条目标题。</span>\n${escapeHtml(reply)}`;
+        toast('未能识别出引用条目，请检查格式或改为手动录入', 'err');
         return;
       }
       const objs = entries.filter(e => e && typeof e === 'object'); // 防御 AI 返回非对象元素

@@ -1589,3 +1589,9 @@
 - `app.js` `renderNav` 过滤条件：由排除 `['settings','project-settings','self-learning']` 改为 `['settings','project-settings','checkExport']`。
 - 效果：**"检查与导出" tab 移除**（写作台已有导出前检查）；**"个性化" tab 加回**（导航项）。
 - 验证：nav = [dashboard, writing, citation, planner, self-learning, projects]；个性化页正常渲染（含偏好）；全站 0 溢出 0 报错。
+
+## 2026-08-29 · 清除 C 端内部/调试话术（第 115 次会话）
+- **app.js 渲染错误卡**：去掉用户可见的原始 JS 错误（"错误信息：<e.message>"），改为友好提示"可以尝试重新打开当前页面…你的数据仍保存在本机，不会丢失"。
+- **citation.js 批量解析失败提示**："AI 返回格式异常，原始内容如下" + toast"解析失败：AI 返回格式异常" → 改为"没能自动识别出引用条目…可手动核对或复制条目标题"。
+- **核查结论**（无泄漏）：无"测试模式/V4/Phase/Beta"残留；无"反馈给开发者"类消息；系统提示词/AI 指令（SYSTEM/PARSE_SYSTEM/各动作 prompt）均只发 AI、不见于 UI；`[[CIT:id]]` 为草稿内部序列化标记（会被重新解析回文档）；个性化页/设置用词均为用户友好文案；API Key/模型名设置为合理用户配置项。
+- 验证：全站 0 溢出 0 报错；检查页无"错误信息"/"返回格式异常"/"测试模式"等字符串。

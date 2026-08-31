@@ -84,7 +84,10 @@ export function switchModule(id) {
     pEl.textContent = '这个页面加载时遇到问题。你可以先回到主页面，或重新打开当前页面。';
     const detail = document.createElement('p');
     detail.className = 'module-error-detail';
-    detail.textContent = e?.message ? `错误信息：${e.message}` : '错误信息暂不可用';
+    detail.textContent = '可以尝试重新打开当前页面；若仍无法打开，请先回到主页面继续其他工作。';
+    const hint = document.createElement('p');
+    hint.className = 'module-error-detail';
+    hint.textContent = '你的数据仍保存在本机，不会丢失。';
     const actions = document.createElement('div');
     actions.className = 'module-error-actions';
     const home = document.createElement('button');
@@ -98,7 +101,7 @@ export function switchModule(id) {
     retry.textContent = '重新打开本页';
     retry.addEventListener('click', () => switchModule(m.id));
     actions.append(home, retry);
-    card.append(h, pEl, detail, actions);
+    card.append(h, pEl, detail, hint, actions);
     container.append(card);
   }
   window.scrollTo({ top: 0 });
