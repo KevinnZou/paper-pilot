@@ -1538,3 +1538,12 @@
   - `projects.js` 创建弹窗：题目字段改为**可选工作名**（不再必填、不再校验），提示"可留空，先去研究设计定题目"；按钮文案改"创建并前往研究设计"；`submitCreate` 不再强制标题，创建后**跳转 'topic'（研究设计）**而非 dashboard。
   - `topic.js` step1 定题：优化引导文案（"先不用急着定稿……逐个理清思路，挑出最合适的主线"）。
 - **验证**：新建项目（留空）→ 落到研究设计 Step1 定题；填方向→生成 4 个候选题目；全站 0 溢出 0 报错。
+
+## 2026-08-29 · 定题入口 + 题目回填项目名（第 110 次会话）
+- **需求**：新建项目即使写了题目也进研究设计第一步（题目只当工作名）；用户正式定题后把题目回填到项目名。
+- **改造**：
+  - `topic.js` `normalizeResearchDesign`：`title` 不再回退 `project.title`——避免把创建时的"工作名"误判为已定题而跳过 Step1。
+  - `topic.js` `hasResolvedDesignTitle`：空 `design.title` 不算已定题（修 `!isPlaceholderTitle('')` 误判）。
+  - `topic.js` Step1 提示区分：`design.title` 已定 → "你已定题"；仅 `project.title` 工作名 → "已暂定标题（工作名），选定后回填项目名"。
+  - 回填：选定候选走 `saveDesignPatch({title, selectedTitleId})` → 写入 `project.title`。
+- **验证**：新建（带工作名）→ 落 Step1 定题（提示"已暂定标题（工作名）"）；生成候选 → 点选 → 研究设计推进到 Step2（证明题目已回填/确定）；全站 0 溢出 0 报错。

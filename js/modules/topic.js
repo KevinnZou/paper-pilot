@@ -186,7 +186,7 @@ function normalizeResearchDesign(design = {}, project = getProject()) {
     currentStep: Number(design.currentStep) || 1,
     stepTouched: !!design.stepTouched,
     initialIdea: design.initialIdea || '',
-    title: designTitle || projectTitle || '',
+    title: designTitle || '', // 只认研究设计自身定的题，不回退 project.title（那是工作名），避免误判已定题
     keywords: design.keywords || '',
     constraints: design.constraints || '',
     population: design.population || '',
@@ -248,10 +248,15 @@ function planReady(design) {
   return !!(design.researchQuestions.length && design.methods.length && design.dataSources.length);
 }
 
+/** 仅当题目经由研究设计流程确定（选中候选/写入 design.title），才算"已定题"；创建时的 project.title 只是工作名 */
+function hasResolvedDesignTitle(design) {
+  return !!design.selectedTitleId || !!(design.title && !isPlaceholderTitle(design.title));
+}
+
 function maxAvailableStep(design, project) {
   if ((project.outline || []).length) return 3;
   if (planReady(design)) return 3;
-  if (resolvedResearchTitle(design, project)) return 2;
+  if (hasResolvedDesignTitle(design)) return 2;
   return 1;
 }
 
@@ -620,7 +625,7 @@ function render(el) {
         </div>
         <div class="topic-wizard-grid">
           <div class="topic-primary-panel">
-            ${activeTitle ? `<div class="topic-already">你已定题：<b>${escapeHtml(activeTitle)}</b>。可在此基础上细化研究想法，或直接进入下一步。</div>` : ''}
+            ${design.title ? `<div class="topic-already">你已定题：<b>${escapeHtml(activeTitle)}</b>。可在此基础上细化研究想法，或直接进入下一步。</div>` : (activeTitle ? `<div class="topic-already">已暂定标题（工作名）：<b>${escapeHtml(activeTitle)}</b>。下面是正式定题，选定后会把题目回填到项目名。</div>` : '')}
             <label class="field-label">研究想法</label>
             <textarea id="rd-idea" class="topic-idea-box" placeholder="例如：通过 AI 助力装修行业标准化、规范化、数字化">${escapeHtml(design.initialIdea)}</textarea>
             <div class="form-row">
