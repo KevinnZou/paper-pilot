@@ -2750,9 +2750,14 @@ export default {
           return suggestion;
         };
         if (hasSubs) {
-          // 逆序插入：先插高位置（后一个小节），避免前一次插入使后一小节的 bodyFrom 过期（文档位置会后移）
-          for (let i = allSubs.length - 1; i >= 0; i--) {
-            const sub = allSubs[i];
+          // 以小节为单位、正向逐个生成并插入；每次插入后重取该章节的小节当前位置，避免 ProseMirror 文档后移导致后续小节 bodyFrom 过期
+          const chapterName = target.chapter;
+          const count = allSubs.length;
+          for (let i = 0; i < count; i++) {
+            const sec = topLevelSections(viewState.view.state.doc).find(s => s.chapter === chapterName) || target;
+            const curSubs = subsectionsForSection(viewState.view.state.doc, sec);
+            const sub = curSubs[i];
+            if (!sub) break;
             const subRange = { from: sub.bodyFrom, to: sub.bodyFrom, target, subsections: [sub.title], sub };
             streamRange = subRange;
             await streamInto(subRange, chapterPrompt(sub));
