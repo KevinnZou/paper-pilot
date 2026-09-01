@@ -813,6 +813,10 @@
 - AI：确认 GitHub Pages 使用 `main` 分支的 workflow 发布；发现仓库尚无 `.github/workflows`，因此补充 Vite 构建并部署 `dist/` 到 GitHub Pages 的 workflow，创建并合并 PR #1。合并后 Pages workflow 成功，线上地址返回 200。
 - 用户：打开线上页面后发现只显示无样式的基础 HTML，指出线上不正常。
 - AI：确认是 GitHub Pages 子路径部署下 Vite 默认绝对资源路径 `/assets/...` 导致 CSS/JS 丢失；新增 Vite 配置，将构建 base 改为相对路径 `./`。随后发现旧的 GitHub Pages 静态 workflow 把仓库根目录重新发布，覆盖了正确的 `dist/` 产物，因此删除旧 workflow，只保留 Vite 构建部署。
+- 用户：要求准备开发报告和开发过程文档，覆盖产品分析、竞品调研、商业分析、PRD、视觉稿、技术方案、测试方案、上线方案等标准化开发流程。
+- AI：基于现有 PRD、调研、产品评审、验收清单、开发日志和上线记录，新增 `docs/delivery/development-report.md`、`docs/delivery/development-process-document.md` 和交付文档索引。
+- 用户：希望文档可以直接在线查看，只提交一个链接给老师；随后明确文档应是独立页面，不要在原产品中放任何入口。
+- AI：将方案改为独立静态页面 `public/delivery.html`，由 Vite 构建复制到线上 `/delivery.html`；撤回接入原应用模块和导航的改动，保持产品本体无交付文档入口。
 
 ## 2026-08-29 · 模板预览标题与正文引用同步修复
 
