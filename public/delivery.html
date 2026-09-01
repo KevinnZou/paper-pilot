@@ -173,22 +173,13 @@
     <section class="hero">
       <div>
         <span class="seal">文</span>
-        <p class="eyebrow">PaperPilot v4.0.0-beta.1 · Delivery Package</p>
+        <p class="eyebrow">PaperPilot v4.0 · 项目成果展示</p>
         <h1>论文写作辅助系统交付文档</h1>
-        <p class="lead">这里集中展示项目从产品分析、竞品调研、商业分析、PRD、视觉稿、技术方案、测试方案到上线方案的完整开发材料。</p>
+        <p class="lead">本页集中展示论文写作辅助系统从需求分析、竞品调研、商业分析、产品设计、视觉设计、技术实现、测试验收到上线发布的完整材料。</p>
       </div>
       <div class="hero-actions">
-        <a class="btn" href="./">打开系统</a>
-        <a class="btn secondary" href="https://github.com/KevinnZou/paper-pilot/releases/tag/v4.0.0-beta.1" target="_blank" rel="noopener">查看 Release</a>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2><span class="mark"></span>可提交链接</h2>
-      <p class="desc">提交给老师时，可以直接使用下面这个页面地址。</p>
-      <div class="link-box">
-        <input id="delivery-link" value="https://kevinnzou.github.io/paper-pilot/delivery.html" readonly>
-        <button class="btn secondary" id="copy-link" type="button">复制链接</button>
+        <a class="btn" href="./">查看系统</a>
+        <a class="btn secondary" href="https://github.com/KevinnZou/paper-pilot" target="_blank" rel="noopener">查看代码仓库</a>
       </div>
     </section>
 
@@ -205,8 +196,8 @@
       </a>
       <a class="doc-card" href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/release-checklist.md" target="_blank" rel="noopener">
         <small>验收材料</small>
-        <strong>发布候选检查清单</strong>
-        <span>记录 Beta 发布前的主流程、真实 API、视觉交互、导出格式和备份恢复检查项。</span>
+        <strong>测试与验收记录</strong>
+        <span>记录核心流程、真实 API、视觉交互、导出格式和备份恢复等测试检查项。</span>
       </a>
     </section>
 
@@ -216,12 +207,12 @@
       <ol class="process">
         <li class="step"><span class="step-no">1</span><div><strong>产品分析</strong><p>明确论文写作痛点、产品定位、使用边界和学术诚信原则。</p></div></li>
         <li class="step"><span class="step-no">2</span><div><strong>竞品调研</strong><p>分析通用 AI、论文写作工具和文献管理工具，识别差异化机会。</p></div></li>
-        <li class="step"><span class="step-no">3</span><div><strong>商业分析</strong><p>判断 BYOK 免费内测、托管额度、云同步和学校采购等后续路径。</p></div></li>
+        <li class="step"><span class="step-no">3</span><div><strong>商业分析</strong><p>分析免费使用、本地数据、模型调用、云同步和学校场景等后续发展路径。</p></div></li>
         <li class="step"><span class="step-no">4</span><div><strong>PRD</strong><p>用 MoSCoW 划分需求优先级，并形成论文项目主线。</p></div></li>
         <li class="step"><span class="step-no">5</span><div><strong>视觉稿</strong><p>形成纸墨朱砂视觉系统，沉淀主要页面截图和 UI/UX 审计记录。</p></div></li>
         <li class="step"><span class="step-no">6</span><div><strong>技术方案</strong><p>确定 Vite、ProseMirror、本地存储、OpenAI 兼容 API 和 Pages 架构。</p></div></li>
         <li class="step"><span class="step-no">7</span><div><strong>测试方案</strong><p>覆盖构建、主流程、真实 API、导出、视觉和上线验证。</p></div></li>
-        <li class="step"><span class="step-no">8</span><div><strong>上线方案</strong><p>通过 GitHub Actions 构建 dist 并发布到 GitHub Pages。</p></div></li>
+        <li class="step"><span class="step-no">8</span><div><strong>上线方案</strong><p>配置自动构建与静态托管，完成线上访问验证。</p></div></li>
       </ol>
     </section>
 
@@ -237,36 +228,23 @@
           <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/product-review-v1.md" target="_blank" rel="noopener">产品评审</a></td><td>产品经理、用户、UI/UX 三视角评审。</td></tr>
           <tr><td><a href="https://github.com/KevinnZou/paper-pilot/tree/main/docs/review" target="_blank" rel="noopener">视觉稿与截图</a></td><td>论文主页、研究设计、写作台、文献与证据、计划页和移动端截图。</td></tr>
           <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/technical-proposal.html" target="_blank" rel="noopener">技术方案</a></td><td>技术架构与实现方案。</td></tr>
-          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/acceptance.md" target="_blank" rel="noopener">验收状态</a></td><td>自动化、真机与发布前验收记录。</td></tr>
-          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/report/dev-log.md" target="_blank" rel="noopener">开发日志</a></td><td>逐轮需求、修改、验证和发布记录。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/acceptance.md" target="_blank" rel="noopener">测试验收</a></td><td>功能流程、界面表现、导出能力和上线前检查记录。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/report/dev-log.md" target="_blank" rel="noopener">开发记录</a></td><td>需求讨论、迭代修改、验证结果和上线过程记录。</td></tr>
         </tbody>
       </table>
     </section>
 
     <section class="section">
-      <h2><span class="mark"></span>上线状态</h2>
+      <h2><span class="mark"></span>项目状态</h2>
       <div class="status-grid">
-        <div><span>线上系统</span><strong><a href="./">https://kevinnzou.github.io/paper-pilot/</a></strong></div>
-        <div><span>文档页面</span><strong>delivery.html</strong></div>
-        <div><span>发布版本</span><strong>v4.0.0-beta.1</strong></div>
-        <div><span>发布方式</span><strong>GitHub Actions + Pages</strong></div>
+        <div><span>系统访问</span><strong><a href="./">PaperPilot 在线版</a></strong></div>
+        <div><span>项目阶段</span><strong>可演示版本</strong></div>
+        <div><span>核心流程</span><strong>已完成并上线</strong></div>
+        <div><span>交付材料</span><strong>已整理归档</strong></div>
       </div>
     </section>
 
     <p class="foot">AI 生成内容仅供辅助，论文观点、数据真实性、引用准确性和学术规范仍需使用者自行确认。</p>
   </main>
-  <script>
-    document.getElementById('copy-link').addEventListener('click', async () => {
-      const input = document.getElementById('delivery-link');
-      try {
-        await navigator.clipboard.writeText(input.value);
-        document.getElementById('copy-link').textContent = '已复制';
-        setTimeout(() => { document.getElementById('copy-link').textContent = '复制链接'; }, 1400);
-      } catch (e) {
-        input.select();
-        document.execCommand('copy');
-      }
-    });
-  </script>
 </body>
 </html>
