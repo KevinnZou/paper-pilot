@@ -4,12 +4,21 @@ import { getProject, calcStreak, setCurrentChapter } from '../project.js';
 import { escapeHtml, toast, calGridHtml } from '../ui.js';
 import { loadDemoData, hasExistingData } from '../demo-data.js';
 import { ICONS } from '../icons.js';
+import { meaningfulTitle } from '../title-utils.js';
+import { learningCardHtml } from '../self-learning.js';
 
 const CARDS = [
-  { id: 'topic', title: '选题与大纲', desc: '选题建议 → 设为题目 → 生成并采用大纲' },
-  { id: 'writing', title: '写作工作台', desc: '一份完整论文文档：目录定位、AI 动作、规范引用' },
-  { id: 'citation', title: '文献中心', desc: '智能推荐中英文文献，核对理由后勾选入库' },
-  { id: 'planner', title: '计划与进度', desc: '截止日期倒排甘特图、每日打卡、进度监督' },
+  { id: 'topic', title: '研究设计', desc: '研究想法 → 研究问题 → 可行性检查 → 论文大纲' },
+  { id: 'writing', title: '写作工作台', desc: '目录定位、润色续写、规范引用都在一处完成' },
+  { id: 'citation', title: '文献与证据', desc: '智能推荐中英文文献，核对理由后勾选入库' },
+  { id: 'planner', title: '计划与进度', desc: '今日任务、本周任务、时间轴与写作记录' },
+];
+
+const WRITING_CARDS = [
+  { id: 'writing', title: '继续写作', desc: '回到当前章节，生成草稿、润色和插入引用' },
+  { id: 'citation', title: '补充文献', desc: '检索文献、整理证据卡，给正文补支撑' },
+  { id: 'writing', title: '导出与检查', desc: '写作台内：导出前自动检查结构、引用与格式，再导出 Word/PDF' },
+  { id: 'planner', title: '计划辅助', desc: '可选：设置时间轴、记录打卡和本周任务' },
 ];
 
 const PROGRESS_WEIGHT = { '已完成': 1, '进行中': 0.5, '未开始': 0 };
@@ -22,11 +31,85 @@ function wordCount(s) {
   return String(s || '').replace(/\s/g, '').length;
 }
 
+function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapter, drafts, daysLeft }) {
+  const totalWords = Object.values(drafts).reduce((sum, d) => sum + wordCount(d?.content), 0);
+  const chapterWords = nextChapter ? wordCount(drafts[nextChapter]?.content || '') : 0;
+  const chapterStatus = nextChapter ? (project.chapterProgress[nextChapter] || '未开始') : '';
+  const titleReady = !!meaningfulTitle(project.researchDesign?.title, project.title);
+  if (cfg?.enableLiveAI && !cfg?.apiKey) {
+    return {
+      title: '今天先完成真实 AI 配置',
+      goal: '你已打开真实调用开关，补上 API Key 后即可使用模型服务。',
+      bullets: ['填写 API Key', '测试连接', '返回项目主页继续主线'],
+      eta: '5 分钟',
+      nav: 'settings',
+      cta: '去配置',
+    };
+  }
+  if (!titleReady) {
+    return {
+      title: '今天先定下论文题目',
+      goal: '把研究想法落成明确题目，后续研究问题和大纲才能稳定生成。',
+      bullets: ['写下研究想法', '生成题目候选', '选一个题目设为主线'],
+      eta: '20 分钟',
+      nav: 'topic',
+      cta: '去研究设计',
+    };
+  }
+  if (!chapters.length && researchReadyCount < 4) {
+    return {
+      title: '今天补齐研究设计',
+      goal: '至少把研究问题、方法、数据来源和可行性检查补全，让后续写作有抓手。',
+      bullets: ['生成 3-5 个研究问题', '确认方法与数据来源', '做一轮可行性检查'],
+      eta: '35 分钟',
+      nav: 'topic',
+      cta: '继续研究设计',
+    };
+  }
+  if (!chapters.length) {
+    return {
+      title: '今天产出论文大纲',
+      goal: '用研究设计生成五章结构，并采用到项目主线。',
+      bullets: ['检查研究空白是否清楚', '生成论文大纲', '采用到写作工作台'],
+      eta: '25 分钟',
+      nav: 'topic',
+      cta: '去生成大纲',
+    };
+  }
+  if (nextChapter) {
+    const wordGoal = chapterWords >= 800 ? 1200 : 800;
+    const diff = Math.max(wordGoal - chapterWords, 0);
+    return {
+      title: `今天建议完成 ${nextChapter}`,
+      goal: chapterStatus === '未开始'
+        ? '先把这一章写出能工作的初稿，再回头补证据和细化表达。'
+        : '继续把当前章节推进到成型版本，减少中断成本。',
+      bullets: [
+        diff > 0 ? `补足约 ${diff} 字，达到 ${wordGoal} 字初稿` : `继续精修本章，已超过 ${wordGoal} 字基础线`,
+        '检查本章至少有 2 处文献支撑',
+        daysLeft != null && daysLeft <= 14 ? '同步关注截止日期，安排好写作与进度' : '完成后更新章节状态',
+      ],
+      eta: chapterStatus === '未开始' ? '45 分钟' : '35 分钟',
+      nav: 'writing',
+      cta: `去写「${shortName(nextChapter, 8)}」`,
+    };
+  }
+  return {
+    title: '今天做一次总检查',
+    goal: `当前已累计 ${totalWords} 字，适合回看结构、引用和计划是否一致。`,
+    bullets: ['检查章节是否失衡', '回看文献引用是否充足', '安排下一轮修改重点'],
+    eta: '30 分钟',
+    nav: 'writing',
+    cta: '回到全文',
+  };
+}
+
 export default {
   id: 'dashboard',
-  icon: '🏠',
+  icon: '',
   title: '论文主页',
   subtitle: '你的论文，一条主线看到底',
+  projectScoped: true,
 
   render(el) {
     const p = getProject();
@@ -39,6 +122,16 @@ export default {
     const streak = calcStreak(checkins);
     const chapters = p.outline || [];
     const doneCount = chapters.filter(c => p.chapterProgress[c.chapter] === '已完成').length;
+    const researchDesign = p.researchDesign || {};
+    const resolvedTitle = meaningfulTitle(researchDesign.title, p.title);
+    const researchReadyCount = [
+      !!(researchDesign.initialIdea || '').trim(),
+      !!resolvedTitle,
+      !!(researchDesign.researchQuestions || []).length,
+      !!(researchDesign.methods || []).length,
+      !!(researchDesign.dataSources || []).length,
+      !!(researchDesign.feasibility?.score || researchDesign.feasibility?.risks?.length),
+    ].filter(Boolean).length;
     const overallPct = chapters.length
       ? Math.round(chapters.reduce((s, c) => s + (PROGRESS_WEIGHT[p.chapterProgress[c.chapter]] || 0), 0) / chapters.length * 100)
       : 0;
@@ -47,14 +140,15 @@ export default {
     const lastText = lastRaw
       ? (typeof lastRaw === 'string' ? lastRaw : `${lastRaw.date}${lastRaw.chapter ? ` · ${lastRaw.chapter}` : ''}`)
       : '';
+    const hasWriting = chapters.length > 0 || totalWords > 0 || !!p.documentV2;
+    const designApplied = chapters.length > 0 || hasWriting;
 
-    // 五步写作之旅（onboarding 流程条）
+    // 主线只保留论文产出必需动作；截止日期、打卡是辅助管理，不进入强制流程
     const steps = [
-      { label: '填入 API Key', done: !!(cfg?.apiKey), extra: cfg?.apiKey ? '已配置' : '', nav: 'settings' },
-      { label: '确定论文题目', done: !!p.title, extra: p.title ? shortName(p.title, 8) : '', nav: 'topic' },
-      { label: '采用章节大纲', done: chapters.length > 0, extra: chapters.length ? `${chapters.length} 章` : '', nav: 'topic' },
-      { label: '设定截止日期', done: !!p.dueDate, extra: p.dueDate ? p.dueDate.slice(5).replace('-', '/') : '', nav: 'planner' },
-      { label: '开始按章写作', done: Object.values(drafts).some(d => (d?.content || '').trim()), nav: 'writing' },
+      { label: '确定题目', done: !!resolvedTitle, extra: resolvedTitle ? shortName(resolvedTitle, 8) : '', nav: hasWriting ? 'writing' : 'topic' },
+      { label: '形成方案', done: researchReadyCount >= 4 || hasWriting, extra: designApplied ? '已应用' : (researchReadyCount >= 4 ? `${researchReadyCount}/6` : ''), nav: hasWriting ? 'writing' : 'topic' },
+      { label: '采用大纲', done: chapters.length > 0, extra: chapters.length ? `${chapters.length} 章` : '', nav: hasWriting ? 'writing' : 'topic' },
+      { label: '开始写作', done: hasWriting && Object.values(drafts).some(d => (d?.content || '').trim()), nav: 'writing' },
     ];
     const doneSteps = steps.filter(s => s.done).length;
     const currentIdx = steps.findIndex(s => !s.done);
@@ -66,48 +160,85 @@ export default {
       : ((chapters.find(c => prog[c.chapter] === '进行中')
           || chapters.find(c => prog[c.chapter] === '未开始')
           || chapters[0]) || {}).chapter || '';
+    const nextAction = nextActionCard({
+      cfg,
+      project: p,
+      researchReadyCount,
+      chapters,
+      nextChapter,
+      drafts,
+      daysLeft,
+    });
 
     // 主行动按钮 = 下一步
     let heroAction = '';
-    if (!cfg?.apiKey) heroAction = '<button class="btn" data-nav="settings">第一步：填入 API Key</button>';
-    else if (!p.title) heroAction = '<button class="btn" data-nav="topic">去确定选题</button>';
-    else if (!chapters.length) heroAction = '<button class="btn" data-nav="topic">去生成并采用大纲</button>';
-    else if (!p.dueDate) heroAction = '<button class="btn" data-nav="planner">设定截止日期</button>';
-    else heroAction = `<button class="btn" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '开始写作'}</button>`;
+    if (cfg?.enableLiveAI && !cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">配置真实 AI</button>';
+    else if (!resolvedTitle) heroAction = '<button class="btn btn-lg" data-nav="topic">去确定研究题目</button>';
+    else if (hasWriting) heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '继续写作'}</button>`;
+    else if (researchReadyCount < 4) heroAction = '<button class="btn btn-lg" data-nav="topic">补齐研究设计</button>';
+    else if (!chapters.length) heroAction = '<button class="btn btn-lg" data-nav="topic">去生成并采用大纲</button>';
+    else heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '开始写作'}</button>`;
 
-    el.innerHTML = `
+    // 四块版面：hero / 写作之旅 / 章节进度+打卡 / 功能入口
+    const heroHtml = `
       <div class="card hero project-hero">
-        <h2><span class="mark"></span>${p.title ? escapeHtml(p.title) : '开始你的论文之旅'}</h2>
-        <p class="hero-lead">${p.title
+        <div class="hero-top">
+          <h2><span class="mark"></span>${resolvedTitle ? escapeHtml(resolvedTitle) : '开始你的论文之旅'}</h2>
+          <div class="meta">
+            ${p.degreeType ? `<span class="chip">${escapeHtml(p.degreeType)}</span>` : ''}
+            ${p.dueDate ? `<span class="chip">截止 ${escapeHtml(p.dueDate)}</span>` : ''}
+            ${designApplied ? '<span class="chip done">方案已应用</span>' : (researchReadyCount ? `<span class="chip">研究设计 ${researchReadyCount}/6</span>` : '')}
+            ${chapters.length ? `<span class="chip">${chapters.length} 章大纲</span>` : ''}
+            ${doneCount ? `<span class="chip done">已完成 ${doneCount} 章</span>` : ''}
+            ${p.materials.length ? `<span class="chip">素材 ${p.materials.length} 条</span>` : ''}
+            ${hasWriting ? '<span class="chip done">已进入写作</span>' : ''}
+          </div>
+        </div>
+        <p class="hero-lead">${resolvedTitle
           ? `覆盖选题、写作、文献、进度的全流程助手${daysLeft !== null
               ? (daysLeft >= 0 ? `　·　距截止 <b>${daysLeft}</b> 天` : `　·　已过截止 <b>${-daysLeft}</b> 天`)
               : ''}`
-          : '五个步骤，从选题到定稿。先完成下方流程条的第一步。'}</p>
-        ${p.title ? `
+          : '先把研究设计立住，再进入大纲、写作、文献和进度推进。'}</p>
+        <div class="hero-action-row">
+          ${heroAction}
+          ${!resolvedTitle ? '<button class="btn btn-ghost" id="hero-demo">先载入演示项目看效果</button>' : ''}
+          ${hasWriting ? '<button class="btn btn-ghost" data-nav="citation">补充文献</button>' : ''}
+          ${resolvedTitle && !hasWriting ? '<button class="btn btn-ghost" data-nav="planner">可选：设置计划</button>' : ''}
+        </div>
+        ${resolvedTitle ? `
           <div class="hero-stats">
-            <div class="stat"><span class="stat-num ${daysLeft !== null && daysLeft <= 14 ? 'danger' : ''}" ${daysLeft !== null && daysLeft <= 14 ? 'title="已不足两周，注意写作节奏"' : ''}>${daysLeft !== null ? daysLeft : '—'}</span><span class="stat-label">距截止天数</span></div>
             <div class="stat"><span class="stat-num">${overallPct}%</span><span class="stat-label">章节进度</span></div>
             <div class="stat"><span class="stat-num">${totalWords || 0}</span><span class="stat-label">已写字数</span></div>
-            <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续打卡</span></div>
+            <div class="stat"><span class="stat-num">${chapters.length || 0}</span><span class="stat-label">大纲章节</span></div>
+            <div class="stat"><span class="stat-num">${p.citations?.length || 0}</span><span class="stat-label">文献数量</span></div>
           </div>` : ''}
-        <div class="meta">
-          ${p.degreeType ? `<span class="chip">${escapeHtml(p.degreeType)}</span>` : ''}
-          ${p.dueDate ? `<span class="chip">截止 ${escapeHtml(p.dueDate)}</span>` : ''}
-          ${chapters.length ? `<span class="chip">${chapters.length} 章大纲</span>` : ''}
-          ${doneCount ? `<span class="chip done">已完成 ${doneCount} 章</span>` : ''}
-          ${p.materials.length ? `<span class="chip">素材 ${p.materials.length} 条</span>` : ''}
-          ${doneSteps === steps.length ? '<span class="chip done">旅程五步全部完成</span>' : ''}
-        </div>
-        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-          ${heroAction}
-          ${!p.title ? '<button class="btn btn-ghost" id="hero-demo">先载入演示数据看效果</button>' : ''}
-          ${p.title ? '<button class="btn btn-ghost" data-nav="planner">查看写作计划</button>' : ''}
-        </div>
-      </div>
+      </div>`;
 
-      <div class="card">
-        <h2><span class="mark"></span>写作之旅　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
-        <p class="desc">按顺序完成以下步骤，每步完成后自动打勾；点击任意一步可直接前往</p>
+    const nextActionHtml = `
+      <div class="card focus-card">
+        <h2><span class="mark"></span>今天该做什么</h2>
+        <div class="focus-layout">
+          <div class="focus-main">
+            <div class="focus-title">${escapeHtml(nextAction.title)}</div>
+            <div class="focus-goal">${escapeHtml(nextAction.goal)}</div>
+          </div>
+          <div class="focus-side">
+            <div class="focus-eta">预计 ${escapeHtml(nextAction.eta)}</div>
+          </div>
+        </div>
+        <div class="focus-checks">
+          ${nextAction.bullets.map(item => `<div class="focus-check">${escapeHtml(item)}</div>`).join('')}
+        </div>
+        <div class="hero-action-row dash-focus-actions">
+          <button class="btn btn-lg" ${nextAction.nav === 'writing' && nextChapter ? `data-write="${escapeHtml(nextChapter)}"` : `data-nav="${nextAction.nav}"`}>${escapeHtml(nextAction.cta)}</button>
+          ${p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : '<button class="btn btn-ghost" data-nav="writing">检查整体状态</button>'}
+        </div>
+      </div>`;
+
+    const journeyHtml = `
+      <div class="card journey-card">
+        <h2><span class="mark"></span>论文主线　<span class="chip ${doneSteps === steps.length ? 'done' : 'doing'}">${doneSteps}/${steps.length}</span></h2>
+        <p class="desc">聚焦对论文推进最关键的事项。</p>
         <div class="journey">
           ${steps.map((s, i) => `
             <button class="journey-step ${s.done ? 'done' : i === currentIdx ? 'current' : ''}" data-nav="${s.nav}" title="${escapeHtml(s.label)}${s.done ? '（已完成）' : i === currentIdx ? '（当前步骤）' : ''}">
@@ -116,9 +247,10 @@ export default {
               ${i === currentIdx && !s.done ? '<span class="js-tag">下一步</span>' : ''}
             </button>`).join('')}
         </div>
-      </div>
+      </div>`;
 
-      <div class="grid-2">
+    const progressHtml = `
+      <div class="grid dash-cols">
         <div class="card">
           <h2><span class="mark"></span>章节进度</h2>
           <p class="desc">${chapters.length
@@ -129,41 +261,63 @@ export default {
               ${chapters.map(c => {
                 const st = p.chapterProgress[c.chapter] || '未开始';
                 const chipCls = st === '已完成' ? 'done' : st === '进行中' ? 'doing' : '';
-                return `<div class="progress-row">
+                const isNext = c.chapter === nextChapter;
+                return `<div class="progress-row ${isNext ? 'is-next' : ''}">
                   <span class="progress-label" title="${escapeHtml(c.chapter)}">${escapeHtml(shortName(c.chapter, 10))}</span>
                   <div class="progress-track"><div class="progress-fill" style="width:${PROGRESS_WEIGHT[st] * 100}%"></div></div>
                   <span class="chip ${chipCls}">${st}</span>
                   ${drafts[c.chapter]?.content ? `<span class="chip">${wordCount(drafts[c.chapter].content)}字</span>` : ''}
-                  <button class="btn btn-ghost btn-sm" data-write="${escapeHtml(c.chapter)}">去写</button>
+                  <button class="btn ${isNext ? '' : 'btn-ghost'} btn-sm" data-write="${escapeHtml(c.chapter)}">${isNext ? '继续写' : '去写'}</button>
                 </div>`;
               }).join('')}
             </div>` : `
             <div class="empty">
-              <div class="empty-icon">📖</div>
+              <div class="empty-icon">${ICONS.bookOpen}</div>
               <p>还没有大纲——生成大纲并「采用」后，这里会显示每章进度</p>
-              <button class="btn btn-ghost btn-sm" data-nav="topic">去生成大纲 →</button>
+              <button class="btn btn-ghost btn-sm" data-nav="topic">去生成大纲</button>
             </div>`}
         </div>
 
-        <div class="card">
-          <h2><span class="mark"></span>写作打卡</h2>
-          <p class="desc">累计打卡 <b>${checkins.length}</b> 天${streak ? ` · 连续 <b>${streak}</b> 天` : ''}</p>
+        <div class="card side-summary-card">
+          <h2><span class="mark"></span>辅助管理</h2>
+          <p class="desc">截止日期和打卡帮你把握节奏，不影响你继续写作。</p>
+          <div class="hero-stats dash-status-stats">
+            <div class="stat"><span class="stat-num ${daysLeft !== null && daysLeft <= 14 ? 'danger' : ''}">${daysLeft !== null ? daysLeft : '—'}</span><span class="stat-label">${p.dueDate ? '距截止天数' : '未设截止'}</span></div>
+            <div class="stat"><span class="stat-num">${streak}</span><span class="stat-label">连续天数</span></div>
+          </div>
           ${calGridHtml(checkins)}
-          ${lastText
-            ? `<p class="desc">最近打卡：${escapeHtml(lastText)}</p>`
-            : '<p class="desc">还没有打卡记录，开始第一次打卡吧</p>'}
-          <button class="btn btn-ghost" data-nav="planner">去打卡</button>
+          <p class="desc">${lastText ? `最近一次：${escapeHtml(lastText)}` : '还没有打卡记录。'}</p>
+          <div class="hero-action-row dash-status-actions">
+            <button class="btn btn-ghost" data-nav="planner">${p.dueDate ? '查看计划' : '可选：设置计划'}</button>
+            <button class="btn btn-ghost" data-nav="writing">去导出与检查</button>
+          </div>
         </div>
-      </div>
-
-      <div class="dash-grid">
-        ${CARDS.map(c => `
-          <button class="dash-card" data-nav="${c.id}">
-            <span class="icon">${ICONS[c.id] || ''}</span>
-            <h3>${c.title}</h3>
-            <p>${c.desc}</p>
-          </button>`).join('')}
       </div>`;
+
+    const workspaceCards = hasWriting ? WRITING_CARDS : CARDS;
+    const entranceHtml = `
+      <section class="tool-band">
+        <div class="hero-top">
+          <div>
+            <h2><span class="mark"></span>工作区入口</h2>
+            <p class="desc">${hasWriting ? '你已经进入写作状态，这里汇总继续推进论文的快捷入口。' : '先完成研究设计，再进入写作、文献和计划。'}</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'project-settings' : 'writing'}">${hasWriting ? '查看项目方案' : '去导出与检查'}</button>
+        </div>
+        <div class="dash-grid">
+        ${workspaceCards.map(c => `
+          <button class="dash-card" data-nav="${c.id}" title="${escapeHtml(c.desc)}">
+            <span class="icon">${ICONS[c.id] || ''}</span>
+            <span class="d-card-txt">
+              <span class="d-title">${c.title}</span>
+              <span class="d-desc">${escapeHtml(c.desc)}</span>
+            </span>
+          </button>`).join('')}
+        </div>
+      </section>`;
+
+    // 版面顺序：hero → 工作区入口（高频）→ 今天该做什么/写作之旅 → 章节进度
+    el.innerHTML = `<div class="dashboard-stack">${heroHtml}${entranceHtml}<div class="grid-2 dash-focus-grid">${nextActionHtml}${journeyHtml}</div>${progressHtml}${learningCardHtml()}</div>`;
 
     // 章节直写
     el.querySelectorAll('[data-write]').forEach(b =>
@@ -176,9 +330,9 @@ export default {
     const demoBtn = el.querySelector('#hero-demo');
     if (demoBtn) {
       demoBtn.addEventListener('click', () => {
-        if (hasExistingData() && !confirm('载入演示数据将覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
+        if (hasExistingData() && !confirm('载入演示项目将覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
         loadDemoData();
-        toast('演示数据已载入——这就是一份完整论文的样子', 'ok');
+        toast('演示项目已载入——这就是一份完整论文的样子', 'ok');
         // 走导航事件重渲染主页（避免模块内自引用）
         document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
       });

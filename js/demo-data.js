@@ -1,7 +1,8 @@
 // 演示数据：一键填充示例论文（题目/大纲/草稿/文献/打卡/素材），用于课程演示与体验
 // 注意：载入会覆盖当前本地数据（调用方需先确认）
-import { saveProject, getProject } from './project.js';
+import { saveProject, getProject, hasActiveProject, createProject } from './project.js';
 import { get, set } from './storage.js';
+import { ensureCitationIds, normalizeCitationEntry } from './citation-utils.js';
 
 const DAY = 86400000;
 
@@ -11,6 +12,7 @@ function iso(ms) {
 }
 
 export function loadDemoData() {
+  if (!hasActiveProject()) createProject({ title: '演示论文项目' });
   const due = new Date(Date.now() + 30 * DAY);
   const dueStr = iso(due.getTime());
   const chapters = ['第一章 绪论', '第二章 相关理论基础', '第三章 方法设计', '第四章 实验与结果分析', '第五章 总结与展望'];
@@ -46,19 +48,18 @@ export function loadDemoData() {
     updatedAt: Date.now() - 3600000,
   };
   chapters.slice(2).forEach(c => { drafts[c] = { content: '', updatedAt: Date.now() }; });
-  set('drafts', drafts);
 
-  set('citations', [
-    { litNo: 1, type: 'J', author: 'Vaswani A, Shazeer N, Parmar N, 等', title: 'Attention is all you need', source: 'Advances in Neural Information Processing Systems', year: '2017', vol: '30', formatted: 'Vaswani A, Shazeer N, Parmar N, 等. Attention is all you need[J]. Advances in Neural Information Processing Systems, 2017, 30.' },
-    { litNo: 2, type: 'J', author: 'Snell J, Swersky K, Zemel R', title: 'Prototypical networks for few-shot learning', source: 'Advances in Neural Information Processing Systems', year: '2017', vol: '30', formatted: 'Snell J, Swersky K, Zemel R. Prototypical networks for few-shot learning[J]. Advances in Neural Information Processing Systems, 2017, 30.' },
-    { litNo: 3, type: 'J', author: 'Ronneberger O, Fischer P, Brox T', title: 'U-Net: Convolutional networks for biomedical image segmentation', source: 'Medical Image Computing and Computer-Assisted Intervention', year: '2015', vol: '', formatted: 'Ronneberger O, Fischer P, Brox T. U-Net: Convolutional networks for biomedical image segmentation[J]. Medical Image Computing and Computer-Assisted Intervention, 2015.' },
-  ]);
-
-  set('checkins', [
+  const demoCitations = ensureCitationIds([
+    normalizeCitationEntry({ litNo: 1, type: 'J', authors: 'Vaswani A, Shazeer N, Parmar N, 等', title: 'Attention is all you need', source: 'Advances in Neural Information Processing Systems', year: '2017', volume: '30' }),
+    normalizeCitationEntry({ litNo: 2, type: 'J', authors: 'Snell J, Swersky K, Zemel R', title: 'Prototypical networks for few-shot learning', source: 'Advances in Neural Information Processing Systems', year: '2017', volume: '30' }),
+    normalizeCitationEntry({ litNo: 3, type: 'J', authors: 'Ronneberger O, Fischer P, Brox T', title: 'U-Net: Convolutional networks for biomedical image segmentation', source: 'Medical Image Computing and Computer-Assisted Intervention', year: '2015' }),
+  ]).list;
+  // 文献/草稿/打卡写入项目对象（IndexedDB 持久），而非旧版 localStorage（避免重启后丢失、且与 getCitations 读取一致）
+  saveProject({ drafts, citations: demoCitations, checkins: [
     { date: iso(Date.now()), chapter: '第二章 相关理论基础', note: '完成注意力机制小节，约900字' },
     { date: iso(Date.now() - DAY), chapter: '第一章 绪论', note: '绪论收尾，约1200字' },
     { date: iso(Date.now() - 2 * DAY), chapter: '第一章 绪论', note: '' },
-  ]);
+  ] });
 }
 
 /** 是否存在任何已保存的用户数据（用于提示覆盖风险） */

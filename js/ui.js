@@ -37,6 +37,17 @@ export function integrityNote() {
   return '<div class="integrity-note"><b>学术诚信提示</b>　AI 生成内容仅供参考，观点与数据请自行核实，并遵守所在学校的学术规范。</div>';
 }
 
+/** 清洗 AI 输出常见的客套/前缀杂讯（“好的，以下是...”等），用于写入正文前；
+ *  只清理开头的口语前缀与成对引号，避免污染论文正文 */
+export function cleanAiText(text) {
+  let s = String(text || '').trim();
+  if (!s) return s;
+  s = s.replace(/^[“”"'‘’「」]/, '').replace(/[“”"'‘’「」]$/, '');
+  s = s.replace(/^(好的|好|可以|没问题|当然|以下是我|以下是|我来|我来帮你|我来为你|为您|帮你|为你|已为你|正文如下|回复如下)[：:，,\s]*/, '');
+  s = s.replace(/^(以下是我|以下是|正文是|改写结果|润色结果)[^：:\n。]{0,14}[：:。]\s*/, '');
+  return s.trim();
+}
+
 /** 按钮加载态：禁用并显示 loading 文字，结束后恢复
  *  原文本只存一次（首次进入 loading 时）——连续两次 loading 会存进「生成中…」，结束时无法恢复原文 */
 export function setLoading(btn, loading, loadingText = '生成中…') {

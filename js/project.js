@@ -1,69 +1,538 @@
-// 论文项目：贯穿全局的主线状态（PRD §4.4 模块衔接设计）
-// 单一数据源：paperpilot:project，各模块读写同一份项目数据
-import { get, set } from './storage.js';
+// 项目仓库：V4 Phase 1 多项目模型 + IndexedDB 持久化。
+// 读写走同步内存缓存，启动时从 IndexedDB 回填，避免把整个应用改成异步链。
+import { get } from './storage.js';
+import { loadProjectSnapshot, saveProjectSnapshot, clearProjectSnapshot } from './project-db.js';
 
-const KEY = 'project';
+const APP_KEY = 'app';
+const PROJECTS_KEY = 'projects';
 const DAY = 86400000;
+const LOCAL_PROJECT_KEYS = ['project', 'drafts', 'citations', 'checkins', 'versions', APP_KEY, PROJECTS_KEY];
+const PROGRESS_WEIGHT = { '已完成': 1, '进行中': 0.5, '未开始': 0 };
 
-function emit() {
+let cacheApp = blankApp();
+let cacheProjects = {};
+let persistTimer = null;
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function emitProject() {
   document.dispatchEvent(new Event('tm:project-changed'));
 }
 
-export function getProject() {
-  return get(KEY, {
+function emitProjects() {
+  document.dispatchEvent(new Event('tm:projects-changed'));
+  emitProject();
+}
+
+function makeId() {
+  return (globalThis.crypto?.randomUUID?.() || `pp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+}
+
+function blankApp() {
+  return {
+    schemaVersion: 4,
+    activeProjectId: '',
+    projectOrder: [],
+    migration: {
+      legacyV4Done: false,
+    },
+    storage: {
+      engine: 'indexeddb',
+      hydratedAt: '',
+      lastBackupAt: '',
+    },
+  };
+}
+
+function blankVersions() {
+  return { chapters: {}, doc: [] };
+}
+
+function blankProject(id = makeId(), partial = {}) {
+  const ts = nowIso();
+  return {
+    id,
     title: '',
     degreeType: '',
+    school: '',
+    college: '',
+    advisor: '',
     dueDate: '',
-    outline: [],           // [{ chapter: '第一章 绪论', sections: [] }]
-    stages: [],            // [{ id, name, weeks, start, end, tasks }] 由计划模块写入
-    chapterProgress: {},   // { 章节名: '未开始' | '进行中' | '已完成' }
-    materials: [],         // [{ id, type, title, content, createdAt }]
-    currentChapter: '',    // 当前写作章节（写作工作台）
-    abstract: '',          // 论文摘要（工作台全文文档）
-    keywords: '',          // 关键词
-    acknowledgments: '',   // 致谢
+    referenceStandard: 'GB/T 7714-2025',
+    template: {},
+    createdAt: ts,
+    updatedAt: ts,
+    researchDesign: {},
+    outline: [],
+    chapterProgress: {},
+    currentChapter: '',
+    materials: [],
+    evidence: [],
+    plan: {
+      tasks: [],
+      doneTaskIds: [],
+      lastTemplate: '',
+      lastRescheduledAt: '',
+    },
+    currentStage: '',
+    stages: [],
+    abstract: '',
+    keywords: '',
+    acknowledgments: '',
+    documentV2: null,
+    drafts: {},
+    citations: [],
+    checkins: [],
+    versions: blankVersions(),
+    ...partial,
+    id,
+  };
+}
+
+function touch(project) {
+  return { ...project, updatedAt: nowIso() };
+}
+
+function ensureProjectKeys(project) {
+  return blankProject(project.id || makeId(), {
+    ...project,
+    drafts: project.drafts || {},
+    citations: project.citations || [],
+    checkins: project.checkins || [],
+    documentV2: project.documentV2 || null,
+    materials: project.materials || [],
+    evidence: project.evidence || [],
+    plan: {
+      tasks: project.plan?.tasks || [],
+      doneTaskIds: project.plan?.doneTaskIds || [],
+      lastTemplate: project.plan?.lastTemplate || '',
+      lastRescheduledAt: project.plan?.lastRescheduledAt || '',
+    },
+    outline: project.outline || [],
+    chapterProgress: project.chapterProgress || {},
+    stages: project.stages || [],
+    versions: {
+      chapters: project.versions?.chapters || {},
+      doc: Array.isArray(project.versions?.doc) ? project.versions.doc : [],
+    },
   });
 }
 
-export function saveProject(partial) {
-  set(KEY, { ...getProject(), ...partial });
-  emit();
+function readApp() {
+  return cacheApp;
 }
 
-/** 更新论文基本信息（仅覆盖传入字段） */
-export function updateBasics({ title, degreeType, dueDate }) {
-  const p = getProject();
-  const next = {
-    ...p,
-    title: title ?? p.title,
-    degreeType: degreeType ?? p.degreeType,
-    dueDate: dueDate ?? p.dueDate,
+function readProjects() {
+  return cacheProjects;
+}
+
+function schedulePersist() {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    persistProjectStoreNow().catch(err => console.error('[paperpilot] IndexedDB 保存失败', err));
+  }, 120);
+}
+
+async function persistProjectStoreNow() {
+  cacheApp = {
+    ...cacheApp,
+    storage: {
+      ...(cacheApp.storage || {}),
+      engine: 'indexeddb',
+      hydratedAt: cacheApp.storage?.hydratedAt || nowIso(),
+    },
   };
-  set(KEY, next);
-  emit();
+  await saveProjectSnapshot({
+    app: cacheApp,
+    projects: cacheProjects,
+  });
+}
+
+function writeApp(app) {
+  cacheApp = { ...blankApp(), ...app };
+  schedulePersist();
+}
+
+function writeProjects(projects) {
+  cacheProjects = projects;
+  schedulePersist();
+}
+
+function hydrateFromLegacyLocalStorage() {
+  const localApp = get(APP_KEY, null);
+  const localProjects = get(PROJECTS_KEY, null);
+
+  if (localApp && localProjects && Object.keys(localProjects).length) {
+    cacheApp = { ...blankApp(), ...localApp };
+    cacheProjects = localProjects;
+    return;
+  }
+
+  const legacy = get('project', null);
+  const legacyDrafts = get('drafts', null);
+  const legacyCitations = get('citations', null);
+  const legacyCheckins = get('checkins', null);
+  const legacyVersions = get('versions', null);
+  const hasLegacy =
+    !!legacy ||
+    !!(legacyDrafts && Object.keys(legacyDrafts).length) ||
+    !!(legacyCitations && legacyCitations.length) ||
+    !!(legacyCheckins && legacyCheckins.length) ||
+    !!legacyVersions;
+
+  if (!hasLegacy) return;
+
+  const id = makeId();
+  cacheProjects = {
+    [id]: blankProject(id, {
+      title: legacy?.title || '我的论文项目',
+      degreeType: legacy?.degreeType || '',
+      dueDate: legacy?.dueDate || '',
+      researchDesign: legacy?.researchDesign || {},
+      outline: legacy?.outline || [],
+      chapterProgress: legacy?.chapterProgress || {},
+      currentChapter: legacy?.currentChapter || '',
+      materials: legacy?.materials || [],
+      evidence: legacy?.evidence || [],
+      plan: legacy?.plan || { tasks: [], doneTaskIds: [], lastTemplate: '', lastRescheduledAt: '' },
+      stages: legacy?.stages || [],
+      currentStage: legacy?.currentStage || '',
+      abstract: legacy?.abstract || '',
+      keywords: legacy?.keywords || '',
+      acknowledgments: legacy?.acknowledgments || '',
+      drafts: legacyDrafts || {},
+      citations: legacyCitations || [],
+      checkins: legacyCheckins || [],
+      versions: legacyVersions || blankVersions(),
+    }),
+  };
+  cacheApp = {
+    ...blankApp(),
+    activeProjectId: id,
+    projectOrder: [id],
+    migration: { legacyV4Done: true },
+  };
+}
+
+function normalizeCaches() {
+  let changed = false;
+  cacheApp = { ...blankApp(), ...cacheApp };
+  cacheProjects = cacheProjects || {};
+
+  cacheApp.projectOrder.forEach(id => {
+    if (cacheProjects[id]) {
+      cacheProjects[id] = ensureProjectKeys(cacheProjects[id]);
+      changed = true;
+    }
+  });
+
+  Object.keys(cacheProjects).forEach(id => {
+    if (!cacheApp.projectOrder.includes(id)) {
+      cacheApp.projectOrder.push(id);
+      changed = true;
+    }
+    cacheProjects[id] = ensureProjectKeys(cacheProjects[id]);
+  });
+
+  if (cacheApp.activeProjectId && !cacheProjects[cacheApp.activeProjectId]) {
+    cacheApp.activeProjectId = cacheApp.projectOrder.find(id => cacheProjects[id]) || '';
+    changed = true;
+  }
+
+  if (!cacheApp.activeProjectId && cacheApp.projectOrder.length) {
+    cacheApp.activeProjectId = cacheApp.projectOrder[0];
+    changed = true;
+  }
+
+  if (changed) schedulePersist();
+}
+
+function clearLegacyProjectKeys() {
+  // 只清旧版 localStorage 键（paperpilot:*），不清项目库（IndexedDB）的 drafts/citations/checkins/versions。
+  // 注意：storage.js 的 get/set/remove 会把这几个键路由到 __paperpilotScopedStore（即项目库），
+  // 用它会误清项目数据，所以这里直接写 localStorage。
+  LOCAL_PROJECT_KEYS.forEach(key => localStorage.removeItem('paperpilot:' + key));
+}
+
+export async function ensureProjectStore() {
+  hydrateFromLegacyLocalStorage();
+  normalizeCaches();
+
+  try {
+    const snapshot = await loadProjectSnapshot();
+    if (snapshot?.projects && Object.keys(snapshot.projects).length) {
+      cacheApp = { ...blankApp(), ...(snapshot.app || {}) };
+      cacheProjects = snapshot.projects || {};
+      normalizeCaches();
+    } else if (Object.keys(cacheProjects).length || cacheApp.activeProjectId) {
+      await persistProjectStoreNow();
+    }
+  } catch (err) {
+    console.warn('[paperpilot] IndexedDB 不可用，当前会话退回内存缓存', err);
+    cacheApp = {
+      ...cacheApp,
+      storage: {
+        ...(cacheApp.storage || {}),
+        engine: 'memory',
+      },
+    };
+  }
+
+  cacheApp = {
+    ...cacheApp,
+    storage: {
+      ...(cacheApp.storage || {}),
+      engine: cacheApp.storage?.engine || 'indexeddb',
+      hydratedAt: nowIso(),
+    },
+  };
+  clearLegacyProjectKeys();
+  if (cacheApp.storage.engine === 'indexeddb') {
+    await persistProjectStoreNow();
+  }
+}
+
+export const projectStoreReady = ensureProjectStore();
+
+export function getAppState() {
+  return readApp();
+}
+
+export function listProjects() {
+  const app = readApp();
+  const projects = readProjects();
+  return app.projectOrder
+    .map(id => projects[id])
+    .filter(Boolean)
+    .map(project => ensureProjectKeys(project));
+}
+
+export function getActiveProjectId() {
+  return readApp().activeProjectId || '';
+}
+
+export function setActiveProject(id) {
+  const app = readApp();
+  const projects = readProjects();
+  if (!projects[id]) return false;
+  app.activeProjectId = id;
+  if (!app.projectOrder.includes(id)) app.projectOrder.unshift(id);
+  writeApp(app);
+  emitProjects();
+  return true;
+}
+
+export function createProject(initial = {}) {
+  const app = readApp();
+  const projects = readProjects();
+  const id = makeId();
+  const project = blankProject(id, initial);
+  projects[id] = project;
+  app.projectOrder = [id, ...app.projectOrder.filter(x => x !== id)];
+  app.activeProjectId = id;
+  writeProjects({ ...projects });
+  writeApp({ ...app });
+  emitProjects();
+  return project;
+}
+
+export function duplicateProject(id) {
+  const projects = readProjects();
+  const source = projects[id];
+  if (!source) return null;
+  return createProject({
+    ...source,
+    title: source.title ? `${source.title}（副本）` : '未命名论文（副本）',
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  });
+}
+
+/** 导入单个项目备份（projects.js 导出的 {project}），作为新项目加入并激活 */
+export function importSingleProject(project) {
+  if (!project || typeof project !== 'object') return null;
+  const app = readApp();
+  const projects = { ...readProjects() };
+  const id = makeId();
+  const next = { ...project, id, createdAt: project.createdAt || nowIso(), updatedAt: nowIso() };
+  projects[id] = next;
+  app.projectOrder = [id, ...app.projectOrder.filter(x => x !== id)];
+  app.activeProjectId = id;
+  writeProjects(projects);
+  writeApp({ ...app });
+  emitProjects();
+  return id;
+}
+
+export function deleteProject(id) {
+  const app = readApp();
+  const projects = { ...readProjects() };
+  if (!projects[id]) return false;
+  delete projects[id];
+  app.projectOrder = app.projectOrder.filter(x => x !== id);
+  if (app.activeProjectId === id) app.activeProjectId = app.projectOrder[0] || '';
+  writeProjects(projects);
+  writeApp({ ...app });
+  emitProjects();
+  return true;
+}
+
+export function reorderProjects(ids) {
+  const app = readApp();
+  app.projectOrder = ids.filter(Boolean);
+  writeApp({ ...app });
+  emitProjects();
+}
+
+export function getProject(projectId = getActiveProjectId()) {
+  const projects = readProjects();
+  if (!projectId || !projects[projectId]) return blankProject('', {});
+  return ensureProjectKeys(projects[projectId]);
+}
+
+export function saveProject(partial, projectId = getActiveProjectId()) {
+  if (!projectId) return null;
+  const projects = { ...readProjects() };
+  const current = getProject(projectId);
+  const next = touch(ensureProjectKeys({
+    ...current,
+    ...partial,
+    id: projectId,
+  }));
+  projects[projectId] = next;
+  writeProjects(projects);
+  emitProject();
   return next;
 }
 
-/** 采用大纲：解析章节并初始化各章进度为「未开始」 */
-export function adoptOutline(text) {
+export function updateBasics({ title, degreeType, dueDate, school, college, advisor, referenceStandard }, projectId = getActiveProjectId()) {
+  const p = getProject(projectId);
+  return saveProject({
+    title: title ?? p.title,
+    degreeType: degreeType ?? p.degreeType,
+    dueDate: dueDate ?? p.dueDate,
+    school: school ?? p.school,
+    college: college ?? p.college,
+    advisor: advisor ?? p.advisor,
+    referenceStandard: referenceStandard ?? p.referenceStandard,
+  }, projectId);
+}
+
+function getBucket(key, fallback, projectId = getActiveProjectId()) {
+  const p = getProject(projectId);
+  return p.id ? (p[key] ?? fallback) : fallback;
+}
+
+function saveBucket(key, value, projectId = getActiveProjectId()) {
+  return saveProject({ [key]: value }, projectId);
+}
+
+export function getDrafts(projectId) {
+  return getBucket('drafts', {}, projectId);
+}
+
+export function saveDrafts(drafts, projectId) {
+  return saveBucket('drafts', drafts, projectId);
+}
+
+export function getCitations(projectId) {
+  return getBucket('citations', [], projectId);
+}
+
+export function saveCitations(citations, projectId) {
+  return saveBucket('citations', citations, projectId);
+}
+
+export function getCheckins(projectId) {
+  return getBucket('checkins', [], projectId);
+}
+
+export function saveCheckins(checkins, projectId) {
+  return saveBucket('checkins', checkins, projectId);
+}
+
+export function getEvidence(projectId) {
+  return getBucket('evidence', [], projectId);
+}
+
+export function saveEvidence(evidence, projectId) {
+  return saveBucket('evidence', evidence, projectId);
+}
+
+export function getPlan(projectId) {
+  return getBucket('plan', {
+    tasks: [],
+    doneTaskIds: [],
+    lastTemplate: '',
+    lastRescheduledAt: '',
+  }, projectId);
+}
+
+export function savePlan(plan, projectId) {
+  return saveBucket('plan', plan, projectId);
+}
+
+export function getVersionsStore(projectId) {
+  return getBucket('versions', blankVersions(), projectId);
+}
+
+export function saveVersionsStore(versions, projectId) {
+  return saveBucket('versions', versions, projectId);
+}
+
+export function hasActiveProject() {
+  return !!getActiveProjectId();
+}
+
+export function projectStats(projectId = getActiveProjectId()) {
+  const p = getProject(projectId);
+  const chapters = p.outline || [];
+  const progress = p.chapterProgress || {};
+  const done = chapters.filter(c => progress[c.chapter] === '已完成').length;
+  const weighted = chapters.reduce((sum, c) => sum + (PROGRESS_WEIGHT[progress[c.chapter]] || 0), 0);
+  const due = p.dueDate ? Math.ceil((new Date(p.dueDate).getTime() - Date.now()) / DAY) : null;
+  const drafts = getDrafts(projectId);
+  const totalWords = Object.values(drafts).reduce((sum, d) => sum + String(d?.content || '').replace(/\s/g, '').length, 0);
+  return {
+    chapterCount: chapters.length,
+    doneCount: done,
+    progressPct: chapters.length ? Math.round(weighted / chapters.length * 100) : 0,
+    daysLeft: due,
+    totalWords,
+  };
+}
+
+export function adoptOutline(text, projectId = getActiveProjectId()) {
+  const project = getProject(projectId);
   const chapters = parseOutline(text);
+  if (!chapters.length) return [];
   const progress = {};
   chapters.forEach(c => { progress[c.chapter] = '未开始'; });
-  saveProject({ outline: chapters, chapterProgress: progress });
+  const nextDrafts = {};
+  chapters.forEach(chapter => {
+    if (project.drafts?.[chapter.chapter]) nextDrafts[chapter.chapter] = project.drafts[chapter.chapter];
+  });
+  saveProject({
+    outline: chapters,
+    chapterProgress: progress,
+    currentChapter: chapters[0]?.chapter || '',
+    drafts: nextDrafts,
+    documentV2: null,
+  }, projectId);
   return chapters;
 }
 
-/** 更新某一章的写作状态 */
-export function setChapterProgress(chapter, status) {
-  const p = getProject();
+export function setChapterProgress(chapter, status, projectId = getActiveProjectId()) {
+  const p = getProject(projectId);
   p.chapterProgress[chapter] = status;
-  set(KEY, p);
-  emit();
+  saveProject({ chapterProgress: p.chapterProgress }, projectId);
 }
 
-/** 新增写作素材（摘要/段落草稿等） */
-export function addMaterial({ type, title, content }) {
-  const p = getProject();
+export function addMaterial({ type, title, content }, projectId = getActiveProjectId()) {
+  const p = getProject(projectId);
   const item = {
     id: String(Date.now()),
     type,
@@ -71,35 +540,74 @@ export function addMaterial({ type, title, content }) {
     content,
     createdAt: new Date().toLocaleString('zh-CN'),
   };
-  p.materials.unshift(item);
-  set(KEY, p);
-  emit();
+  const materials = [item, ...(p.materials || [])];
+  saveProject({ materials }, projectId);
   return item;
 }
 
-/** 设置当前写作章节 */
-export function setCurrentChapter(chapter) {
-  const p = getProject();
-  p.currentChapter = chapter || '';
-  set(KEY, p);
-  emit();
+export function setCurrentChapter(chapter, projectId = getActiveProjectId()) {
+  saveProject({ currentChapter: chapter || '' }, projectId);
 }
 
-/** 删除写作素材 */
-export function removeMaterial(id) {
-  const p = getProject();
-  p.materials = p.materials.filter(m => m.id !== id);
-  set(KEY, p);
-  emit();
+export function removeMaterial(id, projectId = getActiveProjectId()) {
+  const p = getProject(projectId);
+  saveProject({ materials: (p.materials || []).filter(m => m.id !== id) }, projectId);
 }
 
-/** 本地日期 ISO（YYYY-MM-DD） */
+export function exportProjectStore({ includeApiKey = false } = {}) {
+  return {
+    app: 'paperpilot',
+    version: 4,
+    exportedAt: nowIso(),
+    storage: 'indexeddb',
+    appState: readApp(),
+    projects: readProjects(),
+    includeApiKey,
+  };
+}
+
+export async function replaceProjectStore({ appState, projects }) {
+  cacheApp = { ...blankApp(), ...(appState || {}) };
+  cacheProjects = projects || {};
+  normalizeCaches();
+  await persistProjectStoreNow();
+  emitProjects();
+}
+
+export async function clearProjectStore() {
+  cacheApp = blankApp();
+  cacheProjects = {};
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  await clearProjectSnapshot();
+  clearLegacyProjectKeys();
+  emitProjects();
+}
+
+export function markBackupExported() {
+  cacheApp = {
+    ...cacheApp,
+    storage: {
+      ...(cacheApp.storage || {}),
+      lastBackupAt: nowIso(),
+    },
+  };
+  schedulePersist();
+}
+
+export function daysSinceLastBackup() {
+  const last = readApp().storage?.lastBackupAt;
+  if (!last) return Infinity;
+  return Math.floor((Date.now() - new Date(last).getTime()) / DAY);
+}
+
 export function isoLocal(dayMs) {
   const t = new Date(dayMs);
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 }
 
-/** 连续打卡天数（今天未打卡则从昨天起算；全部用本地日期，UTC 天序号会跨时区错位） */
 export function calcStreak(dates) {
   const set = new Set(dates);
   if (!set.size) return 0;
@@ -110,16 +618,85 @@ export function calcStreak(dates) {
   return streak;
 }
 
-/** 解析大纲文本为章节数组：支持「第X章 …」与「1. …」两种格式；容忍 AI 常见的 markdown 包裹（**加粗**、## 标题、- 列表）与编号变体（1、/1．） */
-function parseOutline(text) {
+export function parseOutline(text) {
   const chapters = [];
+  const cnNums = '一二三四五六七八九十百';
   text.split('\n').map(l => l.trim()).forEach(line => {
-    // 清洗 markdown 修饰：去 **、__、反引号、行首 #/-/•/*（保留数字编号前缀，交给 num 分支识别）
-    const clean = line.replace(/\*\*|__|`/g, '').replace(/^\s*(?:#{1,6}|[-•*])\s*/, '').trim();
-    const cn = /^(第[一二三四五六七八九十百\d]+章[　\s]*.*)$/.exec(clean);
-    const num = /^(\d+)[.、．]\s+(.+)$/.exec(clean);
-    if (cn) chapters.push({ chapter: cn[1].trim(), sections: [] });
-    else if (num) chapters.push({ chapter: `${num[1]}. ${num[2].trim()}`, sections: [] });
+    const clean = line
+      .replace(/\*\*|__|`/g, '')
+      .replace(/^\s*(?:#{1,6}|[-•*])\s*/, '')
+      .replace(/^\s*[\[(【]?\s*\d+\s*[\])】]\s*/, '')
+      .trim();
+    if (!clean) return;
+
+    const cn = new RegExp(`^(第\\s*[${cnNums}\\d]+\\s*章[　\\s:：.-]*.*)$`).exec(clean);
+    const cnList = new RegExp(`^([${cnNums}]+)[、.．]\\s*(.+)$`).exec(clean);
+    const chapterNum = /^(\d+)[、．.]\s*(?!\d)(.+)$/.exec(clean);
+    const chapterPlainNum = /^(\d+)\s+(.+)$/.exec(clean);
+    const chapterEn = /^chapter\s+(\d+)[\s:：.-]+(.+)$/i.exec(clean);
+    const section = /^(\d+\.\d+(?:\.\d+)?[、．.]?\s*.+|第\s*[一二三四五六七八九十百\d]+\s*节[　\s:：.-]*.+|[（(][一二三四五六七八九十\d]+[）)]\s*.+)$/.exec(clean);
+
+    if (cn) {
+      const normalized = cn[1]
+        .replace(new RegExp(`^第\\s*([${cnNums}\\d]+)\\s*章[　\\s:：.-]*(.*)$`), (_, no, title) => `第${no}章 ${title || ''}`)
+        .trim();
+      chapters.push({ chapter: normalized, sections: [] });
+    } else if (cnList && /(绪论|引言|文献|理论|研究设计|方法|分析|实证|案例|结果|讨论|结论|建议|展望|摘要)/.test(cnList[2])) {
+      chapters.push({ chapter: `第${chapters.length + 1}章 ${cnList[2].trim()}`, sections: [] });
+    } else if (chapterNum || chapterPlainNum || chapterEn) {
+      const match = chapterNum || chapterPlainNum || chapterEn;
+      chapters.push({ chapter: `第${match[1]}章 ${match[2].trim()}`, sections: [] });
+    } else if (section && chapters.length) {
+      chapters[chapters.length - 1].sections.push(section[1].trim());
+    }
   });
   return chapters;
+}
+
+globalThis.__paperpilotScopedStore = {
+  has(key) {
+    return ['drafts', 'citations', 'checkins', 'versions'].includes(key);
+  },
+  read(key, fallback) {
+    if (key === 'drafts') return getDrafts();
+    if (key === 'citations') return getCitations();
+    if (key === 'checkins') return getCheckins();
+    if (key === 'versions') return getVersionsStore();
+    return fallback;
+  },
+  write(key, value) {
+    if (key === 'drafts') return saveDrafts(value);
+    if (key === 'citations') return saveCitations(value);
+    if (key === 'checkins') return saveCheckins(value);
+    if (key === 'versions') return saveVersionsStore(value);
+    return null;
+  },
+  remove(key) {
+    if (key === 'drafts') return saveDrafts({});
+    if (key === 'citations') return saveCitations([]);
+    if (key === 'checkins') return saveCheckins([]);
+    if (key === 'versions') return saveVersionsStore(blankVersions());
+    return null;
+  },
+};
+
+// 论文格式模板：默认"通用学位论文"参数（非单一学校样式），可被项目级 template 覆盖
+export const DEFAULT_THESIS_TEMPLATE = {
+  label: '通用学位论文（默认）',
+  margins: { top: 3.0, bottom: 3.0, left: 3.0, right: 3.0 }, // cm
+  bodyFont: '宋体',
+  bodyFontLatin: 'Times New Roman',
+  bodySize: 12,      // pt（小四）
+  headingFont: '黑体',
+  headingSize: 16,   // pt（三号）
+  lineHeight: 1.5,
+};
+
+export function getTemplate(project = getProject()) {
+  const t = (project && project.template) || {};
+  return {
+    ...DEFAULT_THESIS_TEMPLATE,
+    ...t,
+    margins: { ...DEFAULT_THESIS_TEMPLATE.margins, ...(t.margins || {}) },
+  };
 }

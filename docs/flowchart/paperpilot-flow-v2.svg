@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="2280" viewBox="0 0 1500 2280" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#8A93A0"/>
+    </marker>
+    <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#C03B2D"/>
+    </marker>
+    <marker id="arr-jade" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#477A56"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1500" height="2280" fill="#F6F5F1"/>
+
+  <!-- 标题 -->
+  <text x="20" y="40" font-size="20" font-weight="700" fill="#26303B">PaperPilot · 论文写作助手</text>
+  <text x="20" y="64" font-size="13" fill="#5A6472">产品工作流程图（复杂版）—— 6 行矩阵主流程 · 6 个判断 · 5 条异常分支 · 全部连线正交、零交叉</text>
+
+  <!-- 图例 -->
+  <g font-size="12" fill="#5A6472">
+    <polygon points="1192,30 1204,42 1192,54 1180,42" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+    <text x="1216" y="47">判断</text>
+    <rect x="1180" y="68" width="24" height="18" rx="4" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+    <text x="1216" y="82">处理</text>
+    <rect x="1180" y="96" width="24" height="18" rx="4" fill="#FDF4F1" stroke="#C03B2D" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="1216" y="110">异常分支</text>
+    <rect x="1300" y="68" width="24" height="18" rx="4" fill="#E4EFE6" stroke="#477A56" stroke-width="1.5"/>
+    <text x="1336" y="82">完成态</text>
+    <text x="1300" y="110" font-size="11">是=松烟绿 · 否=朱砂</text>
+  </g>
+
+  <!-- ============ 主流程箭头 ============ -->
+  <g stroke="#8A93A0" stroke-width="1.8" fill="none" marker-end="url(#arr)">
+    <!-- R1 -->
+    <path d="M375 200 H 498"/>                 <!-- 开始 → 填写Key -->
+    <path d="M790 200 H 878"/>                 <!-- 填写Key → 测试连接 -->
+    <path d="M1000 242 V 460 H 300 V 532"/>    <!-- D1 是 ↓ 输入方向 -->
+    <!-- R2 -->
+    <path d="M440 560 H 498"/>                 <!-- 输入方向 → 生成选题 -->
+    <path d="M790 560 H 878"/>                 <!-- 生成选题 → 采用? -->
+    <path d="M1000 602 V 650 H 300 V 880"/>    <!-- D2 是 ↓ 设为题目 -->
+    <!-- R3 -->
+    <path d="M440 920 H 498"/>                 <!-- 设为题目 → 写作工作台 -->
+    <path d="M790 920 H 878"/>                 <!-- 写作 → 字数达标? -->
+    <path d="M1000 962 V 1252"/>               <!-- D3 否 ↓ 执行AI动作（直落） -->
+    <!-- R4 -->
+    <path d="M860 1280 H 802"/>                <!-- 执行AI → 请求成功? -->
+    <path d="M540 1280 H 452"/>                <!-- D4 是 → 就地替换 -->
+    <path d="M300 1252 V 1100 H 650 V 948"/>   <!-- 回环：重新检查字数 -->
+    <!-- R5 -->
+    <path d="M440 1640 H 498"/>                <!-- 检索 → 有结果? -->
+    <path d="M760 1640 H 848"/>                <!-- D5 是 → 入库 -->
+    <path d="M1000 1668 V 1680 H 1490 V 1830 H 1000 V 1972"/> <!-- 入库 ↓ 计划（右缘通道，绕开 E4 顶边） -->
+    <!-- R6 -->
+    <path d="M860 2000 H 760"/>                <!-- 计划 → 缺号（右顶点入） -->
+    <path d="M540 2000 H 452"/>                <!-- D6 是 → 交付 -->
+    <path d="M300 2028 V 2138"/>               <!-- → 结束 -->
+  </g>
+
+  <!-- 跳过箭头（字数已达标，跳过 AI 编辑） -->
+  <path d="M1110 920 H 1480 V 1585 H 300 V 1612" fill="none" stroke="#477A56" stroke-width="1.8" marker-end="url(#arr-jade)"/>
+
+  <!-- 否 → 异常框（一律从菱形右侧/下方水平入框） -->
+  <g fill="none" stroke="#C03B2D" stroke-width="1.8" marker-end="url(#arr-red)">
+    <path d="M1110 200 H 1186"/>        <!-- D1 否 → E1 -->
+    <path d="M1110 560 H 1186"/>        <!-- D2 否 → E2 -->
+    <path d="M650 1322 V 1370 H 1188"/> <!-- D4 否 → E3 -->
+    <path d="M650 1682 V 1710 H 1188"/> <!-- D5 否 → E4 -->
+    <path d="M650 2042 V 2090 H 1188"/>   <!-- D6 否 → E5（底顶点向下，右行入左边缘） -->
+  </g>
+
+  <!-- 异常框 → 回主流程（回程线走行间通道，全部指向正确的边缘方向） -->
+  <g fill="none" stroke="#C03B2D" stroke-width="1.8" marker-end="url(#arr-red)">
+    <path d="M1330 170 V 140 H 650 V 172"/>    <!-- E1 → 填写Key 顶边 -->
+    <path d="M1330 530 V 480 H 650 V 532"/>    <!-- E2 → 生成选题 顶边 -->
+    <path d="M1330 1370 V 1330 H 1000 V 1308"/> <!-- E3 → 执行AI 底边（顶边出，y=1330 走线避开 D4-否） -->
+    <path d="M1330 1760 V 1810 H 300 V 1668"/> <!-- E4 → 检索 底边 -->
+    <path d="M1330 2110 V 2150 H 600 V 2042 H 650"/> <!-- E5 回程 → D6 底顶点（x=600 避开否线） -->
+  </g>
+
+  <!-- ============ 主流程节点 ============ -->
+  <!-- 开始 -->
+  <rect x="225" y="178" width="150" height="44" rx="22" fill="#26303B"/>
+  <text x="300" y="206" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">开始</text>
+
+  <!-- R1 准备 -->
+  <rect x="510" y="172" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="650" y="197" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">填写 API Key（仅存本机）</text>
+  <text x="650" y="216" font-size="11" fill="#5A6472" text-anchor="middle">DeepSeek 默认 · 兼容 OpenAI 协议</text>
+
+  <polygon points="1000,158 1110,200 1000,242 890,200" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="1000" y="196" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">测试连接</text>
+  <text x="1000" y="213" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">成功？</text>
+
+  <!-- R2 选题 -->
+  <rect x="160" y="532" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="300" y="557" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">输入研究方向</text>
+  <text x="300" y="576" font-size="11" fill="#5A6472" text-anchor="middle">（示例：医学图像分割）</text>
+
+  <rect x="510" y="532" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="650" y="557" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">AI 生成候选选题</text>
+  <text x="650" y="576" font-size="11" fill="#5A6472" text-anchor="middle">每条带创新点 + 可行性分析</text>
+
+  <polygon points="1000,518 1110,560 1000,602 890,560" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="1000" y="556" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">采用该</text>
+  <text x="1000" y="573" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">选题？</text>
+
+  <!-- R3 写作 -->
+  <rect x="160" y="892" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="300" y="917" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">设为论文题目 → 生成框架</text>
+  <text x="300" y="936" font-size="11" fill="#5A6472" text-anchor="middle">一键采用章节大纲 ✓</text>
+
+  <rect x="510" y="892" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="650" y="917" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">写作工作台：选中文字</text>
+  <text x="650" y="936" font-size="11" fill="#5A6472" text-anchor="middle">章节字数实时统计</text>
+
+  <polygon points="1000,878 1110,920 1000,962 890,920" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="1000" y="916" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">章节字数</text>
+  <text x="1000" y="933" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">达标？</text>
+
+  <!-- R4 写作辅助 -->
+  <rect x="860" y="1252" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="1000" y="1277" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">执行 AI 润色 / 扩写 / 降重 / 续写</text>
+  <text x="1000" y="1296" font-size="11" fill="#5A6472" text-anchor="middle">针对选中的文字</text>
+
+  <polygon points="650,1238 760,1280 650,1322 540,1280" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="650" y="1276" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">AI 请求</text>
+  <text x="650" y="1293" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">成功？</text>
+
+  <rect x="160" y="1252" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="300" y="1277" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">AI 就地替换原文</text>
+  <text x="300" y="1296" font-size="11" fill="#5A6472" text-anchor="middle">可撤销 / 重做（Ctrl+Z 等效）</text>
+
+  <!-- R5 文献 -->
+  <rect x="160" y="1612" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="300" y="1637" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">检索 CrossRef / OpenAlex</text>
+  <text x="300" y="1656" font-size="11" fill="#5A6472" text-anchor="middle">中英双语 · AI 标注推荐理由</text>
+
+  <polygon points="650,1598 760,1640 650,1682 540,1640" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="650" y="1636" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">有检索</text>
+  <text x="650" y="1653" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">结果？</text>
+
+  <rect x="860" y="1612" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="1000" y="1637" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">一键入库 ✓ → 正文插入 [n]</text>
+  <text x="1000" y="1656" font-size="11" fill="#5A6472" text-anchor="middle">文末自动生成 GB/T 7714 参考文献</text>
+
+  <!-- R6 计划与交付 -->
+  <rect x="860" y="1972" width="280" height="56" rx="10" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="1000" y="1997" font-size="13.5" font-weight="600" fill="#26303B" text-anchor="middle">设定截止日期 → 甘特图</text>
+  <text x="1000" y="2016" font-size="11" fill="#5A6472" text-anchor="middle">每日打卡 → 热力图</text>
+
+  <polygon points="650,1958 760,2000 650,2042 540,2000" fill="#fff" stroke="#26303B" stroke-width="1.5"/>
+  <text x="650" y="1996" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">正文引用</text>
+  <text x="650" y="2013" font-size="12.5" font-weight="600" fill="#26303B" text-anchor="middle">编号齐全？</text>
+
+  <rect x="160" y="1972" width="280" height="56" rx="10" fill="#E4EFE6" stroke="#477A56" stroke-width="1.5"/>
+  <text x="300" y="1997" font-size="13.5" font-weight="700" fill="#26303B" text-anchor="middle">排版预览 / 下载 Markdown</text>
+  <text x="300" y="2016" font-size="11" fill="#477A56" text-anchor="middle">一键导出备份 JSON ✓</text>
+
+  <!-- 结束 -->
+  <rect x="220" y="2138" width="160" height="44" rx="22" fill="#477A56"/>
+  <text x="300" y="2166" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">结束</text>
+
+  <!-- ============ 是 / 否 标注 ============ -->
+  <g font-size="13" font-weight="700" fill="#477A56">
+    <text x="1015" y="265">是</text>
+    <text x="1015" y="625">是</text>
+    <text x="1120" y="908">是</text>
+    <text x="492" y="1266">是</text>
+    <text x="772" y="1626">是</text>
+    <text x="492" y="1986">是</text>
+  </g>
+  <g font-size="13" font-weight="700" fill="#C03B2D">
+    <text x="1148" y="186">否</text>
+    <text x="1148" y="546">否</text>
+    <text x="1015" y="985">否</text>
+    <text x="668" y="1345">否</text>
+    <text x="668" y="1697">否</text>
+    <text x="668" y="2078">否</text>
+  </g>
+
+  <!-- 跳过 / 回环 标注 -->
+  <text x="1122" y="910" font-size="10.5" font-weight="600" fill="#477A56">是（字数已达标）</text>
+  <text x="1472" y="1310" font-size="10.5" fill="#477A56" transform="rotate(-90 1472 1310)">跳过 AI 编辑，直接进入文献流程</text>
+  <text x="315" y="1092" font-size="10.5" fill="#5A6472">重新检查字数（循环）</text>
+
+  <!-- 异常回程标注 -->
+  <text x="360" y="132" font-size="10.5" fill="#C03B2D">重新填写</text>
+  <text x="1135" y="472" font-size="10.5" fill="#C03B2D">换一批</text>
+  <text x="1155" y="1322" font-size="10.5" fill="#C03B2D">重试</text>
+  <text x="200" y="1802" font-size="10.5" fill="#C03B2D">换关键词 / 手动录入</text>
+  <text x="700" y="2142" font-size="10.5" fill="#C03B2D">补录 / 删除</text>
+
+  <!-- ============ 异常框 ============ -->
+  <rect x="1200" y="170" width="260" height="60" rx="8" fill="#FDF4F1" stroke="#C03B2D" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="1330" y="196" font-size="12" font-weight="700" fill="#C03B2D" text-anchor="middle">异常① Key 无效 / 连接失败</text>
+  <text x="1330" y="215" font-size="10.5" fill="#8F3328" text-anchor="middle">提示重新填写，已存数据不受影响</text>
+
+  <rect x="1200" y="530" width="260" height="60" rx="8" fill="#FDF4F1" stroke="#C03B2D" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="1330" y="556" font-size="12" font-weight="700" fill="#C03B2D" text-anchor="middle">异常② 无满意选题</text>
+  <text x="1330" y="575" font-size="10.5" fill="#8F3328" text-anchor="middle">换一批重新生成（可多轮）</text>
+
+  <rect x="1200" y="1370" width="260" height="60" rx="8" fill="#FDF4F1" stroke="#C03B2D" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="1330" y="1396" font-size="12" font-weight="700" fill="#C03B2D" text-anchor="middle">异常③ AI 请求失败</text>
+  <text x="1330" y="1415" font-size="10.5" fill="#8F3328" text-anchor="middle">重试 ≤3 次 · 换模型 · 手动修改</text>
+
+  <rect x="1200" y="1700" width="260" height="60" rx="8" fill="#FDF4F1" stroke="#C03B2D" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="1330" y="1726" font-size="12" font-weight="700" fill="#C03B2D" text-anchor="middle">异常④ 检索无结果</text>
+  <text x="1330" y="1745" font-size="10.5" fill="#8F3328" text-anchor="middle">换关键词重试 · 手动录入文献</text>
+
+  <rect x="1200" y="2050" width="260" height="60" rx="8" fill="#FDF4F1" stroke="#C03B2D" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="1330" y="2076" font-size="12" font-weight="700" fill="#C03B2D" text-anchor="middle">异常⑤ 引用编号缺失</text>
+  <text x="1330" y="2095" font-size="10.5" fill="#8F3328" text-anchor="middle">补录文献或删除 [n] 后重检</text>
+
+  <!-- 页脚 -->
+  <text x="20" y="2250" font-size="11" fill="#8A93A0">设计语言「纸墨朱砂」：朱砂 = AI 动作与异常分支 · 松烟绿 = 完成态（是 / 完成标记）· 判断菱形 = 墨色描边 · 连线全正交无交叉</text>
+</svg>

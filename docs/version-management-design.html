@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperPilot · 草稿版本管理功能设计</title>
+<style>
+  :root {
+    --ink: #1F2937;
+    --ink-2: #3E4C5A;
+    --ink-3: #6B7A8A;
+    --line: #D9DEE3;
+    --line-2: #E8ECEF;
+    --paper: #FFFFFF;
+    --bg: #F6F8FA;
+    --accent: #0E6E8C;
+    --accent-soft: #E8F3F7;
+    --jade: #477A56;
+    --jade-soft: #E9F1EB;
+    --cinnabar: #C03B2D;
+    --cinnabar-soft: #FBF0EE;
+    --amber: #B7791F;
+    --amber-soft: #FBF4E6;
+    --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14.5px; line-height: 1.75;
+  }
+  .page { max-width: 980px; margin: 0 auto; padding: 0 28px 80px; }
+
+  .cover {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+    margin: 36px 0 24px; padding: 56px 56px 44px;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--jade));
+  }
+  .cover .kicker { color: var(--accent); font-weight: 700; letter-spacing: 3px; font-size: 13px; }
+  .cover h1 { font-size: 30px; margin: 14px 0 6px; letter-spacing: 1px; }
+  .cover .sub { color: var(--ink-2); font-size: 16px; margin-bottom: 34px; }
+  .cover .meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 40px; font-size: 13.5px; }
+  .cover .meta .k { color: var(--ink-3); width: 88px; display: inline-block; }
+  .cover .meta div { border-top: 1px dashed var(--line-2); padding-top: 8px; }
+  .cover .status { margin-top: 28px; display: inline-block; background: var(--jade-soft); color: var(--jade);
+    border: 1px solid #C5D9CB; border-radius: 20px; padding: 4px 18px; font-size: 13px; font-weight: 600; }
+  .cover .seal {
+    position: absolute; right: 56px; top: 64px; width: 96px; height: 96px; border: 3px solid var(--cinnabar);
+    color: var(--cinnabar); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 15px; font-weight: 700; transform: rotate(-12deg); opacity: .9;
+  }
+  .cover .seal span { line-height: 1.5; }
+
+  .doc { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 44px 52px 52px; margin-bottom: 24px; }
+  h2.sec {
+    font-size: 21px; padding-bottom: 10px; margin: 44px 0 18px; border-bottom: 2px solid var(--ink);
+    display: flex; align-items: baseline; gap: 12px; scroll-margin-top: 20px;
+  }
+  h2.sec:first-child { margin-top: 0; }
+  h2.sec .no { color: var(--accent); font-family: var(--mono); font-size: 15px; }
+  h3 { font-size: 16px; margin: 26px 0 10px; color: var(--ink); }
+  h3 .no { color: var(--accent); margin-right: 8px; font-family: var(--mono); font-size: 13px; }
+  h4 { font-size: 14.5px; margin: 18px 0 8px; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 6px 0 10px 22px; }
+  li { margin: 4px 0; }
+  strong { color: var(--ink); }
+  .muted { color: var(--ink-3); }
+  .accent { color: var(--accent); font-weight: 600; }
+  .jade { color: var(--jade); font-weight: 600; }
+  .cinnabar { color: var(--cinnabar); font-weight: 600; }
+  code {
+    font-family: var(--mono); font-size: 12.5px; background: #F1F4F6; border: 1px solid var(--line-2);
+    border-radius: 4px; padding: 1px 6px; color: #2C4257;
+  }
+  pre {
+    font-family: var(--mono); font-size: 12.5px; background: #18222C; color: #DCE6EF;
+    border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 10px 0; line-height: 1.65;
+  }
+  pre .c { color: #7C8EA0; }
+  .callout { border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 13.5px; border: 1px solid; }
+  .callout.accent { background: var(--accent-soft); border-color: #BBD8E4; color: #17556B; }
+  .callout.jade { background: var(--jade-soft); border-color: #C5D9CB; color: #33623F; }
+  .callout.cinnabar { background: var(--cinnabar-soft); border-color: #E5C4BE; color: #8F3328; }
+  .callout.amber { background: var(--amber-soft); border-color: #E8D5A8; color: #8A5C14; }
+  .callout b { display: block; margin-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 13.5px; }
+  th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: #F3F6F8; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+  tr:nth-child(even) td { background: #FAFBFD; }
+  td.center, th.center { text-align: center; }
+  .tag { display: inline-block; border-radius: 4px; padding: 0 8px; font-size: 12px; font-weight: 600; }
+  .tag.now { background: var(--jade-soft); color: var(--jade); border: 1px solid #C5D9CB; }
+  .tag.next { background: var(--amber-soft); color: var(--amber); border: 1px solid #E8D5A8; }
+  .tag.warn { background: var(--cinnabar-soft); color: var(--cinnabar); border: 1px solid #E5C4BE; }
+  .tag.info { background: var(--accent-soft); color: var(--accent); border: 1px solid #BBD8E4; }
+
+  .toc { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 28px 40px; }
+  .toc h2 { font-size: 17px; margin-bottom: 12px; color: var(--ink-2); }
+  .toc ol { list-style: none; counter-reset: toc; columns: 2; column-gap: 40px; }
+  .toc li { counter-increment: toc; margin: 5px 0; break-inside: avoid; }
+  .toc a { color: var(--ink-2); text-decoration: none; display: flex; gap: 10px; }
+  .toc a:hover { color: var(--accent); }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero); font-family: var(--mono); font-size: 12px;
+    color: var(--accent); margin-right: 10px; min-width: 20px;
+  }
+  .toc li.sub { padding-left: 30px; font-size: 13px; }
+  .toc li.sub::before { content: "·"; color: var(--ink-3); }
+
+  /* 版本抽屉 UI 示意 */
+  .mock {
+    border: 1px solid var(--line); border-radius: 10px; margin: 14px 0; overflow: hidden;
+    font-size: 12.5px; background: #FAFBFD;
+  }
+  .mock .head { background: var(--ink); color: #fff; padding: 9px 14px; font-weight: 700; font-size: 13px; }
+  .mock .head .x { float: right; color: #9AA8B5; }
+  .mock .row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--line-2); }
+  .mock .row:hover { background: #F1F5F8; }
+  .mock .lbl { flex: 1; }
+  .mock .btn { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 1px 10px; cursor: default; }
+  .mock .btn.primary { border-color: var(--accent); color: var(--accent); }
+  .mock .foot { border-top: 1px solid var(--line-2); padding: 8px 14px; color: var(--ink-3); font-size: 12px; }
+  .flow { background: var(--jade-soft); border: 1px solid #C5D9CB; border-radius: 6px; padding: 8px 12px; margin: 6px 0; font-size: 13px; color: #33623F; }
+  .flow b { color: var(--jade); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ========== 封面 ========== -->
+  <div class="cover">
+    <div class="kicker">FUNCTIONAL DESIGN · 功能设计</div>
+    <h1>草稿版本管理能力设计</h1>
+    <div class="sub">写作工作台「改坏了回不去」问题的解法：捕获策略 · 存储结构 · 保留策略 · 恢复语义</div>
+    <div class="meta">
+      <div><span class="k">产品</span>PaperPilot 论文写作助手</div>
+      <div><span class="k">文档版本</span>v1.0（设计定稿）</div>
+      <div><span class="k">约束前提</span>纯静态 SPA · localStorage · BYOK 无后端</div>
+      <div><span class="k">关联文档</span><a href="technical-proposal.html">技术方案</a> · <a href="PRD.md">PRD v2.10</a></div>
+    </div>
+    <div class="status">设计评审稿 · 尚未实现</div>
+    <div class="seal"><span>版本<br>可回退</span></div>
+  </div>
+
+  <!-- ========== 目录 ========== -->
+  <div class="toc">
+    <h2>目录</h2>
+    <ol>
+      <li><a href="#s1">背景与问题</a></li>
+      <li><a href="#s2">设计目标</a></li>
+      <li><a href="#s3">方案总览</a></li>
+      <li><a href="#s4">详细设计</a></li>
+      <li class="sub"><a href="#s41">数据模型</a></li>
+      <li class="sub"><a href="#s42">捕获策略（何时存）</a></li>
+      <li class="sub"><a href="#s43">保留与容量（存多少）</a></li>
+      <li class="sub"><a href="#s44">恢复语义（怎么回）</a></li>
+      <li class="sub"><a href="#s45">界面设计</a></li>
+      <li class="sub"><a href="#s46">实现落点</a></li>
+      <li><a href="#s5">与现有机制的分层关系</a></li>
+      <li><a href="#s6">验收与测试</a></li>
+      <li><a href="#s7">风险与取舍</a></li>
+    </ol>
+  </div>
+
+  <!-- ========== 1 背景 ========== -->
+  <div class="doc">
+    <h2 class="sec" id="s1"><span class="no">01</span>背景与问题</h2>
+    <h3>现状</h3>
+    <p>写作工作台以「一份完整论文文档」为核心：题目 / 摘要 / 关键词 / 各章 / 参考文献 / 致谢拼装在单个编辑器中（<code>buildDocument</code> → <code>parseDocument</code>），编辑时 <strong>防抖 400ms 自动保存</strong> 到 <code>paperpilot:drafts</code>（按章节存 <code>{content, updatedAt}</code>），另有 Ctrl+S 强制保存与关页兜底保存。</p>
+    <p>现有的「撤销 / 重做」走 <strong>浏览器原生撤销栈</strong>（AI 动作经 <code>execCommand('insertText')</code> 进入原生栈，按钮走 <code>execCommand('undo'/'redo')</code>）。</p>
+    <h3>问题</h3>
+    <table>
+      <tr><th style="width:34%">用户场景</th><th>现状后果</th></tr>
+      <tr><td>AI「整章替换初稿」不满意，想退回生成前的版本</td><td rowspan="3">原生撤销栈在 <strong>刷新 / 切换模块 / 隔天</strong> 后即失效；防抖自动保存又不断覆盖 <code>drafts</code> —— 一旦离开会话，任何改动都<b>永久不可回退</b></td></tr>
+      <tr><td>手滑误删整段、误改标题行，过一会儿才发觉</td></tr>
+      <tr><td>隔天想找回昨天某个版本的写法 / 删掉的内容</td></tr>
+    </table>
+    <p class="muted">结论：原生撤销栈解决「会话内、分钟级」的微操作回退；<strong>跨会话、天级的结构级回退</strong>需要独立的版本管理能力——这正是本设计要补的缺口。</p>
+    <h3>约束前提（决定方案形态）</h3>
+    <ul>
+      <li><strong>无后端</strong>：版本数据只能落浏览器 <code>localStorage</code>（约 5MB 总量，写满抛 <code>QuotaExceededError</code>）</li>
+      <li><strong>BYOK 合规</strong>：版本内容为论文草稿，不含 API Key（Key 只在 <code>config</code> 中）；版本随「设置→导出备份」一并导出，已有「含 Key 勿外传」警示</li>
+      <li><strong>结构保护教训（R10）</strong>：章节标题行是解析锚点，任何写回操作不得破坏「标题行 + 正文」的结构约束</li>
+    </ul>
+  </div>
+
+  <!-- ========== 2 目标 ========== -->
+  <div class="doc">
+    <h2 class="sec" id="s2"><span class="no">02</span>设计目标</h2>
+    <table>
+      <tr><th style="width:12%">编号</th><th style="width:28%">目标</th><th>说明</th></tr>
+      <tr><td>G1</td><td class="jade">可回退</td><td>任意章节可回到最近 N 天内的历史快照，恢复粒度到章节级</td></tr>
+      <tr><td>G2</td><td class="jade">可反悔</td><td>「恢复版本」本身可反悔：恢复前自动存档当前内容，恢复后仍可 Ctrl+Z</td></tr>
+      <tr><td>G3</td><td class="jade">容量可控</td><td>版本总量 ≤ 1.2MB 硬上限，只淘汰最旧自动快照，绝不挤占草稿 / 文献数据</td></tr>
+      <tr><td>G4</td><td class="jade">零打扰</td><td>自动快照无感（节流判定，不打断写作）；手动留档一键可达</td></tr>
+      <tr><td>G5</td><td class="jade">隐私不变</td><td>版本仅存本机 localStorage；不含 Key；随备份导出时遵循既有警示</td></tr>
+    </table>
+  </div>
+
+  <!-- ========== 3 总览 ========== -->
+  <div class="doc">
+    <h2 class="sec" id="s3"><span class="no">03</span>方案总览</h2>
+    <p>三层结构，各司其职：</p>
+    <table>
+      <tr><th style="width:16%">层</th><th style="width:30%">回答的问题</th><th>设计要点</th></tr>
+      <tr><td><span class="tag info">捕获</span></td><td>何时存一个版本？</td><td>自动（10 分钟节流 + 500 字变化量 + Ctrl+S）+ 手动（「存为版本」按钮）+ 里程碑（章节完成）</td></tr>
+      <tr><td><span class="tag next">存储</span></td><td>存什么、存多少？</td><td>按章节版本链（每章 ≤ 10 条）+ 整文档里程碑（≤ 5 条）；总量 1.2MB 双级淘汰</td></tr>
+      <tr><td><span class="tag warn">恢复</span></td><td>怎么安全回到过去？</td><td>只读预览 → 恢复前自动存档 → 章节正文替换（保留标题行）→ 进原生撤销栈 → 章节不存在时降级为素材库条目</td></tr>
+    </table>
+    <div class="callout accent">
+      <b>核心取舍：按章节存版本，而非整文档</b>
+      论文写作的「回退」几乎总是「退回某章某版」；章节级版本体积小一个数量级（单章 3KB–18KB vs 整文 30–100KB），同样的容量预算可多保留 5–10 倍的历史。整文档只保留少量里程碑版本（标记完成、Ctrl+S 时刻），覆盖「全文快照」诉求。
+    </div>
+  </div>
+
+  <!-- ========== 4 详细设计 ========== -->
+  <div class="doc">
+    <h2 class="sec" id="s4"><span class="no">04</span>详细设计</h2>
+
+    <h3 id="s41"><span class="no">4.1</span>数据模型</h3>
+    <p>新增存储键 <code>paperpilot:versions</code>，与 <code>drafts</code> / <code>project</code> 并列：</p>
+<pre>paperpilot:versions = {
+  chapters: {                              <span class="c">// 章节版本链，key = 章节名（与 drafts / outline 同键）</span>
+    "第一章 绪论": [
+      { id: "m3k2q9", at: 1755..., src: "auto",     label: "",   text: "…正文（不含标题行）…" },
+      { id: "m3k1f0", at: 1755..., src: "manual",   label: "定稿前版本", text: "…" },
+      { id: "m3j0x7", at: 1755..., src: "milestone",label: "本章完成",  text: "…" },
+    ],                                       <span class="c">// 最新在前；每章 ≤ 10 条</span>
+    "第二章 …": [ … ]
+  },
+  doc: [ … ]                                <span class="c">// 整文档里程碑（标记完成 / Ctrl+S），≤ 5 条</span>
+}</pre>
+    <table>
+      <tr><th>字段</th><th>取值</th><th>说明</th></tr>
+      <tr><td><code>id</code></td><td>base36(时间戳+随机后缀)</td><td>唯一；排序与定位用</td></tr>
+      <tr><td><code>at</code></td><td>毫秒时间戳</td><td>展示用本地时间；也可用于节流判定</td></tr>
+      <tr><td><code>src</code></td><td><code>auto</code> · <code>manual</code> · <code>milestone</code></td><td>来源徽标；淘汰时优先保 <code>manual</code> / <code>milestone</code></td></tr>
+      <tr><td><code>label</code></td><td>字符串（可空）</td><td>手动留档时的用户备注；「恢复前自动存档」固定注记</td></tr>
+      <tr><td><code>text</code></td><td>章节正文</td><td>与 <code>drafts[章节].content</code> 同口径（不含标题行），恢复时与 <code>chapterBodyRange</code> 替换区间严格对齐</td></tr>
+    </table>
+    <p class="muted">版本数据不含 <code>config</code>（API Key）与文献库，仅论文文档内容。</p>
+
+    <h3 id="s42"><span class="no">4.2</span>捕获策略（何时存）</h3>
+    <p>快照判定挂在 <code>persistDocument</code>（防抖落盘）之后执行，三个触发源：</p>
+    <table>
+      <tr><th style="width:14%">来源</th><th style="width:44%">触发条件</th><th>示例场景</th></tr>
+      <tr><td><span class="tag now">auto</span></td><td>距上一快照 ≥ 10 分钟 <b>且</b> 正文有变化（逐字比较）</td><td>连续写作每隔一段留一档</td></tr>
+      <tr><td><span class="tag now">auto</span></td><td>距上一快照 &lt; 10 分钟，但本次变化 ≥ 500 字</td><td>AI 整章替换初稿、整段粘贴——立即留档，不等节流</td></tr>
+      <tr><td><span class="tag info">manual</span></td><td>用户点工具栏「存为版本」（可填备注）</td><td>重要节点主动留档</td></tr>
+      <tr><td><span class="tag next">milestone</span></td><td>① 标记章节完成；② Ctrl+S 保存且内容有变化；③ 切换章节时内容有变化且距上一快照 ≥ 1 分钟</td><td>「本章完成」时刻、用户主动保存时刻自动留档</td></tr>
+    </table>
+    <div class="callout jade">
+      <b>节流与兜底</b>「10 分钟 + 500 字」双条件覆盖两种极端：长时间连续小改（节流防碎片）与大段一次性写入（变化量兜底立即留档）。Ctrl+S 是用户「此刻值得保存」的显式信号，无条件触发快照判定——这是两小时连续打字场景的第三重保险。
+    </div>
+    <p>写入时机：快照写入发生在 <strong>防抖落盘之后</strong>，与 <code>set(DRAFT_KEY, …)</code> 同批次，不额外加锁；单次写入为整键覆盖（<code>localStorage.setItem</code> 原子），无并发风险。</p>
+
+    <h3 id="s43"><span class="no">4.3</span>保留与容量（存多少）</h3>
+    <p><strong>双级淘汰</strong>，优先保 <code>manual</code> / <code>milestone</code>：</p>
+    <table>
+      <tr><th>级别</th><th>规则</th></tr>
+      <tr><td>每章上限</td><td>每章 ≤ <strong>10</strong> 条；超出删该章最旧 <code>auto</code>（若无 <code>auto</code> 则删最旧 <code>manual</code>）</td></tr>
+      <tr><td>整文档</td><td><code>doc</code> ≤ <strong>5</strong> 条；超出删最旧</td></tr>
+      <tr><td>总量上限</td><td><code>versions</code> 序列化后 ≥ <strong>1.2MB</strong> → 从最旧章节的最旧 <code>auto</code> 起淘汰，直至 &lt; 900KB（每笔写入后检查一次，量小不阻塞）</td></tr>
+    </table>
+    <p><strong>容量预算</strong>（实测口径：中文 UTF-16 JSON，1 字 ≈ 3 字节含转义开销）：</p>
+    <table>
+      <tr><th>场景</th><th>单份版本</th><th>满配占用</th><th>结论</th></tr>
+      <tr><td>课程论文（单章约 1–2 千字）</td><td>约 3–6 KB</td><td>8 章 × 10 份 × 4.5KB ≈ <b>360KB</b> ＋ 里程碑 5×30KB ≈ <b>150KB</b></td><td class="jade">从容，远低于上限</td></tr>
+      <tr><td>学位论文（单章 4–6 千字）</td><td>约 12–18 KB</td><td>8 章 × 10 份 × 15KB ≈ <b>1.2MB</b></td><td class="cinnabar">触发总量淘汰 → 最旧 auto 渐次让位，manual 保底；此时草稿本身也接近 5MB 红线，属合理降级</td></tr>
+    </table>
+    <p class="muted">淘汰只删 <code>auto</code> 旧档，<strong>永不触碰 <code>drafts</code> / <code>project</code> / <code>citations</code></strong>——版本管理是「额外冗余」，没有它主数据也应完整。</p>
+
+    <h3 id="s44"><span class="no">4.4</span>恢复语义（怎么回）</h3>
+    <p>恢复是唯一有破坏性的操作，设计为四步、每步可反悔：</p>
+    <div class="flow">① <b>存档当前</b>：先把编辑器当前全文按当前章节存一份 <code>manual</code>（label「恢复前自动存档」）→ 恢复后可一键回到「恢复前」</div>
+    <div class="flow">② <b>写入目标版本</b>：<code>findChapterRange</code> 定位章节 → <code>chapterBodyRange</code> 得正文替换区间（<b>保留标题行</b>，复用现有防丢章机制）→ <code>applyEdit</code> 走 <code>execCommand('insertText')</code> <b>进入原生撤销栈</b>（Ctrl+Z 可撤回本次恢复）</div>
+    <div class="flow">③ <b>自动落盘</b>：<code>applyEdit</code> 派发 <code>input</code> 事件 → 既有防抖保存链路生效，<code>drafts</code> / 章节结构 / 摘要同步更新</div>
+    <div class="flow">④ <b>反馈</b>：toast「已恢复到 08-20 14:32 的版本（Ctrl+Z 可退回）」；刷新字数 / 右栏引用计数</div>
+    <table>
+      <tr><th style="width:30%">边界情形</th><th>处理</th></tr>
+      <tr><td>目标章节仍在当前大纲</td><td>正常恢复（上流程）</td></tr>
+      <tr><td>章节已被重命名 / 移出大纲（大纲结构保护，R10）</td><td>该章版本归入「其他存档」分组：可预览、可删除；<b>恢复仅支持「转存为素材库条目」</b>（不破坏现有结构）</td></tr>
+      <tr><td>版本内容与当前完全相同</td><td>toast「该版本与当前内容一致」，不落恢复前存档、不写编辑器</td></tr>
+      <tr><td>恢复时正在 AI 请求中</td><td>请求结果写回前校验（既有 <code>ta.isConnected</code> 兜底），恢复流程照常执行</td></tr>
+    </table>
+
+    <h3 id="s45"><span class="no">4.5</span>界面设计</h3>
+    <p>入口：工具栏「撤销 / 重做」右侧新增两个按钮——<code>＋ 存为版本</code>（次要）与 <code>⏱ 历史版本</code>（主要）。点击「历史版本」打开右侧抽屉：</p>
+    <div class="mock">
+      <div class="head">版本历史 <span class="x">✕</span></div>
+      <div class="row" style="border-top:none;flex-wrap:wrap;gap:6px">
+        <span class="tag now">第一章 绪论</span><span class="tag info">第二章 …</span><span class="tag next">全文里程碑</span>
+        <span class="tag warn">其他存档 1</span>
+      </div>
+      <div class="row"><span class="lbl"><b>今天 14:32</b> · 手动 · 1,832 字 · 「定稿前版本」</span><span class="btn">预览</span><span class="btn primary">恢复</span></div>
+      <div class="row"><span class="lbl"><b>今天 11:05</b> · 自动 · 1,756 字</span><span class="btn">预览</span><span class="btn primary">恢复</span></div>
+      <div class="row"><span class="lbl"><b>昨天 21:40</b> · 里程碑 · 本章完成 · 1,690 字</span><span class="btn">预览</span><span class="btn primary">恢复</span></div>
+      <div class="row"><span class="lbl"><b>昨天 16:08</b> · 自动 · 1,421 字</span><span class="btn">预览</span><span class="btn primary">恢复</span></div>
+      <div class="foot">版本占用 86 KB / 上限 1.2 MB · 恢复前将自动存档当前内容</div>
+    </div>
+    <ul>
+      <li><strong>列表</strong>：按章节 tab 分组，最新在前；每条显示时间 · 来源徽标 · 字数 · 备注</li>
+      <li><strong>预览</strong>：抽屉内只读展示该版本正文（头部注「章节 · 时间 · 字数」），不打断编辑器</li>
+      <li><strong>恢复</strong>：弹确认「将用 08-20 21:40 的版本覆盖本章当前内容（当前内容会自动存档）」</li>
+      <li><strong>容量条</strong>：抽屉底部实时显示占用与上限，快触顶时变朱砂色提示「可到设置页导出备份」</li>
+      <li><strong>首版不做逐字 diff</strong>（版本间「对比当前」高亮成本高、收益低），以字数差 + 内容预览替代，diff 列为二期</li>
+    </ul>
+
+    <h3 id="s46"><span class="no">4.6</span>实现落点（文件级）</h3>
+    <table>
+      <tr><th style="width:26%">文件</th><th>改动</th></tr>
+      <tr><td><code>js/versions.js</code>（新增，约 130 行）</td><td>纯函数模块：<code>snapshotChapter(name, text, src, label)</code> · <code>snapshotDoc(text, label)</code> · <code>listChapters()</code> · <code>listDoc()</code> · <code>getVersion(name|'doc', id)</code> · <code>versionsSize()</code> · 内部 <code>evictIfNeeded()</code>；全部经 <code>storage.get/set</code>，自带 quota 兜底提示</td></tr>
+      <tr><td><code>js/modules/writing.js</code></td><td>① 防抖保存回调末尾调 <code>maybeSnapshot</code>（4.2 节流判定）；② Ctrl+S / 标记完成 / 章节切换三处加里程碑快照；③ 工具栏两按钮 + 抽屉渲染 + 恢复流程（复用 <code>findChapterRange</code> / <code>chapterBodyRange</code> / <code>applyEdit</code>）</td></tr>
+      <tr><td><code>js/modules/settings.js</code></td><td>数据统计文案追加「版本 X 份」；导出 / 导入 / 清除已按前缀全量遍历，<b>自动覆盖 versions，无需改逻辑</b></td></tr>
+      <tr><td><code>docs/acceptance.md</code></td><td>真机验收清单增补版本管理条目</td></tr>
+    </table>
+    <div class="callout jade">
+      <b>备份兼容</b>导出备份遍历全部 <code>paperpilot:*</code> 键 → <code>versions</code> 天然随备份导出 / 导入 / 清除，无需为版本管理新增迁移逻辑；导入旧版备份（无 versions 键）时 <code>get('versions', …)</code> 走默认值，零兼容成本。
+    </div>
+  </div>
+
+  <!-- ========== 5 分层关系 ========== -->
+  <div class="doc">
+    <h2 class="sec" id="s5"><span class="no">05</span>与现有机制的分层关系</h2>
+    <p>三种「回退」机制互补，不重叠、不打架：</p>
+    <table>
+      <tr><th>机制</th><th>粒度</th><th>时效</th><th>失效条件</th><th>典型用途</th></tr>
+      <tr><td>原生撤销栈<br>（现有）</td><td>单次编辑</td><td>会话内</td><td>刷新 / 切换模块</td><td>AI 动作不满意，Ctrl+Z 即时撤回</td></tr>
+      <tr><td><b>版本管理（新增）</b></td><td>章节 / 文档级快照</td><td>跨会话持久</td><td>手动清除本地数据</td><td>「昨天那版」找回、AI 整章替换后悔药、误删恢复</td></tr>
+      <tr><td>备份导出<br>（现有）</td><td>全量 JSON 文件</td><td>文件级</td><td>文件丢失</td><td>换机 / 清缓存迁移、灾备</td></tr>
+    </table>
+    <p class="muted">版本管理实现后，原生撤销栈与备份导出均<b>保持原样</b>——三者的差异是粒度与时效，不是替代关系。</p>
+  </div>
+
+  <!-- ========== 6 验收 ========== -->
+  <div class="doc">
+    <h2 class="sec" id="s6"><span class="no">06</span>验收与测试</h2>
+    <h3>Playwright 回归（新增断言）</h3>
+    <table>
+      <tr><th style="width:6%">#</th><th style="width:44%">场景</th><th>断言</th></tr>
+      <tr><td>V1</td><td>存为版本 → 修改章节 → 恢复该版本</td><td>编辑器章节正文回到旧文本；恢复前存档存在（可再恢复回去）</td></tr>
+      <tr><td>V2</td><td>恢复后立即 Ctrl+Z</td><td>回到恢复前的状态（恢复进原生撤销栈）</td></tr>
+      <tr><td>V3</td><td>只改 1 个字（10 分钟内）</td><td>不产生新版本（节流生效）</td></tr>
+      <tr><td>V4</td><td>AI 整章替换（变化 &gt; 500 字）</td><td>立即产生新 auto 版本</td></tr>
+      <tr><td>V5</td><td>Ctrl+S</td><td>内容有变化时产生 milestone 版本</td></tr>
+      <tr><td>V6</td><td>构造 11 个版本</td><td>每章列表长度 = 10（最旧 auto 被淘汰，manual 保留）</td></tr>
+      <tr><td>V7</td><td>注入大文本逼近 1.2MB</td><td>触发总量淘汰，最旧 auto 消失；drafts 不受影响</td></tr>
+      <tr><td>V8</td><td>章节重命名后查看旧版本</td><td>旧版本出现在「其他存档」，恢复仅提供「转素材库」</td></tr>
+    </table>
+    <h3>真机自测（用户侧）</h3>
+    <ul>
+      <li>写一章 → 点「存为版本」→ 大幅改写 → 从历史版本恢复 → 内容回到旧版，且 Ctrl+Z 可退回</li>
+      <li>隔天打开（浏览器重启后）→ 历史版本仍在 → 可找回昨天的版本</li>
+      <li>设置页导出备份 → 清除数据 → 导入备份 → 版本历史完整</li>
+    </ul>
+  </div>
+
+  <!-- ========== 7 风险 ========== -->
+  <div class="doc">
+    <h2 class="sec" id="s7"><span class="no">07</span>风险与取舍</h2>
+    <table>
+      <tr><th style="width:22%">风险 / 取舍</th><th>应对</th></tr>
+      <tr><td>localStorage 总量 5MB，版本会挤占草稿空间</td><td>1.2MB 硬上限 + 双级淘汰；淘汰绝不触碰主数据；容量条实时可见，触顶引导导出备份</td></tr>
+      <tr><td>自动快照可能过密（碎片）或过疏（漏档）</td><td>「10 分钟节流 + 500 字变化量 + Ctrl+S」三触发互补；节流判定逐字比较，无 hash 依赖</td></tr>
+      <tr><td>章节重命名后旧版本找不到归属</td><td>「其他存档」分组：可预览 / 删除 / 转素材库，不破坏大纲结构（R10 同源教训）</td></tr>
+      <tr><td>恢复操作覆盖当前内容</td><td>恢复前自动存档 + 进原生撤销栈，双重可反悔</td></tr>
+      <tr><td>逐字 diff 成本高</td><td>首版不做 diff，以字数差 + 内容预览替代；diff 高亮列二期（如需）</td></tr>
+      <tr><td>性能</td><td>快照写入与防抖落盘同批次（400ms 防抖已自然合批）；逐字比较 O(n) 微秒级；evict 量小同步执行</td></tr>
+    </table>
+    <div class="callout cinnabar">
+      <b>合规红线对齐</b>版本能力不改变 BYOK 边界：Key 仍只存 <code>config</code> 且不进版本内容；版本随备份导出时沿用「含 Key 请勿外传」警示文案；本能力不集成任何 AIGC 检测、不改变「不代写整篇论文」的产品红线（版本只是记录与回退，不新增生成能力）。
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
