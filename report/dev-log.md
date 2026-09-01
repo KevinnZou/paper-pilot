@@ -1630,6 +1630,11 @@
 - **修复**：
   - 新增 `vite.config.js`，设置 `base: './'`。
   - 构建后资源地址变为 `./assets/...`，可同时兼容 GitHub Pages 子路径和普通静态预览。
+- **追加发现**：
+  - 远端 `main` 中还存在旧的 `.github/workflows/static.yml`，该 workflow 将仓库根目录 `.` 发布到 Pages。
+  - 因两个 Pages workflow 同时运行，正确的 `dist/` 部署可能被旧 workflow 覆盖，线上仍显示源码根目录的无样式页面。
+- **追加修复**：
+  - 删除 `.github/workflows/static.yml`，只保留 `.github/workflows/pages.yml` 作为唯一 GitHub Pages 发布流程。
 
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。
