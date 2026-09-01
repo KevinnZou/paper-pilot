@@ -1636,6 +1636,22 @@
 - **追加修复**：
   - 删除 `.github/workflows/static.yml`，只保留 `.github/workflows/pages.yml` 作为唯一 GitHub Pages 发布流程。
 
+## 2026-09-01 · 交付文档整理（第 132 次会话）
+- **目标**：为课程/答辩/项目复盘准备完整文档包，覆盖从产品分析到上线发布的标准化开发流程。
+- **素材来源**：
+  - `docs/PRD.md`
+  - `docs/analysis/market-and-competitor-analysis.md`
+  - `docs/analysis/user-research.md`
+  - `docs/product-review-v1.md`
+  - `docs/acceptance.md`
+  - `docs/release-checklist.md`
+  - `report/dev-log.md`
+  - `report/conversation-log.md`
+- **新增文档**：
+  - `docs/delivery/development-report.md`：面向最终交付的开发报告，包含项目概述、产品分析、竞品与商业分析、PRD、视觉设计、技术方案、测试验收、上线方案和成果复盘。
+  - `docs/delivery/development-process-document.md`：面向过程追溯的标准化开发过程文档，按立项、调研、用户研究、PRD、视觉设计、技术方案、开发测试、上线发布组织。
+  - `docs/delivery/README.md`：交付文档目录索引。
+
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。
 - **改造**：
