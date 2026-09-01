@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1E2B36">
+  <title>PaperPilot 交付文档</title>
+  <style>
+    :root {
+      --paper: #f6f5f1;
+      --surface: #fff;
+      --surface-2: #faf9f5;
+      --ink: #26303b;
+      --ink-soft: #64707d;
+      --line: #e4e1d8;
+      --line-strong: #cfcbbf;
+      --brand: #2f4f66;
+      --cinnabar: #c03b2d;
+      --jade: #477a56;
+      --amber: #9a7418;
+      --shadow: 0 1px 2px rgba(38,48,59,.04), 0 12px 30px rgba(38,48,59,.06);
+      --font-serif: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .page { max-width: 1160px; margin: 0 auto; padding: 44px 28px 64px; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      padding: 34px 36px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .seal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 16px;
+      border-radius: 5px;
+      background: var(--cinnabar);
+      color: #fff;
+      font-family: var(--font-serif);
+      font-weight: 700;
+      font-size: 19px;
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--jade);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: .2px;
+    }
+    h1, h2, h3 { font-family: var(--font-serif); line-height: 1.35; }
+    h1 { margin: 0; font-size: 34px; letter-spacing: .4px; }
+    .lead { max-width: 780px; margin: 12px 0 0; color: var(--ink-soft); font-size: 16px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 15px;
+      border: 1px solid var(--brand);
+      border-radius: 6px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .btn:hover { text-decoration: none; filter: brightness(.98); }
+    .btn.secondary { background: var(--surface); color: var(--brand); border-color: var(--line-strong); }
+    .section { margin-top: 22px; padding: 26px 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+    .section h2 { margin: 0 0 6px; font-size: 20px; }
+    .mark { display: inline-block; width: 8px; height: 8px; margin-right: 9px; border-radius: 1px; background: var(--cinnabar); vertical-align: .12em; }
+    .desc { margin: 0 0 18px; color: var(--ink-soft); }
+    .link-box {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+    }
+    .link-box input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: 0;
+    }
+    .doc-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-top: 22px; }
+    .doc-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 180px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: inherit;
+      box-shadow: var(--shadow);
+    }
+    .doc-card:hover { text-decoration: none; border-color: var(--line-strong); transform: translateY(-1px); }
+    .doc-card small { color: var(--cinnabar); font-weight: 700; margin-bottom: 12px; }
+    .doc-card strong { display: block; margin-bottom: 9px; font-family: var(--font-serif); font-size: 18px; }
+    .doc-card span { color: var(--ink-soft); font-size: 14px; }
+    .process { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; padding: 0; margin: 18px 0 0; list-style: none; }
+    .step { display: flex; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); }
+    .step-no {
+      flex: 0 0 auto;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: #eaf3ec;
+      color: var(--jade);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .step strong { display: block; margin-bottom: 3px; font-size: 14px; }
+    .step p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.55; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--surface-2); color: var(--ink); font-size: 13px; }
+    td { color: var(--ink-soft); }
+    td:first-child { width: 230px; color: var(--ink); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    .status-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    .status-grid div { padding: 16px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); }
+    .status-grid span { display: block; color: var(--ink-soft); font-size: 12px; margin-bottom: 6px; }
+    .status-grid strong { display: block; word-break: break-word; }
+    .foot { margin-top: 28px; color: var(--ink-soft); font-size: 12px; text-align: center; }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-actions { justify-content: flex-start; }
+      .doc-grid, .process, .status-grid { grid-template-columns: 1fr; }
+      .page { padding: 24px 14px 44px; }
+      .hero, .section { padding: 22px 18px; }
+      h1 { font-size: 27px; }
+      .link-box { align-items: stretch; flex-direction: column; }
+      .btn { width: 100%; }
+      td:first-child { width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="seal">文</span>
+        <p class="eyebrow">PaperPilot v4.0.0-beta.1 · Delivery Package</p>
+        <h1>论文写作辅助系统交付文档</h1>
+        <p class="lead">这里集中展示项目从产品分析、竞品调研、商业分析、PRD、视觉稿、技术方案、测试方案到上线方案的完整开发材料。</p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn" href="./">打开系统</a>
+        <a class="btn secondary" href="https://github.com/KevinnZou/paper-pilot/releases/tag/v4.0.0-beta.1" target="_blank" rel="noopener">查看 Release</a>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2><span class="mark"></span>可提交链接</h2>
+      <p class="desc">提交给老师时，可以直接使用下面这个页面地址。</p>
+      <div class="link-box">
+        <input id="delivery-link" value="https://kevinnzou.github.io/paper-pilot/delivery.html" readonly>
+        <button class="btn secondary" id="copy-link" type="button">复制链接</button>
+      </div>
+    </section>
+
+    <section class="doc-grid" aria-label="核心文档">
+      <a class="doc-card" href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/delivery/development-report.md" target="_blank" rel="noopener">
+        <small>核心文档</small>
+        <strong>开发报告</strong>
+        <span>面向最终交付，说明项目背景、产品定位、核心功能、技术实现、测试验收和上线结果。</span>
+      </a>
+      <a class="doc-card" href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/delivery/development-process-document.md" target="_blank" rel="noopener">
+        <small>过程文档</small>
+        <strong>标准化开发过程文档</strong>
+        <span>按产品分析、调研、PRD、视觉、技术、测试、上线的完整流程组织项目材料。</span>
+      </a>
+      <a class="doc-card" href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/release-checklist.md" target="_blank" rel="noopener">
+        <small>验收材料</small>
+        <strong>发布候选检查清单</strong>
+        <span>记录 Beta 发布前的主流程、真实 API、视觉交互、导出格式和备份恢复检查项。</span>
+      </a>
+    </section>
+
+    <section class="section">
+      <h2><span class="mark"></span>标准化开发流程</h2>
+      <p class="desc">项目按标准产品开发链路推进，而不是直接从代码开始。</p>
+      <ol class="process">
+        <li class="step"><span class="step-no">1</span><div><strong>产品分析</strong><p>明确论文写作痛点、产品定位、使用边界和学术诚信原则。</p></div></li>
+        <li class="step"><span class="step-no">2</span><div><strong>竞品调研</strong><p>分析通用 AI、论文写作工具和文献管理工具，识别差异化机会。</p></div></li>
+        <li class="step"><span class="step-no">3</span><div><strong>商业分析</strong><p>判断 BYOK 免费内测、托管额度、云同步和学校采购等后续路径。</p></div></li>
+        <li class="step"><span class="step-no">4</span><div><strong>PRD</strong><p>用 MoSCoW 划分需求优先级，并形成论文项目主线。</p></div></li>
+        <li class="step"><span class="step-no">5</span><div><strong>视觉稿</strong><p>形成纸墨朱砂视觉系统，沉淀主要页面截图和 UI/UX 审计记录。</p></div></li>
+        <li class="step"><span class="step-no">6</span><div><strong>技术方案</strong><p>确定 Vite、ProseMirror、本地存储、OpenAI 兼容 API 和 Pages 架构。</p></div></li>
+        <li class="step"><span class="step-no">7</span><div><strong>测试方案</strong><p>覆盖构建、主流程、真实 API、导出、视觉和上线验证。</p></div></li>
+        <li class="step"><span class="step-no">8</span><div><strong>上线方案</strong><p>通过 GitHub Actions 构建 dist 并发布到 GitHub Pages。</p></div></li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2><span class="mark"></span>配套材料索引</h2>
+      <p class="desc">更细的调研、PRD、视觉稿、测试和开发记录可以从这里进入。</p>
+      <table>
+        <thead><tr><th>材料</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/PRD.md" target="_blank" rel="noopener">PRD</a></td><td>产品需求、范围、功能架构和项目主线。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/analysis/market-and-competitor-analysis.md" target="_blank" rel="noopener">市场与竞品分析</a></td><td>市场机会、竞品格局和商业判断。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/analysis/user-research.md" target="_blank" rel="noopener">用户研究</a></td><td>用户画像、论文写作痛点和场景拆解。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/product-review-v1.md" target="_blank" rel="noopener">产品评审</a></td><td>产品经理、用户、UI/UX 三视角评审。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/tree/main/docs/review" target="_blank" rel="noopener">视觉稿与截图</a></td><td>论文主页、研究设计、写作台、文献与证据、计划页和移动端截图。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/technical-proposal.html" target="_blank" rel="noopener">技术方案</a></td><td>技术架构与实现方案。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/docs/acceptance.md" target="_blank" rel="noopener">验收状态</a></td><td>自动化、真机与发布前验收记录。</td></tr>
+          <tr><td><a href="https://github.com/KevinnZou/paper-pilot/blob/main/report/dev-log.md" target="_blank" rel="noopener">开发日志</a></td><td>逐轮需求、修改、验证和发布记录。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2><span class="mark"></span>上线状态</h2>
+      <div class="status-grid">
+        <div><span>线上系统</span><strong><a href="./">https://kevinnzou.github.io/paper-pilot/</a></strong></div>
+        <div><span>文档页面</span><strong>delivery.html</strong></div>
+        <div><span>发布版本</span><strong>v4.0.0-beta.1</strong></div>
+        <div><span>发布方式</span><strong>GitHub Actions + Pages</strong></div>
+      </div>
+    </section>
+
+    <p class="foot">AI 生成内容仅供辅助，论文观点、数据真实性、引用准确性和学术规范仍需使用者自行确认。</p>
+  </main>
+  <script>
+    document.getElementById('copy-link').addEventListener('click', async () => {
+      const input = document.getElementById('delivery-link');
+      try {
+        await navigator.clipboard.writeText(input.value);
+        document.getElementById('copy-link').textContent = '已复制';
+        setTimeout(() => { document.getElementById('copy-link').textContent = '复制链接'; }, 1400);
+      } catch (e) {
+        input.select();
+        document.execCommand('copy');
+      }
+    });
+  </script>
+</body>
+</html>
