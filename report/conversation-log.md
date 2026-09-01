@@ -810,7 +810,7 @@
 - 用户：确认自己已经验收通过，要求走发布流程。
 - AI：执行发布前构建，准备 `v4.0.0-beta.1` release notes，并进入 tag / push / GitHub release 流程；分支与 tag 推送至 GitHub，用户完成 GitHub CLI 登录后，AI 创建 GitHub prerelease。
 - 用户：询问是否需要提 PR 合并才能发布到 Pages，并要求 AI 协助处理。
-- AI：确认 GitHub Pages 使用 `main` 分支的 workflow 发布；发现仓库尚无 `.github/workflows`，因此补充 Vite 构建并部署 `dist/` 到 GitHub Pages 的 workflow，准备创建合并 PR。
+- AI：确认 GitHub Pages 使用 `main` 分支的 workflow 发布；发现仓库尚无 `.github/workflows`，因此补充 Vite 构建并部署 `dist/` 到 GitHub Pages 的 workflow，创建并合并 PR #1。合并后 Pages workflow 成功，线上地址返回 200。
 
 ## 2026-08-29 · 模板预览标题与正文引用同步修复
 

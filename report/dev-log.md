@@ -1616,6 +1616,11 @@
 - **修复**：
   - 新增 `.github/workflows/pages.yml`。
   - workflow 在推送到 `main` 或手动触发时运行，使用 Node 22、`npm ci`、`npm run build` 构建项目，并通过 `actions/upload-pages-artifact` 与 `actions/deploy-pages` 发布 `dist/`。
+- **发布结果**：
+  - PR 已创建并合并：`https://github.com/KevinnZou/paper-pilot/pull/1`。
+  - 合并提交：`edb89ac5d745ca1b331be2134e83519a0a132974`。
+  - GitHub Actions `Deploy PaperPilot to GitHub Pages` 运行成功。
+  - GitHub Pages 地址 `https://kevinnzou.github.io/paper-pilot/` 返回 HTTP 200。
 
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。
