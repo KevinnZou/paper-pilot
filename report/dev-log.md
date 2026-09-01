@@ -1602,6 +1602,10 @@
   - 新增 `docs/releases/v4.0.0-beta.1.md`，记录发布定位、核心能力、发布前验证和已知边界。
 - **验证**：
   - `npm run build` 通过；仅保留 Vite chunk size 提示，非阻塞。
+- **发布结果**：
+  - 分支 `codex/v4-phase1-foundation` 已推送到 `git@github.com:KevinnZou/paper-pilot.git`。
+  - tag `v4.0.0-beta.1` 已推送到 GitHub。
+  - GitHub prerelease 已创建：`https://github.com/KevinnZou/paper-pilot/releases/tag/v4.0.0-beta.1`。
 
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。

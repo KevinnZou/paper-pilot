@@ -808,7 +808,7 @@
 - AI：建议以 Beta / 内测版发布，不再继续扩展新功能；重点转向版本号、发布检查、真实 API 主流程、模板预览与导出格式核查。
 - AI：将项目版本从 `4.0.0-alpha.0` 调整为 `4.0.0-beta.1`；更新 README 中当前版本、本地运行方式、导出能力和计划模块定位；新增 `docs/release-checklist.md` 作为发布候选检查清单。
 - 用户：确认自己已经验收通过，要求走发布流程。
-- AI：执行发布前构建，准备 `v4.0.0-beta.1` release notes，并进入 tag / push / GitHub release 流程。
+- AI：执行发布前构建，准备 `v4.0.0-beta.1` release notes，并进入 tag / push / GitHub release 流程；分支与 tag 推送至 GitHub，用户完成 GitHub CLI 登录后，AI 创建 GitHub prerelease。
 
 ## 2026-08-29 · 模板预览标题与正文引用同步修复
 
