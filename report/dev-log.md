@@ -1607,6 +1607,16 @@
   - tag `v4.0.0-beta.1` 已推送到 GitHub。
   - GitHub prerelease 已创建：`https://github.com/KevinnZou/paper-pilot/releases/tag/v4.0.0-beta.1`。
 
+## 2026-09-01 · GitHub Pages 发布链路补齐（第 130 次会话）
+- **目标**：让 `codex/v4-phase1-foundation` 合并到 `main` 后可以自动发布到 GitHub Pages。
+- **发现**：
+  - 仓库默认分支为 `main`。
+  - GitHub Pages 地址为 `https://kevinnzou.github.io/paper-pilot/`。
+  - Pages 配置为 workflow 发布，但仓库没有 `.github/workflows`，因此仅合并代码不会有可执行的 Pages 部署流程。
+- **修复**：
+  - 新增 `.github/workflows/pages.yml`。
+  - workflow 在推送到 `main` 或手动触发时运行，使用 Node 22、`npm ci`、`npm run build` 构建项目，并通过 `actions/upload-pages-artifact` 与 `actions/deploy-pages` 发布 `dist/`。
+
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。
 - **改造**：
