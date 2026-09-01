@@ -811,6 +811,8 @@
 - AI：执行发布前构建，准备 `v4.0.0-beta.1` release notes，并进入 tag / push / GitHub release 流程；分支与 tag 推送至 GitHub，用户完成 GitHub CLI 登录后，AI 创建 GitHub prerelease。
 - 用户：询问是否需要提 PR 合并才能发布到 Pages，并要求 AI 协助处理。
 - AI：确认 GitHub Pages 使用 `main` 分支的 workflow 发布；发现仓库尚无 `.github/workflows`，因此补充 Vite 构建并部署 `dist/` 到 GitHub Pages 的 workflow，创建并合并 PR #1。合并后 Pages workflow 成功，线上地址返回 200。
+- 用户：打开线上页面后发现只显示无样式的基础 HTML，指出线上不正常。
+- AI：确认是 GitHub Pages 子路径部署下 Vite 默认绝对资源路径 `/assets/...` 导致 CSS/JS 丢失；新增 Vite 配置，将构建 base 改为相对路径 `./`，让线上 `/paper-pilot/` 下能正确加载资源。
 
 ## 2026-08-29 · 模板预览标题与正文引用同步修复
 

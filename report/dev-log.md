@@ -1622,6 +1622,15 @@
   - GitHub Actions `Deploy PaperPilot to GitHub Pages` 运行成功。
   - GitHub Pages 地址 `https://kevinnzou.github.io/paper-pilot/` 返回 HTTP 200。
 
+## 2026-09-01 · GitHub Pages 子路径资源修复（第 131 次会话）
+- **问题**：线上 `https://kevinnzou.github.io/paper-pilot/` 只显示无样式的基础 HTML，CSS/JS 没有加载。
+- **根因**：
+  - Vite 默认以站点根路径生成资源地址，如 `/assets/index-*.js` 与 `/assets/index-*.css`。
+  - GitHub Pages 项目页部署在 `/paper-pilot/` 子路径下，浏览器会去 `https://kevinnzou.github.io/assets/...` 请求资源，导致样式和脚本丢失。
+- **修复**：
+  - 新增 `vite.config.js`，设置 `base: './'`。
+  - 构建后资源地址变为 `./assets/...`，可同时兼容 GitHub Pages 子路径和普通静态预览。
+
 ## 2026-08-29 · 新建项目流程改造：直接进入研究设计定题（第 109 次会话）
 - **问题**：新建项目强制先填"论文题目"且建完跳论文主页，绕过了研究设计已有"方向描述→AI候选题目→确定"的交互。
 - **改造**：
