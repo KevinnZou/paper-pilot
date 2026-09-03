@@ -1746,3 +1746,17 @@
   - 更新 `docs/delivery/README.md`，把安全测试说明和测试用例清单纳入交付目录。
   - 更新 `public/delivery.html`，在独立交付页增加安全材料和测试材料入口。
 - 说明：仓库当前保留正式测试用例与历史验收记录；早期 Playwright 探针部分位于临时目录，后续可继续固化为仓库内自动化脚本。
+
+# 2026-09-03 · 提示词注入防护代码加固
+
+- 背景：用户追问安全测试是否只有文档没有实现，尤其是提示词防注入。
+- 核查结论：
+  - 已有实现：真实 AI 默认关闭；API Key 只作为 Authorization header 使用，不拼入业务 prompt；备份默认不含 Key；AI 输出不执行脚本；界面大量使用 `escapeHtml` / `textContent`；请求有超时和取消。
+  - 不足：提示词注入此前主要靠各模块 prompt 约束，没有集中加固层。
+- 处理：
+  - 新增 `js/ai-safety.js`，提供 `safeSystemPrompt`、`hardenMessages`、`untrustedBlock`。
+  - `js/api.js` 在真实 `chat` / `streamChat` 发请求前统一加固 system message，声明用户正文、文献摘要、粘贴内容和导入数据均是不可信资料，不能泄露系统提示词、API Key、本地存储或执行越权请求。
+  - 写作工具把选中文段、续写上下文、逻辑检查内容包进不可信资料块。
+  - 文献解析把用户粘贴的参考文献信息包进不可信资料块。
+  - 文献检索策略与推荐理由把论文题目、章节和候选摘要包进不可信资料块。
+  - 新增 `tools/security-smoke.mjs` 与 `npm run test:security`，覆盖 system prompt 加固、资料隔离块和 HTML 转义基础用例。

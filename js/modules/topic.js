@@ -3,6 +3,7 @@ import { chat, shouldUseLiveAI } from '../api.js';
 import { getProject, adoptOutline, parseOutline, updateBasics, saveProject } from '../project.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle, isPlaceholderTitle } from '../title-utils.js';
+import { untrustedBlock } from '../ai-safety.js';
 
 const SYSTEM = '你是一位资深论文研究设计导师，熟悉中国高校论文选题、研究问题设计、方法论、开题与写作规范。回答直接给出内容，不要客套话和多余解释。';
 
@@ -829,7 +830,7 @@ function render(el) {
         if (shouldUseLiveAI()) {
           const reply = await chat([
             { role: 'system', content: `${SYSTEM} 只输出严格 JSON 数组。` },
-            { role: 'user', content: `请围绕下面的研究设想生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。\n研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}\n请根据反馈明显调整方向，不要只是换几个近义词。` : ''}` },
+            { role: 'user', content: `请围绕下方研究设想资料生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。${feedback ? '\n请根据用户反馈明显调整方向，不要只是换几个近义词。' : ''}${untrustedBlock('研究设想与用户反馈', `研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}` : ''}`)}` },
           ], { temperature: 0.6, signal: topicSignal(), timeoutMs: 60000 });
           parsed = normalizeTitleCandidates(parseJson(reply));
         } else {
@@ -926,14 +927,7 @@ hypotheses: [2-3条待验证判断]
 feasibility: {score, risks[], suggestions[]}
 
 其中 feasibility.suggestions 必须是 3 个“范围边界选项”，例如“只聚焦采购规范化环节”“只比较 2-3 家中小型装修企业”“只讨论标准化流程执行效果”。不要输出对象嵌套对象；每个选项尽量是一句可点击的短文本。
-
-论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}
-研究想法：${current.initialIdea || '未提供'}
-关键词：${current.keywords || '未提供'}
-约束：${current.constraints || '无'}
-研究对象：${current.population || '未提供'}
-学位类型：${getProject().degreeType || '硕士论文'}
-${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。` : ''}` },
+${feedback ? '\n请根据用户反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。' : ''}${untrustedBlock('论文题目、研究设想与用户反馈', `论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究想法：${current.initialIdea || '未提供'}\n关键词：${current.keywords || '未提供'}\n约束：${current.constraints || '无'}\n研究对象：${current.population || '未提供'}\n学位类型：${getProject().degreeType || '硕士论文'}\n${feedback ? `用户对上一批方案的反馈：${feedback}` : ''}`)}` },
           ], { temperature: 0.35, signal: topicSignal(), timeoutMs: 60000 });
           parsed = parseJson(reply);
         } else {
@@ -1191,7 +1185,7 @@ ${feedback ? `用户对上一批方案的反馈：${feedback}\n请根据反馈�
         const reply = shouldUseLiveAI()
           ? await chat([
               { role: 'system', content: SYSTEM },
-              { role: 'user', content: `请为下面的论文研究方案生成规范的中文论文大纲。要求：只输出纯文本大纲，不要 JSON，不要 Markdown 代码块；输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法、数据来源和范围边界一致。\n论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n范围边界：${selectedRiskStrategy(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `\n用户对上一版大纲的修改意见：${feedback}\n请根据这个意见重组章节，不要只改个别字。` : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义` },
+              { role: 'user', content: `请为下方论文研究方案资料生成规范的中文论文大纲。要求：只输出纯文本大纲，不要 JSON，不要 Markdown 代码块；输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法、数据来源和范围边界一致。${feedback ? '\n请根据用户对上一版大纲的修改意见重组章节，不要只改个别字。' : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义${untrustedBlock('论文研究方案与用户反馈', `论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n范围边界：${selectedRiskStrategy(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `用户对上一版大纲的修改意见：${feedback}` : ''}`)}` },
             ], { temperature: 0.4, signal: topicSignal(), timeoutMs: 60000 })
           : mockOutline(current);
         const outlineText = outlineTextFromAI(reply);

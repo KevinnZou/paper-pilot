@@ -2,6 +2,7 @@
 // 本应用无后端：请求从浏览器直接发送到模型服务商。
 // API Key 仅保存在用户本地浏览器 localStorage 中，不经过任何服务器。
 import { get, set } from './storage.js';
+import { hardenMessages } from './ai-safety.js';
 
 const CONFIG_KEY = 'config';
 
@@ -178,6 +179,7 @@ export async function chat(messages, { temperature = 0.7, signal, timeoutMs = 18
     if (signal?.aborted) throw new ApiError('aborted', '请求已取消');
     return mockGenericReply(messages);
   }
+  const outboundMessages = hardenMessages(messages);
   const cfg = getConfig();
   if (!cfg.apiKey) throw new ApiError('no_key', '请先在「设置」中填写 API Key');
 
@@ -197,7 +199,7 @@ export async function chat(messages, { temperature = 0.7, signal, timeoutMs = 18
         'Content-Type': 'application/json',
         Authorization: `Bearer ${cfg.apiKey}`,
       },
-      body: JSON.stringify({ model: cfg.model, messages, temperature, stream: false }),
+      body: JSON.stringify({ model: cfg.model, messages: outboundMessages, temperature, stream: false }),
       signal: ctrl.signal,
     });
   } catch (e) {
@@ -253,6 +255,7 @@ export async function streamChat(messages, { temperature = 0.7, signal, timeoutM
     return text.trim();
   }
 
+  const outboundMessages = hardenMessages(messages);
   const cfg = getConfig();
   if (!cfg.apiKey) throw new ApiError('no_key', '请先在「设置」中填写 API Key');
 
@@ -271,7 +274,7 @@ export async function streamChat(messages, { temperature = 0.7, signal, timeoutM
         'Content-Type': 'application/json',
         Authorization: `Bearer ${cfg.apiKey}`,
       },
-      body: JSON.stringify({ model: cfg.model, messages, temperature, stream: true }),
+      body: JSON.stringify({ model: cfg.model, messages: outboundMessages, temperature, stream: true }),
       signal: ctrl.signal,
     });
   } catch (e) {
