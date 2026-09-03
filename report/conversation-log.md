@@ -7,6 +7,9 @@
 
 - 用户：老师提出两个问题：一是安全测试，需要保证数据安全、防止提示词注入等安全性问题；二是项目是否有测试用例。
 - AI：梳理现有代码和验收文档后确认：项目已有本地数据存储、真实 AI 默认关闭、备份默认不含 API Key、AI 请求超时/取消、文本转义和历史验收记录；但缺少适合提交的正式安全测试说明和测试用例清单。新增 `docs/delivery/security-test-report.md` 与 `docs/delivery/test-cases.md`，并同步到独立交付页。
+- 用户追问：这些是否确实有实现，不能只是写文件，尤其提示词防注入是否真的做了。
+- AI：确认此前已有“API Key 不进入 prompt、AI 无执行权限、输出需用户采纳、显示层转义”等基础防护，但提示词注入缺少集中代码级防护。新增 `js/ai-safety.js`，在 `chat` / `streamChat` 发起真实请求前统一加固 system prompt，并把写作片段、参考文献粘贴内容、文献检索上下文等不可信资料用边界块隔离。
+- AI：新增 `tools/security-smoke.mjs` 与 `npm run test:security`，把提示词加固、资料隔离和 HTML 转义做成仓库内可运行的安全冒烟测试。
 > 说明：2026-08-15 至 2026-08-18 的内容主要依据仓库内已有 [report/dev-log.md](/Users/kevinnzou/Documents/Claude/thesis-assistant/report/dev-log.md) 与当前可见上下文整理，为摘要式追溯，不是逐句转录。
 
 ## 2026-08-15 至 2026-08-18 · 早期对话摘要

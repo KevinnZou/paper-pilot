@@ -7,6 +7,7 @@ import { getProject, getCitations, saveCitations, getEvidence, saveEvidence, lis
 import { ensureCitationIds, normalizeCitationEntry, formatCitationEntry } from '../citation-utils.js';
 import { docFromJSON, collectCitationUsage, buildCitationNumberMap } from '../document-model.js';
 import { ICONS } from '../icons.js';
+import { untrustedBlock } from '../ai-safety.js';
 
 // ---------- GB/T 7714 格式化：规则引擎抽至 gbt7714.js（供文献查找等模块复用） ----------
 // 注意：`export ... from` 不建立本地绑定，必须先 import 再 re-export（历史 bug 修复）
@@ -1039,7 +1040,7 @@ function render(el) {
     try {
       const reply = await chat([
         { role: 'system', content: PARSE_SYSTEM },
-        { role: 'user', content: raw },
+        { role: 'user', content: `请解析下方资料中的参考文献信息，只输出 JSON 数组。${untrustedBlock('用户粘贴的参考文献信息', raw)}` },
       ], { temperature: 0, signal: abortSignal(), timeoutMs: 60000 });
       let entries;
       try {

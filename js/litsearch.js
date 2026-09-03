@@ -6,6 +6,7 @@ import { toast, escapeHtml, setLoading } from './ui.js';
 import { chat, shouldUseLiveAI } from './api.js';
 import { ensureCitationIds, normalizeCitationEntry } from './citation-utils.js';
 import { getCitations, saveCitations } from './project.js';
+import { untrustedBlock } from './ai-safety.js';
 
 // 中断恢复：导航离开时取消进行中的检索与 AI 标注（避免结果写进已卸载的页面、浪费 token）
 // tm:navigate 由 document.dispatchEvent 触发且不冒泡，监听必须挂在 document；模块只加载一次，每次导航后换新 controller
@@ -274,7 +275,7 @@ export async function buildQueries({ title, chapters = [] }, signal) {
   }
   const reply = await chat([
     { role: 'system', content: '你是学术文献检索专家。把论文题目与各章主题转化为适合在 CrossRef/OpenAlex 等英文学术数据库检索的关键词短语（2-5 个英文单词，学术术语，不要整句）。只输出严格 JSON。' },
-    { role: 'user', content: `论文题目：《${title}》\n章节列表：\n${chapters.map((c, i) => `${i + 1}. ${c}`).join('\n') || '（无章节大纲）'}\n\n输出 JSON 数组：[{"chapter":"章节名","queries":["英文关键词短语1","英文关键词短语2"]}]，题目与每章各生成 1-2 个查询，总共不超过 8 个查询。` },
+    { role: 'user', content: `请根据下方论文资料生成检索词。输出 JSON 数组：[{"chapter":"章节名","queries":["英文关键词短语1","英文关键词短语2"]}]，题目与每章各生成 1-2 个查询，总共不超过 8 个查询。${untrustedBlock('论文题目与章节', `论文题目：《${title}》\n章节列表：\n${chapters.map((c, i) => `${i + 1}. ${c}`).join('\n') || '（无章节大纲）'}`)}` },
   ], { temperature: 0.3, signal, timeoutMs: 60000 });
   const arr = parseJson(reply);
   if (!Array.isArray(arr)) throw new Error('AI 检索策略返回格式异常，已自动退回原始关键词');
@@ -301,7 +302,7 @@ export async function annotateCandidates(items, { title, chapters = [] }, signal
     `${i}. 标题：${r.title}\n   出处：${[r.source, r.year].filter(Boolean).join(', ')}\n   摘要：${(r.abstract || '无').slice(0, 150)}`).join('\n');
   const reply = await chat([
     { role: 'system', content: '你是论文文献匹配专家。为每篇候选文献写一条"推荐理由"：它在用户的论文里可以印证、支撑或借鉴什么（如：支撑方法设计、作为对比 baseline、提供综述素材、概念/理论定义来源、实验数据参考），并指出最适合关联的章节。只输出严格 JSON。' },
-    { role: 'user', content: `用户论文：《${title}》\n章节：${chapters.join('；') || '（无大纲，请根据题目判断）'}\n\n候选文献（共 ${items.length} 条）：\n${listText}\n\n输出 JSON 数组：[{"i":0,"reason":"一句话推荐理由（30字内，说清可印证/支撑哪个点）","chapter":"最适合的章节名"}]，覆盖每一条候选。` },
+    { role: 'user', content: `请根据下方论文资料和候选文献生成匹配理由。输出 JSON 数组：[{"i":0,"reason":"一句话推荐理由（30字内，说清可印证/支撑哪个点）","chapter":"最适合的章节名"}]，覆盖每一条候选。${untrustedBlock('论文资料与候选文献', `用户论文：《${title}》\n章节：${chapters.join('；') || '（无大纲，请根据题目判断）'}\n\n候选文献（共 ${items.length} 条）：\n${listText}`)}` },
   ], { temperature: 0.4, signal, timeoutMs: 60000 });
   const arr = parseJson(reply);
   const map = new Map(arr.map(a => [Number(a.i), a]));
