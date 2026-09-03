@@ -116,15 +116,15 @@ function updateApiPill() {
     pill.classList.remove('demo');
     pill.title = '已启用真实 AI 调用';
   } else if (cfg.apiKey) {
-    pill.textContent = '演示模式 · 未启用真实 AI';
+    pill.textContent = '本地模式 · 在线模型未启用';
     pill.classList.add('demo');
     pill.classList.remove('ready');
-    pill.title = '已填写调用凭据，但尚未开启「真实 AI」。到「应用设置」打开即可使用真实模型。';
+    pill.title = '已填写调用凭据，但尚未启用在线模型调用。可在「应用设置」的高级选项中开启。';
   } else {
-    pill.textContent = '演示模式 · 模拟结果';
+    pill.textContent = '本地模式';
     pill.classList.add('demo');
     pill.classList.remove('ready');
-    pill.title = '当前为演示/模拟结果，不消耗额度。真实 AI 请到「应用设置」填入 API Key。';
+    pill.title = '当前未配置在线模型调用，系统不会消耗外部模型额度。';
   }
 }
 
