@@ -76,14 +76,22 @@ export default {
           <input type="text" id="cfg-baseurl" class="mono-input" value="${escapeHtml(cfg.baseURL || '')}" placeholder="https://api.example.com">
         </div>
 
-        <label class="settings-mode-card">
-          <input type="checkbox" id="cfg-live-ai" ${cfg.enableLiveAI ? 'checked' : ''}>
-          <span class="settings-mode-copy">
-            <strong>真实 AI 调用</strong>
-            <span>${cfg.enableLiveAI ? '已开启。生成、润色、文献检索会使用你配置的服务。' : '默认关闭。当前所有 AI 流程使用模拟结果，不消耗额度。'}</span>
-          </span>
-          <span class="settings-switch" aria-hidden="true"></span>
-        </label>
+        <details class="settings-advanced">
+          <summary>
+            <span>
+              <b>高级选项</b>
+              <small>模型调用模式与兼容设置</small>
+            </span>
+          </summary>
+          <label class="settings-mode-card">
+            <input type="checkbox" id="cfg-live-ai" ${cfg.enableLiveAI ? 'checked' : ''}>
+            <span class="settings-mode-copy">
+              <strong>启用在线模型调用</strong>
+              <span>${cfg.enableLiveAI ? '已开启。生成、润色、文献检索会使用你配置的服务。' : '默认关闭。未开启时，AI 流程使用本地示例结果，不消耗额度。'}</span>
+            </span>
+            <span class="settings-switch" aria-hidden="true"></span>
+          </label>
+        </details>
         <div class="settings-actions">
           <button class="btn" id="cfg-save" type="button">保存配置</button>
           <button class="btn btn-ai" id="cfg-test" type="button">测试连接</button>
@@ -115,11 +123,18 @@ export default {
           <p class="hint">默认不会导出 API Key。只有主动勾选后，Key 才会写入备份文件。</p>
         </div>
 
-        <div class="card settings-card settings-demo-card">
-          <h2><span class="mark"></span>演示项目</h2>
-          <p class="desc">载入一篇示例论文，快速查看完整流程。${hasExistingData() ? '当前已有本地数据，载入前会再次确认。' : ''}</p>
-          <button class="btn btn-ghost" id="cfg-demo">载入演示项目</button>
-        </div>
+        <details class="card settings-card settings-utility-card">
+          <summary>
+            <span>
+              <b><span class="mark"></span>辅助与示例</b>
+              <small>用于体验完整流程或恢复示例数据</small>
+            </span>
+          </summary>
+          <div class="settings-utility-body">
+            <p class="desc">载入一篇示例论文，快速查看完整流程。${hasExistingData() ? '当前已有本地数据，载入前会再次确认。' : ''}</p>
+            <button class="btn btn-ghost" id="cfg-demo">载入示例项目</button>
+          </div>
+        </details>
 
         <div class="card settings-card settings-danger-card">
           <h2><span class="mark"></span>清除数据</h2>
@@ -195,9 +210,9 @@ export default {
     });
 
     el.querySelector('#cfg-demo').addEventListener('click', () => {
-      if (hasExistingData() && !confirm('载入演示项目将覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
+      if (hasExistingData() && !confirm('载入示例项目将覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
       loadDemoData();
-      toast('演示项目已载入——带你回论文主页看看完整状态', 'ok');
+      toast('示例项目已载入，带你回论文主页查看完整状态', 'ok');
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
     });
 

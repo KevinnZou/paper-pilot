@@ -85,9 +85,12 @@ export default {
           <p>还没有论文项目。系统会按“项目”推进整篇论文，而不是把各模块割裂开。</p>
           <div class="empty-actions">
             <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
-            <button class="btn btn-ghost" id="pc-empty-trial">开始试用 · 无需配置</button>
           </div>
-          <p class="desc project-empty-note">「开始试用」会用演示项目走一遍完整流程；AI 结果为内置示例，不消耗额度。要用真实 AI，再到「应用设置」填入你的 API Key。</p>
+          <details class="empty-secondary">
+            <summary>查看示例数据</summary>
+            <p class="desc project-empty-note">示例项目用于快速了解完整流程；AI 结果为内置示例，不消耗额度。</p>
+            <button class="btn btn-ghost" id="pc-empty-trial">载入示例项目</button>
+          </details>
         </div>`}
 
       <div class="modal-backdrop" id="pc-create-modal" hidden>
@@ -163,9 +166,9 @@ export default {
     el.querySelector('#pc-new')?.addEventListener('click', openCreateModal);
     el.querySelector('#pc-empty-new')?.addEventListener('click', openCreateModal);
     el.querySelector('#pc-empty-trial')?.addEventListener('click', () => {
-      if (hasExistingData() && !confirm('启动试用的演示项目会覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
+      if (hasExistingData() && !confirm('载入示例项目会覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
       loadDemoData();
-      toast('演示项目已载入——正在进入演示模式', 'ok');
+      toast('示例项目已载入', 'ok');
       document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
     });
     el.querySelector('#pc-modal-close')?.addEventListener('click', closeCreateModal);

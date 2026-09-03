@@ -2,7 +2,6 @@
 import { get } from '../storage.js';
 import { getProject, calcStreak, setCurrentChapter } from '../project.js';
 import { escapeHtml, toast, calGridHtml } from '../ui.js';
-import { loadDemoData, hasExistingData } from '../demo-data.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
 import { learningCardHtml } from '../self-learning.js';
@@ -201,7 +200,6 @@ export default {
           : '先把研究设计立住，再进入大纲、写作、文献和进度推进。'}</p>
         <div class="hero-action-row">
           ${heroAction}
-          ${!resolvedTitle ? '<button class="btn btn-ghost" id="hero-demo">先载入演示项目看效果</button>' : ''}
           ${hasWriting ? '<button class="btn btn-ghost" data-nav="citation">补充文献</button>' : ''}
           ${resolvedTitle && !hasWriting ? '<button class="btn btn-ghost" data-nav="planner">可选：设置计划</button>' : ''}
         </div>
@@ -325,18 +323,6 @@ export default {
         setCurrentChapter(b.dataset.write);
         document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'writing' }));
       }));
-
-    // 空态：一键载入演示数据（空态即邀请）
-    const demoBtn = el.querySelector('#hero-demo');
-    if (demoBtn) {
-      demoBtn.addEventListener('click', () => {
-        if (hasExistingData() && !confirm('载入演示项目将覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
-        loadDemoData();
-        toast('演示项目已载入——这就是一份完整论文的样子', 'ok');
-        // 走导航事件重渲染主页（避免模块内自引用）
-        document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
-      });
-    }
 
     // 主行动按钮（继续写：当前章已完成时自动指向下一章）
     const heroBtn = el.querySelector('#hero-continue');
