@@ -1228,6 +1228,19 @@ kbd {
   gap: 12px;
 }
 .project-card.active { border-color: #D8B4AC; box-shadow: var(--shadow-lift); }
+.project-sample-card {
+  border-style: dashed;
+  background: var(--surface-2);
+}
+.project-empty-sample-grid {
+  max-width: 520px;
+  margin: 18px auto 0;
+  text-align: left;
+}
+.seal-muted {
+  background: #EFECE4;
+  color: var(--ink-soft);
+}
 .project-card-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px;
 }
@@ -1395,8 +1408,7 @@ kbd {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.settings-advanced summary,
-.settings-utility-card summary {
+.settings-advanced summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1405,35 +1417,29 @@ kbd {
   cursor: pointer;
   list-style: none;
 }
-.settings-advanced summary::-webkit-details-marker,
-.settings-utility-card summary::-webkit-details-marker {
+.settings-advanced summary::-webkit-details-marker {
   display: none;
 }
-.settings-advanced summary::after,
-.settings-utility-card summary::after {
+.settings-advanced summary::after {
   content: '展开';
   flex: 0 0 auto;
   color: var(--ink-soft);
   font-size: 12px;
 }
-.settings-advanced[open] summary::after,
-.settings-utility-card[open] summary::after {
+.settings-advanced[open] summary::after {
   content: '收起';
 }
-.settings-advanced summary span,
-.settings-utility-card summary span {
+.settings-advanced summary span {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.settings-advanced summary b,
-.settings-utility-card summary b {
+.settings-advanced summary b {
   color: var(--ink);
   font-size: 13.5px;
 }
-.settings-advanced summary small,
-.settings-utility-card summary small {
+.settings-advanced summary small {
   color: var(--ink-soft);
   font-size: 12px;
   line-height: 1.5;
@@ -1522,29 +1528,6 @@ kbd {
 }
 .settings-check input {
   flex: 0 0 auto;
-}
-.empty-secondary {
-  max-width: 360px;
-  margin: 10px auto 0;
-  color: var(--ink-soft);
-  font-size: 13px;
-}
-.empty-secondary summary {
-  display: inline-flex;
-  cursor: pointer;
-  color: var(--ink-soft);
-}
-.empty-secondary summary:hover {
-  color: var(--brand);
-}
-.empty-secondary .btn {
-  margin-top: 8px;
-}
-.settings-utility-card {
-  padding: 0;
-}
-.settings-utility-body {
-  padding: 0 20px 20px;
 }
 @media (max-width: 980px) {
   .settings-shell {

@@ -12,7 +12,6 @@ import {
   daysSinceLastBackup,
 } from '../project.js';
 import { versionCount } from '../versions.js';
-import { loadDemoData, hasExistingData } from '../demo-data.js';
 
 const PROVIDERS = [
   { value: 'https://api.deepseek.com', name: 'DeepSeek（默认）' },
@@ -123,19 +122,6 @@ export default {
           <p class="hint">默认不会导出 API Key。只有主动勾选后，Key 才会写入备份文件。</p>
         </div>
 
-        <details class="card settings-card settings-utility-card">
-          <summary>
-            <span>
-              <b><span class="mark"></span>辅助与示例</b>
-              <small>用于体验完整流程或恢复示例数据</small>
-            </span>
-          </summary>
-          <div class="settings-utility-body">
-            <p class="desc">载入一篇示例论文，快速查看完整流程。${hasExistingData() ? '当前已有本地数据，载入前会再次确认。' : ''}</p>
-            <button class="btn btn-ghost" id="cfg-demo">载入示例项目</button>
-          </div>
-        </details>
-
         <div class="card settings-card settings-danger-card">
           <h2><span class="mark"></span>清除数据</h2>
           <p class="desc">清除后会删除本机浏览器里的论文项目、草稿、文献、计划、版本和配置。</p>
@@ -207,13 +193,6 @@ export default {
       } finally {
         setLoading(btn, false);
       }
-    });
-
-    el.querySelector('#cfg-demo').addEventListener('click', () => {
-      if (hasExistingData() && !confirm('载入示例项目将覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
-      loadDemoData();
-      toast('示例项目已载入，带你回论文主页查看完整状态', 'ok');
-      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
     });
 
     // —— 数据备份：导出全部本地数据为 JSON 文件 ——
