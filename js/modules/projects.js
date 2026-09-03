@@ -78,6 +78,27 @@ export default {
                 </div>
               </div>`;
           }).join('')}
+          <div class="card project-card project-sample-card">
+            <div class="project-card-head">
+              <div>
+                <h2>示例项目</h2>
+                <p class="desc">查看一篇已完成基础流程的示例论文。</p>
+              </div>
+              <span class="seal seal-muted">示例</span>
+            </div>
+            <div class="project-meta">
+              <span class="chip">研究设计</span>
+              <span class="chip">写作台</span>
+              <span class="chip">文献库</span>
+            </div>
+            <div class="project-facts">
+              <div><span>用途</span><b>快速体验</b></div>
+              <div><span>数据</span><b>本地示例</b></div>
+            </div>
+            <div class="result-actions project-actions">
+              <button class="btn btn-ghost" id="pc-sample-load">载入示例项目</button>
+            </div>
+          </div>
         </div>`
       : `
         <div class="card empty">
@@ -86,11 +107,20 @@ export default {
           <div class="empty-actions">
             <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
           </div>
-          <details class="empty-secondary">
-            <summary>查看示例数据</summary>
-            <p class="desc project-empty-note">示例项目用于快速了解完整流程；AI 结果为内置示例，不消耗额度。</p>
-            <button class="btn btn-ghost" id="pc-empty-trial">载入示例项目</button>
-          </details>
+        </div>
+        <div class="project-grid project-empty-sample-grid">
+          <div class="card project-card project-sample-card">
+            <div class="project-card-head">
+              <div>
+                <h2>示例项目</h2>
+                <p class="desc">快速查看研究设计、写作台和文献库的完整状态。</p>
+              </div>
+              <span class="seal seal-muted">示例</span>
+            </div>
+            <div class="result-actions project-actions">
+              <button class="btn btn-ghost" id="pc-empty-trial">载入示例项目</button>
+            </div>
+          </div>
         </div>`}
 
       <div class="modal-backdrop" id="pc-create-modal" hidden>
@@ -166,6 +196,12 @@ export default {
     el.querySelector('#pc-new')?.addEventListener('click', openCreateModal);
     el.querySelector('#pc-empty-new')?.addEventListener('click', openCreateModal);
     el.querySelector('#pc-empty-trial')?.addEventListener('click', () => {
+      if (hasExistingData() && !confirm('载入示例项目会覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
+      loadDemoData();
+      toast('示例项目已载入', 'ok');
+      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
+    });
+    el.querySelector('#pc-sample-load')?.addEventListener('click', () => {
       if (hasExistingData() && !confirm('载入示例项目会覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
       loadDemoData();
       toast('示例项目已载入', 'ok');
