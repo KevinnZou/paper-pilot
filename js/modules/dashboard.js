@@ -229,7 +229,9 @@ export default {
         </div>
         <div class="hero-action-row dash-focus-actions">
           <button class="btn btn-lg" ${nextAction.nav === 'writing' && nextChapter ? `data-write="${escapeHtml(nextChapter)}"` : `data-nav="${nextAction.nav}"`}>${escapeHtml(nextAction.cta)}</button>
-          ${p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : '<button class="btn btn-ghost" data-nav="writing">检查整体状态</button>'}
+          ${resolvedTitle
+            ? (p.dueDate ? '<button class="btn btn-ghost" data-nav="planner">查看本周任务</button>' : '<button class="btn btn-ghost" data-nav="writing">检查整体状态</button>')
+            : '<button class="btn btn-ghost" data-nav="topic">继续研究设计</button>'}
         </div>
       </div>`;
 
@@ -292,7 +294,9 @@ export default {
         </div>
       </div>`;
 
-    const workspaceCards = hasWriting ? WRITING_CARDS : CARDS;
+    const workspaceCards = !resolvedTitle
+      ? [{ id: 'topic', title: '先确定题目', desc: '从研究想法生成候选题目，选定主线后再开放写作、文献和计划' }]
+      : (hasWriting ? WRITING_CARDS : CARDS);
     const entranceHtml = `
       <section class="tool-band">
         <div class="hero-top">
@@ -300,7 +304,7 @@ export default {
             <h2><span class="mark"></span>工作区入口</h2>
             <p class="desc">${hasWriting ? '你已经进入写作状态，这里汇总继续推进论文的快捷入口。' : '先完成研究设计，再进入写作、文献和计划。'}</p>
           </div>
-          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'project-settings' : 'writing'}">${hasWriting ? '查看项目方案' : '去导出与检查'}</button>
+          <button class="btn btn-ghost btn-sm" data-nav="${hasWriting ? 'project-settings' : (resolvedTitle ? 'writing' : 'topic')}">${hasWriting ? '查看项目方案' : (resolvedTitle ? '去导出与检查' : '去确定题目')}</button>
         </div>
         <div class="dash-grid">
         ${workspaceCards.map(c => `

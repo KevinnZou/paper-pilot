@@ -1305,6 +1305,21 @@ export default {
 
   render(el) {
     const project = getProject();
+    const titleReady = !!meaningfulTitle(project.researchDesign?.title, project.title);
+    if (!titleReady) {
+      el.innerHTML = `
+        <div class="card empty writing-locked-card">
+          <div class="empty-icon">${ICONS.bookOpen}</div>
+          <h2>先确定论文题目</h2>
+          <p>写作台需要基于已确认的题目组织章节、引用和 AI 写作建议。先完成研究设计的题目确认，再进入写作。</p>
+          <div class="empty-actions">
+            <button class="btn btn-lg" id="wb-go-topic" type="button">去确定研究题目</button>
+          </div>
+        </div>`;
+      el.querySelector('#wb-go-topic')?.addEventListener('click', () =>
+        document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'topic' })));
+      return;
+    }
     let citations = normalizeCitations();
     const doc = ensureOutlineSubsections(docFromJSON({ ...project, citations }), project);
     citations = restoreMissingCitationsFromDoc(doc, citations);
