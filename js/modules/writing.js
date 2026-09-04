@@ -5,7 +5,7 @@ import { keymap } from 'prosemirror-keymap';
 import { baseKeymap } from 'prosemirror-commands';
 import { Fragment, Slice } from 'prosemirror-model';
 import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } from '../ui.js';
-import { chat, streamChat } from '../api.js';
+import { chat, streamChat, hasApiKey } from '../api.js';
 import { searchLiterature } from '../litsearch.js';
 import { get } from '../storage.js';
 import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence, saveEvidence, listProjects, addAiUsageLog } from '../project.js';
@@ -2856,6 +2856,11 @@ export default {
     }
 
     async function runDraftGeneration(existingTarget = null) {
+      if (!hasApiKey()) {
+        toast('请先在「应用设置」中填写 API Key，保存后即可生成初稿', 'err', 4200);
+        document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'settings' }));
+        return;
+      }
       const target = existingTarget || currentWritingTarget(viewState.view);
       if (!target) {
         toast('请先把光标放到摘要、关键词或某个章节正文里', 'err');
@@ -2996,6 +3001,11 @@ export default {
     }
 
     el.querySelectorAll('[data-ai]').forEach(btn => btn.addEventListener('click', () => {
+      if (!hasApiKey()) {
+        toast('请先在「应用设置」中填写 API Key，保存后即可使用 AI 辅助', 'err', 4200);
+        document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'settings' }));
+        return;
+      }
       const action = AI_ACTIONS.find(item => item.id === btn.dataset.ai);
       if (!action) return;
       const text = selectionText(viewState.view);

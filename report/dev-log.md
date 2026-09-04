@@ -1803,3 +1803,17 @@
   - `js/modules/projects.js`：示例项目从项目卡网格移出，改为“需要快速查看完整流程？”折叠辅助入口，不与真实项目并列。
   - `css/style.css`：新增空态主卡和示例折叠入口样式，减少页面漂浮感和空白。
 - 验证：`npm run build` 通过。
+
+# 2026-09-04 · 上线版 API 启用逻辑调整
+
+- 背景：用户指出上线版不应默认使用演示/模拟 AI；只要用户输入 API Key，就应启用真实调用。未输入 Key 时，写作台生成初稿等 AI 功能必须明确提示，而不是返回模拟结果。
+- 处理：
+  - `js/api.js`：`shouldUseLiveAI()` 改为由 API Key 是否存在决定；`chat` / `streamChat` 在无 Key 时直接抛出配置提示，不再返回模拟回复。
+  - `js/modules/settings.js`：移除“启用在线模型调用”开关，改为“API Key 保存后自动启用”的高级说明。
+  - `js/app.js` / `index.html`：顶部状态改为“未配置 API”或“AI 已启用 · 模型名”。
+  - `js/modules/dashboard.js`：未配置 Key 时将下一步引导改为配置 API Key。
+  - `js/modules/writing.js`：写作台 AI 工具和生成初稿在无 Key 时直接提示并跳转设置页，避免先写入文献或生成半截状态。
+  - `js/modules/topic.js`：题目候选、研究方案、大纲生成在无 Key 时提示配置，不再使用模拟结果。
+  - `js/litsearch.js`：未配置 Key 时仍可查询开放数据库，但不生成 AI 推荐理由，也不显示模拟文献。
+  - 同步更新交付文档中关于 API 模式和安全测试的表述。
+- 验证：旧口径扫描无命中；`npm run build`、`npm run test:security` 通过。

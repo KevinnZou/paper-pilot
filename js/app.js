@@ -115,16 +115,11 @@ function updateApiPill() {
     pill.classList.add('ready');
     pill.classList.remove('demo');
     pill.title = '已启用真实 AI 调用';
-  } else if (cfg.apiKey) {
-    pill.textContent = '本地模式 · 在线模型未启用';
-    pill.classList.add('demo');
-    pill.classList.remove('ready');
-    pill.title = '已填写调用凭据，但尚未启用在线模型调用。可在「应用设置」的高级选项中开启。';
   } else {
-    pill.textContent = '本地模式';
+    pill.textContent = '未配置 API';
     pill.classList.add('demo');
     pill.classList.remove('ready');
-    pill.title = '当前未配置在线模型调用，系统不会消耗外部模型额度。';
+    pill.title = '填写并保存 API Key 后即可使用 AI 功能。';
   }
 }
 

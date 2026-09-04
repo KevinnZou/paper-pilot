@@ -79,17 +79,15 @@ export default {
           <summary>
             <span>
               <b>高级选项</b>
-              <small>模型调用模式与兼容设置</small>
+              <small>服务商兼容说明</small>
             </span>
           </summary>
-          <label class="settings-mode-card">
-            <input type="checkbox" id="cfg-live-ai" ${cfg.enableLiveAI ? 'checked' : ''}>
+          <div class="settings-mode-card">
             <span class="settings-mode-copy">
-              <strong>启用在线模型调用</strong>
-              <span>${cfg.enableLiveAI ? '已开启。生成、润色、文献检索会使用你配置的服务。' : '默认关闭。未开启时，AI 流程使用本地示例结果，不消耗额度。'}</span>
+              <strong>API Key 保存后自动启用</strong>
+              <span>保存有效 API Key 后，生成、润色、文献检索建议等 AI 功能会直接使用你配置的模型服务；未填写 Key 时不会生成模拟结果。</span>
             </span>
-            <span class="settings-switch" aria-hidden="true"></span>
-          </label>
+          </div>
         </details>
         <div class="settings-actions">
           <button class="btn" id="cfg-save" type="button">保存配置</button>
@@ -162,7 +160,7 @@ export default {
         apiKey: el.querySelector('#cfg-key').value.trim(),
         baseURL,
         model: el.querySelector('#cfg-model').value.trim() || 'deepseek-chat',
-        enableLiveAI: el.querySelector('#cfg-live-ai').checked,
+        enableLiveAI: !!el.querySelector('#cfg-key').value.trim(),
       });
       return true;
     }

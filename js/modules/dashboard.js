@@ -35,10 +35,10 @@ function nextActionCard({ cfg, project, researchReadyCount, chapters, nextChapte
   const chapterWords = nextChapter ? wordCount(drafts[nextChapter]?.content || '') : 0;
   const chapterStatus = nextChapter ? (project.chapterProgress[nextChapter] || '未开始') : '';
   const titleReady = !!meaningfulTitle(project.researchDesign?.title, project.title);
-  if (cfg?.enableLiveAI && !cfg?.apiKey) {
+  if (!cfg?.apiKey) {
     return {
-      title: '今天先完成真实 AI 配置',
-      goal: '你已打开真实调用开关，补上 API Key 后即可使用模型服务。',
+      title: '先完成 API 配置',
+      goal: '填写 API Key 后，研究设计、写作辅助和文献推荐才能调用真实模型服务。',
       bullets: ['填写 API Key', '测试连接', '返回项目主页继续主线'],
       eta: '5 分钟',
       nav: 'settings',
@@ -171,7 +171,7 @@ export default {
 
     // 主行动按钮 = 下一步
     let heroAction = '';
-    if (cfg?.enableLiveAI && !cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">配置真实 AI</button>';
+    if (!cfg?.apiKey) heroAction = '<button class="btn btn-lg" data-nav="settings">配置 API Key</button>';
     else if (!resolvedTitle) heroAction = '<button class="btn btn-lg" data-nav="topic">去确定研究题目</button>';
     else if (hasWriting) heroAction = `<button class="btn btn-lg" id="hero-continue">${nextChapter ? `继续写「${shortName(nextChapter)}」` : '继续写作'}</button>`;
     else if (researchReadyCount < 4) heroAction = '<button class="btn btn-lg" data-nav="topic">补齐研究设计</button>';

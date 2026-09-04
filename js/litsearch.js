@@ -238,7 +238,6 @@ async function searchOpenAlexZh(query, rows, signal) {
 
 /** 检索词含中文时检索中文文献通道，失败静默返回空（主动取消透传） */
 async function searchZhIfCjk(query, rows, signal) {
-  if (!shouldUseLiveAI()) return [];
   if (!/[一-鿿]/.test(query)) return [];
   try {
     return await searchOpenAlexZh(query, rows, signal);
@@ -250,9 +249,6 @@ async function searchZhIfCjk(query, rows, signal) {
 
 /** 双数据源自动切换：CrossRef 失败时降级到 OpenAlex */
 export async function searchLiterature(query, rows = 10, signal, offset = 0) {
-  if (!shouldUseLiveAI()) {
-    return mockLiterature(query).slice(offset, offset + rows);
-  }
   let lastErr;
   for (const [name, fn] of [['CrossRef', searchCrossRef], ['OpenAlex', searchOpenAlex]]) {
     try {
@@ -269,8 +265,8 @@ export async function searchLiterature(query, rows = 10, signal, offset = 0) {
 export async function buildQueries({ title, chapters = [] }, signal) {
   if (!shouldUseLiveAI()) {
     return [
-      { chapter: '论文题目', queries: ['AI-enabled governance', 'process standardization'] },
-      ...(chapters.slice(0, 2).map(chapter => ({ chapter, queries: ['case study methodology'] }))),
+      { chapter: '论文题目', queries: [title || 'thesis research'].filter(Boolean) },
+      ...(chapters.slice(0, 2).map(chapter => ({ chapter, queries: [chapter] }))),
     ];
   }
   const reply = await chat([
@@ -290,11 +286,7 @@ export async function annotateCandidates(items, { title, chapters = [] }, signal
   if (!shouldUseLiveAI()) {
     return items.map((r, i) => ({
       ...r,
-      reason: i === 0
-        ? '可用于铺垫研究背景与行业现状'
-        : i === 1
-          ? '可支撑研究方法与案例设计'
-          : '可用于案例分析或讨论部分',
+      reason: '未配置 API Key，请打开原文后人工判断适配度',
       chapter: chapters[i] || chapters[0] || '第1章 绪论',
     }));
   }
@@ -334,7 +326,7 @@ function dedupe(groups) {
 export function renderLitSearch(container, { defaultQuery = '', batchFrom = null, compact = false, onDone } = {}) {
   const sourceNote = shouldUseLiveAI()
     ? '数据来源：CrossRef / OpenAlex；先看推荐理由和题名，再按需打开原文核对。'
-    : '当前为演示模式，使用内置模拟文献结果，不会请求外部数据库。';
+    : '数据来源：CrossRef / OpenAlex；未配置 API Key 时不生成 AI 推荐理由。';
   container.innerHTML = `
     <div class="lit-search-shell">
       <div class="lit-search-bar">
