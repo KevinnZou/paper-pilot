@@ -8,10 +8,11 @@ import { toast, integrityNote, escapeHtml, setLoading, copyText, cleanAiText } f
 import { chat, streamChat } from '../api.js';
 import { searchLiterature } from '../litsearch.js';
 import { get } from '../storage.js';
-import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence, saveEvidence, listProjects } from '../project.js';
+import { getProject, saveProject, setCurrentChapter, setChapterProgress, getCitations, saveCitations, getEvidence, saveEvidence, listProjects, addAiUsageLog } from '../project.js';
 import { snapshotChapter, snapshotDoc, getChapterVersions, getDocVersions } from '../versions.js';
 import { createDocxBlob } from '../docx-export.js';
 import { collectIssues as collectExportIssues, issueHtml as exportIssueHtml } from './check-export.js';
+import { aiDisclosureMarkdown, aiDisclosureText } from '../ai-compliance.js';
 import {
   paperSchema,
   docFromJSON,
@@ -546,6 +547,11 @@ function buildPreviewHtml(doc, citations) {
     currentPage.push(renderBlock(block));
   });
   pushPage();
+  pages.push({
+    className: 'chapter-page ai-disclosure-page',
+    label: 'AI 辅助使用声明',
+    html: `<h2 class="chapter-title">AI 辅助使用声明</h2><p>${escapeHtml(aiDisclosureText(getProject()))}</p>`,
+  });
   let bodyStarted = false;
   let frontNo = 0;
   let bodyNo = 0;
@@ -839,6 +845,10 @@ function openPrintPreview(doc, citations, { autoPrint = false } = {}) {
 
 function exportTemplateWord(doc, citations) {
   downloadBlob(createDocxBlob(getProject(), doc, citations), `${safeFileName(getProject().title)}.docx`);
+}
+
+function fullTextWithDisclosure(doc, citations) {
+  return `${fullTextFromDoc(doc, citationMap(citations)).trim()}\n\n${aiDisclosureMarkdown(getProject())}\n`;
 }
 
 function citationViewFactory(getLabel) {
@@ -2815,6 +2825,12 @@ export default {
           { role: 'system', content: systemPrompt() },
           { role: 'user', content: action.prompt(sourceText) },
         ], { temperature: action.id === 'logic' ? 0.2 : 0.6, signal: writingSignal() });
+        addAiUsageLog({
+          feature: action.label,
+          target: sourceLabel === 'review' ? '当前章节' : currentWritingTarget(viewState.view)?.label || '选中文本',
+          inputSummary: sourceText.slice(0, 120),
+          outputSummary: cleanAiText(reply).slice(0, 120),
+        });
         viewState.pending = {
           actionId: action.id,
           label: action.label,
@@ -2952,6 +2968,13 @@ export default {
         }
         streamRange = null; // 生成完毕，避免异常时误删已成功生成的正文
         saveCitations(citations);
+        addAiUsageLog({
+          feature: target.kind === 'keywords' ? '生成关键词' : '生成初稿',
+          target: target.label || target.chapter || '当前部分',
+          inputSummary: userPrompt.slice(0, 120),
+          outputSummary: target.kind === 'keywords' ? '关键词已写入正文' : '草稿已流式写入正文',
+          citationCount: draftCitations.length,
+        });
         if (target.kind === 'chapter' && target.chapter && (getProject().chapterProgress?.[target.chapter] || '未开始') === '未开始') {
           setChapterProgress(target.chapter, '进行中');
         }
@@ -3032,11 +3055,11 @@ export default {
     });
 
     el.querySelector('#wb-copy').addEventListener('click', () => {
-      copyText(fullTextFromDoc(viewState.view.state.doc, citationMap(citations)));
+      copyText(fullTextWithDisclosure(viewState.view.state.doc, citations));
     });
 
     el.querySelector('#wb-download').addEventListener('click', () => {
-      const text = fullTextFromDoc(viewState.view.state.doc, citationMap(citations));
+      const text = fullTextWithDisclosure(viewState.view.state.doc, citations);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
       a.download = `${(meaningfulTitle(getProject().title) || '论文全文').replace(/[\\/:*?"<>|]/g, '_')}.md`;

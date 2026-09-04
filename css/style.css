@@ -3093,6 +3093,22 @@ kbd {
   color: var(--ink);
   overflow-wrap: anywhere;
 }
+.compact-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+}
+.compact-log-list p {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
 .template-settings-card {
   margin-top: 18px;
   padding: 0;

@@ -124,7 +124,7 @@ PaperPilot 的差异化机会在于：
 | `js/modules/writing.js` | 写作工作台、编辑器、AI 写作工具、预览与导出入口 |
 | `js/modules/citation.js` | 文献检索、文献库、证据卡 |
 | `js/modules/planner.js` | 计划、任务和打卡 |
-| `js/api.js` | AI 调用、演示模式、错误处理 |
+| `js/api.js` | AI 调用、本地模拟模式、错误处理 |
 | `js/docx-export.js` | Word 导出版式 |
 | `js/document-model.js` | 论文结构化文档模型 |
 | `js/project-db.js` | 多项目数据管理 |

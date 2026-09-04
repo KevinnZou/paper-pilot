@@ -1,8 +1,9 @@
 import { toast, escapeHtml } from '../ui.js';
-import { getProject, updateBasics, saveProject, hasActiveProject, getTemplate } from '../project.js';
+import { getProject, updateBasics, saveProject, hasActiveProject, getTemplate, getAiUsageLog } from '../project.js';
 import { isPlaceholderTitle } from '../title-utils.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle } from '../title-utils.js';
+import { aiDisclosureText, summarizeAiUsage } from '../ai-compliance.js';
 
 function choiceText(value) {
   if (Array.isArray(value)) return choiceText(value[0]);
@@ -57,6 +58,7 @@ export default {
       ? '这里展示已采用方案的核心信息。章节结构和正文调整请在写作工作台完成。'
       : '这里会在研究设计完成后展示方案摘要。先去研究设计生成题目、方案和大纲。';
     const summaryAction = hasOutline ? '去写作工作台调整' : '去研究设计';
+    const aiLogs = getAiUsageLog().slice(0, 8);
 
     el.innerHTML = `
       <div class="project-settings-shell">
@@ -128,6 +130,15 @@ export default {
               ${hasOutline ? `<div><dt>大纲章节</dt><dd>${p.outline.length} 章 · 当前 ${escapeHtml(currentChapter)}</dd></div>` : ''}
             </dl>
             <button class="btn btn-ghost" id="ps-summary-action">${summaryAction}</button>
+          </section>
+
+          <section class="card project-settings-summary">
+            <h2><span class="mark"></span>AI 使用声明</h2>
+            <p class="desc">${escapeHtml(aiDisclosureText(p))}</p>
+            <dl class="compact-summary-list">
+              <div><dt>最近记录</dt><dd>${aiLogs.length ? `${aiLogs.length} 条` : '暂无 AI 使用记录'}</dd></div>
+            </dl>
+            ${aiLogs.length ? `<div class="compact-log-list">${aiLogs.map(item => `<p>${escapeHtml(summarizeAiUsage(item))}</p>`).join('')}</div>` : ''}
           </section>
         </aside>
       </div>

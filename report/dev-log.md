@@ -1778,3 +1778,19 @@
   - `js/modules/settings.js`：移除“辅助与示例”卡片和对应示例载入事件，设置页右侧只保留本地数据与清除数据。
   - `js/modules/projects.js`：项目列表中增加“示例项目”轻量卡片；空项目状态也展示同款示例项目卡。
   - `css/style.css`：增加示例项目卡片、空态示例卡和弱化印章样式，删除项目中心空态折叠示例入口样式。
+
+# 2026-09-04 · Day6 评审伦理与迭代材料补齐
+
+- 背景：用户提供课程最后一天关于评审、伦理、迭代和交接的材料，要求检查缺口并补齐项目所需内容。
+- 处理：
+  - 新增 `docs/delivery/handoff-package.md`，整理访问方式、核心功能 DoD、已知问题和验收建议。
+  - 新增 `docs/delivery/ethics-compliance-plan.md`，按法律、学校、期刊/学术共同体三层说明 AI 辅助边界，并列出伦理检查清单。
+  - 新增 `docs/delivery/peer-review-report.md`，给出同行评审范围、方法、当前结论和外部评审记录模板。
+  - 新增 `docs/delivery/iteration-plan.md`，重新确认版本范围，补充安全与 AI 测试修复计划、评审回应和后续规划。
+  - 新增 `docs/delivery/project-retrospective.md`，按 AAR 思路复盘原计划、实际完成、差异原因和改进方向。
+  - 更新 `docs/delivery/README.md` 与 `public/delivery.html`，将以上材料纳入公开交付文档页。
+- 产品内同步：
+  - 新增 `js/ai-compliance.js`，集中生成 AI 辅助使用声明与使用记录摘要。
+  - 项目模型新增 `aiUsageLog`，研究设计、生成大纲、写作台 AI 工具和生成初稿会记录使用留痕。
+  - 项目设置页新增“AI 使用声明”与最近使用记录。
+  - Word、PDF 模板预览、Markdown 下载和全文复制自动加入 AI 辅助使用声明。

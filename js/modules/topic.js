@@ -1,6 +1,6 @@
 import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js';
 import { chat, shouldUseLiveAI } from '../api.js';
-import { getProject, adoptOutline, parseOutline, updateBasics, saveProject } from '../project.js';
+import { getProject, adoptOutline, parseOutline, updateBasics, saveProject, addAiUsageLog } from '../project.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle, isPlaceholderTitle } from '../title-utils.js';
 import { untrustedBlock } from '../ai-safety.js';
@@ -837,6 +837,12 @@ function render(el) {
           parsed = mockTitles({ idea, keywords, constraints });
         }
         if (!parsed.length) throw new Error('AI 未返回有效题目候选');
+        addAiUsageLog({
+          feature: '生成题目候选',
+          target: '研究设计',
+          inputSummary: idea || keywords,
+          outputSummary: parsed.map(item => item.title).join('；').slice(0, 160),
+        });
         saveDesignPatch({
           currentStep: 1,
           initialIdea: idea,
@@ -940,6 +946,12 @@ ${feedback ? '\n请根据用户反馈调整研究问题、方法和数据来源�
         const feasibility = plan.feasibility && typeof plan.feasibility === 'object' ? plan.feasibility : {};
         const scopeOptions = normalizeOptionStrings(feasibility.suggestions || plan.scopeOptions || plan.boundaries);
         if (!questions.length) throw new Error('AI 未返回有效研究问题');
+        addAiUsageLog({
+          feature: '生成研究方案',
+          target: resolvedResearchTitle(current, getProject()) || '研究设计',
+          inputSummary: [current.initialIdea, current.keywords, current.population].filter(Boolean).join('；').slice(0, 160),
+          outputSummary: questions.map(item => item.question).join('；').slice(0, 160),
+        });
         saveDesignPatch({
           planStatus: 'ready',
           planError: '',
@@ -1190,6 +1202,12 @@ ${feedback ? '\n请根据用户反馈调整研究问题、方法和数据来源�
           : mockOutline(current);
         const outlineText = outlineTextFromAI(reply);
         if (!outlineText.trim()) throw new Error('模型返回了空大纲，请重试');
+        addAiUsageLog({
+          feature: '生成论文大纲',
+          target: resolvedResearchTitle(current, getProject()) || '论文大纲',
+          inputSummary: [selectedQuestion(current)?.question, selectedMethod(current), selectedDataSource(current)].filter(Boolean).join('；').slice(0, 160),
+          outputSummary: outlineText.slice(0, 180),
+        });
         syncOutlineUI(outlineText);
         saveDesignPatch({ outlineStatus: 'ready', outlineError: '', currentStep: 3 });
       } catch (e) {
