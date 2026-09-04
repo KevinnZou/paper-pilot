@@ -1232,10 +1232,50 @@ kbd {
   border-style: dashed;
   background: var(--surface-2);
 }
-.project-empty-sample-grid {
-  max-width: 520px;
+.project-empty-start {
+  max-width: 760px;
+  margin: 46px auto 0;
+  padding: 44px 32px;
+}
+.project-empty-start h2 {
+  margin: 12px 0 6px;
+  font-size: 22px;
+}
+.project-sample-drawer {
+  max-width: 760px;
   margin: 18px auto 0;
-  text-align: left;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+}
+.project-grid + .project-sample-drawer {
+  max-width: none;
+}
+.project-sample-drawer summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.project-sample-drawer summary::-webkit-details-marker { display: none; }
+.project-sample-drawer summary::after {
+  content: '展开';
+  float: right;
+  color: var(--mute);
+}
+.project-sample-drawer[open] summary::after { content: '收起'; }
+.project-sample-drawer > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 14px 14px;
+}
+.project-sample-drawer p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
 }
 .seal-muted {
   background: #EFECE4;
