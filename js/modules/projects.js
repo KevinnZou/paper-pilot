@@ -29,8 +29,17 @@ export default {
     const projects = listProjects();
     const activeId = getAppState().activeProjectId;
 
+    const sampleDrawer = `
+      <details class="project-sample-drawer">
+        <summary>需要快速查看完整流程？</summary>
+        <div>
+          <p>可载入一份示例数据体验研究设计、写作台和文献库。载入前会再次确认。</p>
+          <button class="btn btn-ghost btn-sm" id="pc-sample-load" type="button">载入示例项目</button>
+        </div>
+      </details>`;
+
     el.innerHTML = `
-      <div class="card project-center-hero">
+      ${projects.length ? `<div class="card project-center-hero">
         <div class="hero-top">
           <div>
             <h2><span class="mark"></span>我的论文项目</h2>
@@ -38,7 +47,7 @@ export default {
           </div>
           <button class="btn btn-lg" id="pc-new">创建论文项目</button>
         </div>
-      </div>
+      </div>` : ''}
 
       ${projects.length ? `
         <div class="project-grid">
@@ -78,49 +87,17 @@ export default {
                 </div>
               </div>`;
           }).join('')}
-          <div class="card project-card project-sample-card">
-            <div class="project-card-head">
-              <div>
-                <h2>示例项目</h2>
-                <p class="desc">查看一篇已完成基础流程的示例论文。</p>
-              </div>
-              <span class="seal seal-muted">示例</span>
-            </div>
-            <div class="project-meta">
-              <span class="chip">研究设计</span>
-              <span class="chip">写作台</span>
-              <span class="chip">文献库</span>
-            </div>
-            <div class="project-facts">
-              <div><span>用途</span><b>快速体验</b></div>
-              <div><span>数据</span><b>本地示例</b></div>
-            </div>
-            <div class="result-actions project-actions">
-              <button class="btn btn-ghost" id="pc-sample-load">载入示例项目</button>
-            </div>
-          </div>
-        </div>`
+        </div>
+        ${sampleDrawer}`
       : `
-        <div class="card empty">
+        <div class="card empty project-empty-start">
           <div class="empty-icon">${ICONS.bookOpen}</div>
-          <p>还没有论文项目。系统会按“项目”推进整篇论文，而不是把各模块割裂开。</p>
+          <h2>创建你的第一篇论文项目</h2>
+          <p>系统会按一篇论文的完整流程组织研究设计、写作、文献和导出。</p>
           <div class="empty-actions">
             <button class="btn btn-lg" id="pc-empty-new">创建论文项目</button>
           </div>
-        </div>
-        <div class="project-grid project-empty-sample-grid">
-          <div class="card project-card project-sample-card">
-            <div class="project-card-head">
-              <div>
-                <h2>示例项目</h2>
-                <p class="desc">快速查看研究设计、写作台和文献库的完整状态。</p>
-              </div>
-              <span class="seal seal-muted">示例</span>
-            </div>
-            <div class="result-actions project-actions">
-              <button class="btn btn-ghost" id="pc-empty-trial">载入示例项目</button>
-            </div>
-          </div>
+          ${sampleDrawer}
         </div>`}
 
       <div class="modal-backdrop" id="pc-create-modal" hidden>
@@ -195,12 +172,6 @@ export default {
 
     el.querySelector('#pc-new')?.addEventListener('click', openCreateModal);
     el.querySelector('#pc-empty-new')?.addEventListener('click', openCreateModal);
-    el.querySelector('#pc-empty-trial')?.addEventListener('click', () => {
-      if (hasExistingData() && !confirm('载入示例项目会覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
-      loadDemoData();
-      toast('示例项目已载入', 'ok');
-      document.dispatchEvent(new CustomEvent('tm:navigate', { detail: 'dashboard' }));
-    });
     el.querySelector('#pc-sample-load')?.addEventListener('click', () => {
       if (hasExistingData() && !confirm('载入示例项目会覆盖当前的论文、文献、打卡等本地数据。继续吗？')) return;
       loadDemoData();

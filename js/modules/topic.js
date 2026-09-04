@@ -1,6 +1,6 @@
 import { toast, copyText, integrityNote, escapeHtml, setLoading } from '../ui.js';
 import { chat, shouldUseLiveAI } from '../api.js';
-import { getProject, adoptOutline, parseOutline, updateBasics, saveProject } from '../project.js';
+import { getProject, adoptOutline, parseOutline, updateBasics, saveProject, addAiUsageLog } from '../project.js';
 import { ICONS } from '../icons.js';
 import { meaningfulTitle, isPlaceholderTitle } from '../title-utils.js';
 import { untrustedBlock } from '../ai-safety.js';
@@ -827,16 +827,19 @@ function render(el) {
       titleOut.innerHTML = '<div class="topic-empty">AI 正在生成题目候选…</div>';
       try {
         let parsed;
-        if (shouldUseLiveAI()) {
-          const reply = await chat([
-            { role: 'system', content: `${SYSTEM} 只输出严格 JSON 数组。` },
-            { role: 'user', content: `请围绕下方研究设想资料生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。${feedback ? '\n请根据用户反馈明显调整方向，不要只是换几个近义词。' : ''}${untrustedBlock('研究设想与用户反馈', `研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}` : ''}`)}` },
-          ], { temperature: 0.6, signal: topicSignal(), timeoutMs: 60000 });
-          parsed = normalizeTitleCandidates(parseJson(reply));
-        } else {
-          parsed = mockTitles({ idea, keywords, constraints });
-        }
+        if (!shouldUseLiveAI()) throw new Error('请先在「应用设置」中填写 API Key，保存后即可生成题目候选');
+        const reply = await chat([
+          { role: 'system', content: `${SYSTEM} 只输出严格 JSON 数组。` },
+          { role: 'user', content: `请围绕下方研究设想资料生成 4 个中文论文题目候选。每项字段：title, feasibility, innovation。${feedback ? '\n请根据用户反馈明显调整方向，不要只是换几个近义词。' : ''}${untrustedBlock('研究设想与用户反馈', `研究想法：${idea || '未提供'}\n关键词：${keywords || '未提供'}\n约束：${constraints || '无'}\n学位类型：${degreeType}\n研究对象：${population || '未提供'}\n${feedback ? `用户对上一批候选的反馈：${feedback}` : ''}`)}` },
+        ], { temperature: 0.6, signal: topicSignal(), timeoutMs: 60000 });
+        parsed = normalizeTitleCandidates(parseJson(reply));
         if (!parsed.length) throw new Error('AI 未返回有效题目候选');
+        addAiUsageLog({
+          feature: '生成题目候选',
+          target: '研究设计',
+          inputSummary: idea || keywords,
+          outputSummary: parsed.map(item => item.title).join('；').slice(0, 160),
+        });
         saveDesignPatch({
           currentStep: 1,
           initialIdea: idea,
@@ -914,8 +917,8 @@ function render(el) {
       render(el);
       try {
         let parsed;
-        if (shouldUseLiveAI()) {
-          const reply = await chat([
+        if (!shouldUseLiveAI()) throw new Error('请先在「应用设置」中填写 API Key，保存后即可生成研究方案');
+        const reply = await chat([
           { role: 'system', content: `${SYSTEM} 只输出严格 JSON 对象。` },
           { role: 'user', content: `请基于下面的论文题目生成一个“低输入”的研究方案建议包。必须紧扣论文题目，不要给泛泛的管理建议。输出 JSON 对象，字段包括：
 questions: [{id, question, object, variable, dataNeed, method}]
@@ -928,11 +931,8 @@ feasibility: {score, risks[], suggestions[]}
 
 其中 feasibility.suggestions 必须是 3 个“范围边界选项”，例如“只聚焦采购规范化环节”“只比较 2-3 家中小型装修企业”“只讨论标准化流程执行效果”。不要输出对象嵌套对象；每个选项尽量是一句可点击的短文本。
 ${feedback ? '\n请根据用户反馈调整研究问题、方法和数据来源，不要重复上一批同样的思路。' : ''}${untrustedBlock('论文题目、研究设想与用户反馈', `论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究想法：${current.initialIdea || '未提供'}\n关键词：${current.keywords || '未提供'}\n约束：${current.constraints || '无'}\n研究对象：${current.population || '未提供'}\n学位类型：${getProject().degreeType || '硕士论文'}\n${feedback ? `用户对上一批方案的反馈：${feedback}` : ''}`)}` },
-          ], { temperature: 0.35, signal: topicSignal(), timeoutMs: 60000 });
-          parsed = parseJson(reply);
-        } else {
-          parsed = mockPlan(current, feedback);
-        }
+        ], { temperature: 0.35, signal: topicSignal(), timeoutMs: 60000 });
+        parsed = parseJson(reply);
         const plan = planFromAI(parsed);
         const questions = normalizeQuestionCandidates(plan.questions || plan.researchQuestions || plan.questionCandidates || []);
         const methodOptions = normalizeOptionStrings(plan.methods || plan.methodOptions || []);
@@ -940,6 +940,12 @@ ${feedback ? '\n请根据用户反馈调整研究问题、方法和数据来源�
         const feasibility = plan.feasibility && typeof plan.feasibility === 'object' ? plan.feasibility : {};
         const scopeOptions = normalizeOptionStrings(feasibility.suggestions || plan.scopeOptions || plan.boundaries);
         if (!questions.length) throw new Error('AI 未返回有效研究问题');
+        addAiUsageLog({
+          feature: '生成研究方案',
+          target: resolvedResearchTitle(current, getProject()) || '研究设计',
+          inputSummary: [current.initialIdea, current.keywords, current.population].filter(Boolean).join('；').slice(0, 160),
+          outputSummary: questions.map(item => item.question).join('；').slice(0, 160),
+        });
         saveDesignPatch({
           planStatus: 'ready',
           planError: '',
@@ -1182,14 +1188,19 @@ ${feedback ? '\n请根据用户反馈调整研究问题、方法和数据来源�
         outlineEditor.placeholder = 'AI 正在生成论文大纲…';
       }
       try {
-        const reply = shouldUseLiveAI()
-          ? await chat([
-              { role: 'system', content: SYSTEM },
-              { role: 'user', content: `请为下方论文研究方案资料生成规范的中文论文大纲。要求：只输出纯文本大纲，不要 JSON，不要 Markdown 代码块；输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法、数据来源和范围边界一致。${feedback ? '\n请根据用户对上一版大纲的修改意见重组章节，不要只改个别字。' : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义${untrustedBlock('论文研究方案与用户反馈', `论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n范围边界：${selectedRiskStrategy(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `用户对上一版大纲的修改意见：${feedback}` : ''}`)}` },
-            ], { temperature: 0.4, signal: topicSignal(), timeoutMs: 60000 })
-          : mockOutline(current);
+        if (!shouldUseLiveAI()) throw new Error('请先在「应用设置」中填写 API Key，保存后即可生成论文大纲');
+        const reply = await chat([
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: `请为下方论文研究方案资料生成规范的中文论文大纲。要求：只输出纯文本大纲，不要 JSON，不要 Markdown 代码块；输出五章结构，每章附 2-4 个二级标题，并让章节安排与研究问题、方法、数据来源和范围边界一致。${feedback ? '\n请根据用户对上一版大纲的修改意见重组章节，不要只改个别字。' : ''}\n\n输出格式示例：\n第1章 绪论\n  1.1 研究背景\n  1.2 研究意义${untrustedBlock('论文研究方案与用户反馈', `论文题目：${resolvedResearchTitle(current, getProject()) || '未提供'}\n研究问题：${selectedQuestion(current)?.question || '未提供'}\n研究目标：${current.objectives.join('；') || '未提供'}\n研究空白：${current.researchGap || '未提供'}\n研究对象：${current.population || '未提供'}\n方法：${selectedMethod(current) || '未提供'}\n数据来源：${selectedDataSource(current) || '未提供'}\n范围边界：${selectedRiskStrategy(current) || '未提供'}\n待验证判断：${current.hypotheses.join('；') || '未提供'}\n${feedback ? `用户对上一版大纲的修改意见：${feedback}` : ''}`)}` },
+        ], { temperature: 0.4, signal: topicSignal(), timeoutMs: 60000 });
         const outlineText = outlineTextFromAI(reply);
         if (!outlineText.trim()) throw new Error('模型返回了空大纲，请重试');
+        addAiUsageLog({
+          feature: '生成论文大纲',
+          target: resolvedResearchTitle(current, getProject()) || '论文大纲',
+          inputSummary: [selectedQuestion(current)?.question, selectedMethod(current), selectedDataSource(current)].filter(Boolean).join('；').slice(0, 160),
+          outputSummary: outlineText.slice(0, 180),
+        });
         syncOutlineUI(outlineText);
         saveDesignPatch({ outlineStatus: 'ready', outlineError: '', currentStep: 3 });
       } catch (e) {

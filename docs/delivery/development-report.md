@@ -67,7 +67,7 @@ PaperPilot 的差异化机会在于：
 | 论文写作 | 结构化编辑器、章节目录、AI 初稿、润色、补论证、重构、续写、逻辑检查 |
 | 文献与证据 | 智能检索、文献库、GB/T 7714、正文引用同步、证据卡 |
 | 计划与进度 | 可选截止日期、时间轴、今日任务、打卡记录 |
-| 设置 | API Key、真实调用开关、演示数据、本地数据备份 |
+| 设置 | API Key、连接测试、示例数据、本地数据备份 |
 
 功能边界：
 
@@ -124,7 +124,7 @@ PaperPilot 的差异化机会在于：
 | `js/modules/writing.js` | 写作工作台、编辑器、AI 写作工具、预览与导出入口 |
 | `js/modules/citation.js` | 文献检索、文献库、证据卡 |
 | `js/modules/planner.js` | 计划、任务和打卡 |
-| `js/api.js` | AI 调用、演示模式、错误处理 |
+| `js/api.js` | AI 调用、本地模拟模式、错误处理 |
 | `js/docx-export.js` | Word 导出版式 |
 | `js/document-model.js` | 论文结构化文档模型 |
 | `js/project-db.js` | 多项目数据管理 |

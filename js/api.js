@@ -10,7 +10,7 @@ export const DEFAULT_CONFIG = {
   apiKey: '',
   baseURL: 'https://api.deepseek.com',
   model: 'deepseek-chat',
-  enableLiveAI: false,
+  enableLiveAI: true,
 };
 
 export function getConfig() {
@@ -22,7 +22,15 @@ export function saveConfig(partial) {
 }
 
 export function shouldUseLiveAI() {
-  return !!getConfig().enableLiveAI;
+  return !!getConfig().apiKey;
+}
+
+export function hasApiKey() {
+  return !!getConfig().apiKey;
+}
+
+function requireApiKey(cfg = getConfig()) {
+  if (!cfg.apiKey) throw new ApiError('no_key', '请先在「应用设置」中填写 API Key，保存后即可使用 AI 功能');
 }
 
 function mockCitationParse() {
@@ -143,7 +151,7 @@ function mockWritingSuggestion(prompt) {
   if (/续写/.test(prompt)) {
     return '进一步来看，AI 技术并不是简单替代人工，而是通过流程标准化、数据沉淀与节点协同三方面重塑企业管理方式。对于装修行业而言，这种重塑首先体现在采购、质检与项目交付等高频环节，其次才会逐步扩展到组织协同与经营决策层面。';
   }
-  return '演示模式示例：整体表达更收敛、论证更完整，并尽量保持原意。';
+  return '本地示例：整体表达更收敛、论证更完整，并尽量保持原意。';
 }
 
 function mockGenericReply(messages) {
@@ -158,7 +166,7 @@ function mockGenericReply(messages) {
   if (/低输入.*研究方案建议包|questions:\s*\[\{id, question/.test(prompt)) return mockTopicPlan();
   if (/生成规范的中文论文大纲|输出五章结构/.test(prompt)) return mockTopicOutline();
   if (/论文写作导师|学术表达|补充论证|重构表达|续写|逻辑结构/.test(prompt)) return mockWritingSuggestion(prompt);
-  return '演示模式回复：当前显示演示示例，不消耗真实调用。';
+  return '本地示例回复：当前显示示例内容。';
 }
 
 export class ApiError extends Error {
@@ -175,13 +183,9 @@ export class ApiError extends Error {
  * @returns {Promise<string>} 模型回复文本
  */
 export async function chat(messages, { temperature = 0.7, signal, timeoutMs = 180000 } = {}) {
-  if (!shouldUseLiveAI()) {
-    if (signal?.aborted) throw new ApiError('aborted', '请求已取消');
-    return mockGenericReply(messages);
-  }
-  const outboundMessages = hardenMessages(messages);
   const cfg = getConfig();
-  if (!cfg.apiKey) throw new ApiError('no_key', '请先在「设置」中填写 API Key');
+  requireApiKey(cfg);
+  const outboundMessages = hardenMessages(messages);
 
   // 超时保护：避免请求挂起时按钮永久停在「生成中…」
   const ctrl = new AbortController();
@@ -243,21 +247,9 @@ export async function chat(messages, { temperature = 0.7, signal, timeoutMs = 18
  * OpenAI/DeepSeek 兼容 SSE：逐段回调 onDelta，最终返回完整文本。
  */
 export async function streamChat(messages, { temperature = 0.7, signal, timeoutMs = 180000, onDelta } = {}) {
-  if (!shouldUseLiveAI()) {
-    if (signal?.aborted) throw new ApiError('aborted', '请求已取消');
-    const text = mockGenericReply(messages);
-    const chunks = String(text).match(/.{1,24}/gs) || [''];
-    for (const chunk of chunks) {
-      if (signal?.aborted) throw new ApiError('aborted', '请求已取消');
-      onDelta?.(chunk);
-      await new Promise(resolve => setTimeout(resolve, 18));
-    }
-    return text.trim();
-  }
-
-  const outboundMessages = hardenMessages(messages);
   const cfg = getConfig();
-  if (!cfg.apiKey) throw new ApiError('no_key', '请先在「设置」中填写 API Key');
+  requireApiKey(cfg);
+  const outboundMessages = hardenMessages(messages);
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);

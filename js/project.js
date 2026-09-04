@@ -70,6 +70,7 @@ function blankProject(id = makeId(), partial = {}) {
     currentChapter: '',
     materials: [],
     evidence: [],
+    aiUsageLog: [],
     plan: {
       tasks: [],
       doneTaskIds: [],
@@ -104,6 +105,7 @@ function ensureProjectKeys(project) {
     documentV2: project.documentV2 || null,
     materials: project.materials || [],
     evidence: project.evidence || [],
+    aiUsageLog: Array.isArray(project.aiUsageLog) ? project.aiUsageLog : [],
     plan: {
       tasks: project.plan?.tasks || [],
       doneTaskIds: project.plan?.doneTaskIds || [],
@@ -460,6 +462,26 @@ export function getEvidence(projectId) {
 
 export function saveEvidence(evidence, projectId) {
   return saveBucket('evidence', evidence, projectId);
+}
+
+export function getAiUsageLog(projectId) {
+  return getBucket('aiUsageLog', [], projectId);
+}
+
+export function addAiUsageLog(entry = {}, projectId = getActiveProjectId()) {
+  const p = getProject(projectId);
+  if (!p.id) return null;
+  const item = {
+    id: makeId(),
+    feature: String(entry.feature || 'AI 辅助'),
+    target: String(entry.target || ''),
+    inputSummary: String(entry.inputSummary || ''),
+    outputSummary: String(entry.outputSummary || ''),
+    citationCount: Number(entry.citationCount || 0),
+    createdAt: nowIso(),
+  };
+  saveProject({ aiUsageLog: [item, ...(p.aiUsageLog || [])].slice(0, 200) }, projectId);
+  return item;
 }
 
 export function getPlan(projectId) {

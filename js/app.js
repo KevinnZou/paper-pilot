@@ -33,10 +33,18 @@ function researchDesignComplete() {
   return !!(getProject().outline || []).length;
 }
 
+function researchTitleReady() {
+  const p = getProject();
+  return !!meaningfulTitle(p.researchDesign?.title, p.title);
+}
+
 function renderNav() {
   navEl.innerHTML = '';
+  const titleReady = researchTitleReady();
+  const gatedBeforeTitle = new Set(['writing', 'citation', 'planner']);
   const visible = MODULES.filter(m => !['settings', 'project-settings', 'checkExport'].includes(m.id))
     .filter(m => m.id === 'projects' || hasActiveProject())
+    .filter(m => !gatedBeforeTitle.has(m.id) || titleReady)
     .filter(m => m.id !== 'topic' || !researchDesignComplete());
   visible.forEach(m => {
     if (m.id === 'projects' && visible.length > 1) {
@@ -60,7 +68,12 @@ function renderNav() {
 
 export function switchModule(id) {
   const target = MODULES.find(x => x.id === id) || MODULES[0];
-  const m = (!hasActiveProject() && target.projectScoped) ? projects : target;
+  const needsTitle = ['writing', 'citation', 'planner', 'checkExport'].includes(target.id);
+  const m = (!hasActiveProject() && target.projectScoped)
+    ? projects
+    : (needsTitle && !researchTitleReady())
+      ? topic
+      : target;
   document.body.dataset.module = m.id;
   document.querySelectorAll('.nav-item').forEach(b =>
     b.classList.toggle('active', b.dataset.module === m.id));
@@ -115,16 +128,11 @@ function updateApiPill() {
     pill.classList.add('ready');
     pill.classList.remove('demo');
     pill.title = '已启用真实 AI 调用';
-  } else if (cfg.apiKey) {
-    pill.textContent = '本地模式 · 在线模型未启用';
-    pill.classList.add('demo');
-    pill.classList.remove('ready');
-    pill.title = '已填写调用凭据，但尚未启用在线模型调用。可在「应用设置」的高级选项中开启。';
   } else {
-    pill.textContent = '本地模式';
+    pill.textContent = '未配置 API';
     pill.classList.add('demo');
     pill.classList.remove('ready');
-    pill.title = '当前未配置在线模型调用，系统不会消耗外部模型额度。';
+    pill.title = '填写并保存 API Key 后即可使用 AI 功能。';
   }
 }
 
@@ -151,11 +159,14 @@ document.addEventListener('tm:config-changed', updateApiPill);
 // 论文项目变化时刷新徽标
 // 论文项目变化时刷新徽标；研究设计完成态变化时刷新导航（隐藏/显示"研究设计"）
 let lastResearchComplete = null;
+let lastTitleReady = null;
 document.addEventListener('tm:project-changed', () => {
   updateProjectBadge();
   const complete = researchDesignComplete();
-  if (complete !== lastResearchComplete) {
+  const titleReady = researchTitleReady();
+  if (complete !== lastResearchComplete || titleReady !== lastTitleReady) {
     lastResearchComplete = complete;
+    lastTitleReady = titleReady;
     renderNav();
   }
 });

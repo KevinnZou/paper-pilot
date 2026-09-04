@@ -2,6 +2,7 @@ import { buildRenderableBlocks, buildCitationNumberMap } from './document-model.
 import { citationMap } from './citation-utils.js';
 import { meaningfulTitle } from './title-utils.js';
 import { getTemplate } from './project.js';
+import { aiDisclosureText } from './ai-compliance.js';
 
 function xmlEscape(value) {
   return String(value ?? '')
@@ -400,6 +401,13 @@ function buildDocxParts(project, doc, citations, template = DEFAULT_THEME) {
       return;
     }
   });
+
+  const disclosure = aiDisclosureText(project);
+  if (disclosure) {
+    if (blocks.length && !isPageBreakXml(blocks[blocks.length - 1])) blocks.push(pageBreakParagraph());
+    blocks.push(paragraph('AI 辅助使用声明', 'HeadingChapter'));
+    blocks.push(paragraph(disclosure, 'BodyText'));
+  }
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"

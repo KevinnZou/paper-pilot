@@ -1778,3 +1778,51 @@
   - `js/modules/settings.js`：移除“辅助与示例”卡片和对应示例载入事件，设置页右侧只保留本地数据与清除数据。
   - `js/modules/projects.js`：项目列表中增加“示例项目”轻量卡片；空项目状态也展示同款示例项目卡。
   - `css/style.css`：增加示例项目卡片、空态示例卡和弱化印章样式，删除项目中心空态折叠示例入口样式。
+
+# 2026-09-04 · Day6 评审伦理与迭代材料补齐
+
+- 背景：用户提供课程最后一天关于评审、伦理、迭代和交接的材料，要求检查缺口并补齐项目所需内容。
+- 处理：
+  - 新增 `docs/delivery/handoff-package.md`，整理访问方式、核心功能 DoD、已知问题和验收建议。
+  - 新增 `docs/delivery/ethics-compliance-plan.md`，按法律、学校、期刊/学术共同体三层说明 AI 辅助边界，并列出伦理检查清单。
+  - 新增 `docs/delivery/peer-review-report.md`，给出同行评审范围、方法、当前结论和外部评审记录模板。
+  - 新增 `docs/delivery/iteration-plan.md`，重新确认版本范围，补充安全与 AI 测试修复计划、评审回应和后续规划。
+  - 新增 `docs/delivery/project-retrospective.md`，按 AAR 思路复盘原计划、实际完成、差异原因和改进方向。
+  - 更新 `docs/delivery/README.md` 与 `public/delivery.html`，将以上材料纳入公开交付文档页。
+- 产品内同步：
+  - 新增 `js/ai-compliance.js`，集中生成 AI 辅助使用声明与使用记录摘要。
+  - 项目模型新增 `aiUsageLog`，研究设计、生成大纲、写作台 AI 工具和生成初稿会记录使用留痕。
+  - 项目设置页新增“AI 使用声明”与最近使用记录。
+  - Word、PDF 模板预览、Markdown 下载和全文复制自动加入 AI 辅助使用声明。
+
+# 2026-09-04 · 项目中心空态与示例入口收拢
+
+- 背景：用户本地验证时指出项目中心空态页面不对，顶部项目介绍、空态卡和示例项目卡分散展示，示例入口过于突出。
+- 处理：
+  - `js/modules/projects.js`：无项目时不再显示顶部“我的论文项目”介绍卡，只保留一个聚焦创建的空态主卡。
+  - `js/modules/projects.js`：示例项目从项目卡网格移出，改为“需要快速查看完整流程？”折叠辅助入口，不与真实项目并列。
+  - `css/style.css`：新增空态主卡和示例折叠入口样式，减少页面漂浮感和空白。
+- 验证：`npm run build` 通过。
+
+# 2026-09-04 · 上线版 API 启用逻辑调整
+
+- 背景：用户指出上线版不应默认使用演示/模拟 AI；只要用户输入 API Key，就应启用真实调用。未输入 Key 时，写作台生成初稿等 AI 功能必须明确提示，而不是返回模拟结果。
+- 处理：
+  - `js/api.js`：`shouldUseLiveAI()` 改为由 API Key 是否存在决定；`chat` / `streamChat` 在无 Key 时直接抛出配置提示，不再返回模拟回复。
+  - `js/modules/settings.js`：移除“启用在线模型调用”开关，改为“API Key 保存后自动启用”的高级说明。
+  - `js/app.js` / `index.html`：顶部状态改为“未配置 API”或“AI 已启用 · 模型名”。
+  - `js/modules/dashboard.js`：未配置 Key 时将下一步引导改为配置 API Key。
+  - `js/modules/writing.js`：写作台 AI 工具和生成初稿在无 Key 时直接提示并跳转设置页，避免先写入文献或生成半截状态。
+  - `js/modules/topic.js`：题目候选、研究方案、大纲生成在无 Key 时提示配置，不再使用模拟结果。
+  - `js/litsearch.js`：未配置 Key 时仍可查询开放数据库，但不生成 AI 推荐理由，也不显示模拟文献。
+  - 同步更新交付文档中关于 API 模式和安全测试的表述。
+- 验证：旧口径扫描无命中；`npm run build`、`npm run test:security` 通过。
+
+# 2026-09-04 · 未定题状态的写作流程门禁
+
+- 背景：用户发现未确认研究题目时仍可进入写作台并点击生成初稿，流程顺序不合理。
+- 处理：
+  - `js/app.js`：新增题目确认判断；未确认题目前，导航隐藏写作、文献和计划等后续模块，并将直接跳转写作台/文献/计划的请求重定向到研究设计。
+  - `js/modules/writing.js`：写作台增加兜底空态；未确认题目时展示“先确定论文题目”，不渲染编辑器和 AI 工具。
+  - `js/modules/dashboard.js`：论文主页在未定题时，工作区入口只保留“先确定题目”，不展示写作台、文献与计划卡片。
+- 验证：`npm run build`、`npm run test:security` 通过。
